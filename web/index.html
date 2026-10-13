@@ -33,6 +33,12 @@
 
     #locate { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px;
       border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 28px; color: #1565C0; line-height: 50px; padding: 0; }
+    #compass { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px; border: 0; padding: 0;
+      background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
+    #needle { width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #needle b { color: #D32F2F; font-size: 14px; line-height: 14px; }
+    #needle i { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent;
+      border-bottom: 18px solid #D32F2F; margin-top: 1px; }
     #attribution { position: absolute; z-index: 1000; left: 8px; font-size: 11px; color: #333;
       background: rgba(255,255,255,.7); padding: 0 4px; border-radius: 3px; }
 
@@ -118,6 +124,7 @@
     <div id="hint"></div>
   </div>
 
+  <button id="compass" aria-label="Karte nach Norden ausrichten"><div id="needle"><b>N</b><i></i></div></button>
   <button id="locate" aria-label="Zu meinem Standort">◎</button>
   <div id="attribution">© swisstopo</div>
   <div id="panel"></div>
@@ -137,6 +144,7 @@
   </div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="vendor/leaflet-rotate/leaflet-rotate.js"></script>
   <script>
   (function () {
     // ---------- Einstellungen ----------
@@ -165,7 +173,7 @@
       svg: '<circle cx="20" cy="20" r="17" fill="' + color + '" stroke="#000" stroke-width="2.5"/><text x="20" y="27.5" font-size="21" ' + FONT + ' fill="#000">' + letter + '</text>' });
     const VEHICLE_FRAME = '<rect x="1.5" y="1.5" width="69" height="29" rx="2" fill="#fff" stroke="' + SIGN_BLUE + '" stroke-width="3"/>'
       + '<path d="M54 1.5V30.5" stroke="' + SIGN_BLUE + '" stroke-width="3"/><path d="M58 8L67 16L58 24Z" fill="' + SIGN_BLUE + '"/>';
-    const vehicle = (id, name, label) => ({ id, name, sign: true, w: 72, h: 32,
+    const vehicle = (id, name, label) => ({ id, name, sign: true, vehicle: true, w: 72, h: 32,
       svg: VEHICLE_FRAME + '<text x="27.5" y="21.5" font-size="15" ' + FONT + ' fill="' + SIGN_TEXT + '">' + label + '</text>' });
     const SIGN_TYPES = [
       circleSign('sig_r', 'R', 'Rettung Mensch/Tier', '#FFD600'),
@@ -183,7 +191,7 @@
       vehicle('sig_mt', 'MT', 'MT'),
       vehicle('sig_rw', 'RW', 'RW'),
       vehicle('sig_elw', 'ELW', 'ELW'),
-      { id: 'sig_adl', name: 'Autodrehleiter', sign: true, w: 72, h: 32,
+      { id: 'sig_adl', name: 'Autodrehleiter', sign: true, vehicle: true, w: 72, h: 32,
         svg: VEHICLE_FRAME + '<path d="M7 10H49M7 22H49M11 10V22M17 10V22M23 10V22M29 10V22M35 10V22M41 10V22M47 10V22" stroke="' + SIGN_BLUE + '" stroke-width="2.5"/>' },
       { id: 'sig_luefter', name: 'Lüfter', sign: true, w: 72, h: 32,
         svg: '<path d="M3 11H12L23 3V29L12 21H3Z" fill="' + SIGN_BLUE + '"/><path d="M29 4V28M34 4V28" stroke="' + SIGN_BLUE + '" stroke-width="3"/>'
@@ -210,11 +218,14 @@
     // Rubriken für die Auswahl «Einfügen»
     const RUBRICS = [
       { id: 'symbol', name: 'Absprachepunkte (1–6)', mode: () => ({ kind: 'symbol', typeId: null }) },
-      { id: 'signatur', name: 'Signaturen', mode: () => ({ kind: 'signatur', typeId: null, selId: null }) },
+      { id: 'signatur', name: 'Signaturen', mode: () => ({ kind: 'signatur', group: 'signatur', typeId: null, selId: null }) },
+      { id: 'fahrzeug', name: 'Fahrzeuge', mode: () => ({ kind: 'signatur', group: 'fahrzeug', typeId: null, selId: null }) },
       { id: 'zone', name: 'Zonen', mode: () => ({ kind: 'linie', typeId: null, points: [] }) },
       { id: 'fassade', name: 'Fassaden', mode: () => ({ kind: 'linie', typeId: 'fassade', points: [] }) },
     ];
-    const rubricOf = (m) => (m.kind === 'linie' ? (m.typeId === 'fassade' ? 'fassade' : 'zone') : m.kind);
+    const rubricOf = (m) => (m.kind === 'linie' ? (m.typeId === 'fassade' ? 'fassade' : 'zone') : m.kind === 'signatur' ? m.group : m.kind);
+    // Signaturen und Fahrzeuge teilen sich die gleiche Technik (drehbar), aber getrennte Auswahl
+    const groupOf = (t) => (t.vehicle ? 'fahrzeug' : 'signatur');
     const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
 
     const findSymbol = (id) => ITEM_TYPES.find((s) => s.id === id) || PLACEABLE[0];
@@ -251,7 +262,26 @@
       minZoom: 7,
       maxBounds: [[45.4, 5.4], [48.2, 11.0]],
       maxBoundsViscosity: 0.8,
+      // Karte mit zwei Fingern drehen (Erweiterung leaflet-rotate)
+      rotate: true,
+      touchRotate: true,
+      rotateControl: false,
+      bearing: 0,
     }).setView([46.8, 8.23], 8);
+
+    // Drehung der Karte in Grad (0 = Norden oben)
+    const bearingDeg = () => (map.getBearing ? map.getBearing() : 0);
+    const needle = document.getElementById('needle');
+    function updateCompass() {
+      needle.style.transform = 'rotate(' + bearingDeg() + 'deg)';
+    }
+    map.on('rotate', updateCompass);
+    document.getElementById('compass').onclick = () => { if (map.setBearing) map.setBearing(0); };
+    // Fast nach Norden gedreht: ganz nach Norden einrasten
+    document.addEventListener('touchend', () => {
+      const b = bearingDeg();
+      if (b !== 0 && (b < 6 || b > 354)) map.setBearing(0);
+    });
 
     let tileLayer = null;
     // Kacheln mit CORS laden, damit sie ins geteilte Bild dürfen. Klappt das nicht, ohne CORS weiter.
@@ -380,8 +410,9 @@
         }).addTo(layer);
       });
       L.marker(map.containerPointToLatLng([arrow.x, arrow.y]), {
-        icon: L.divIcon({ className: 'symbolIcon', html: '<div style="transform:rotate(' + arrow.angle + 'rad)">' + arrowSvg(t.color, as) + '</div>', iconSize: [as, as], iconAnchor: [as / 2, as / 2] }),
-        interactive: false, keyboard: false,
+        // Pfeil dreht mit der Karte mit, darum die aktuelle Kartendrehung abziehen
+        icon: L.divIcon({ className: 'symbolIcon', html: '<div style="transform:rotate(' + (arrow.angle - (bearingDeg() * Math.PI) / 180) + 'rad)">' + arrowSvg(t.color, as) + '</div>', iconSize: [as, as], iconAnchor: [as / 2, as / 2] }),
+        interactive: false, keyboard: false, rotateWithView: true,
       }).addTo(layer);
     }
 
@@ -492,14 +523,14 @@
       });
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
-        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: true, autoPan: true, zIndexOffset: t.sign ? 0 : 100 });
+        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: true, autoPan: true, zIndexOffset: t.sign ? 0 : 100, rotateWithView: !!t.sign });
         m.on('dragend', () => {
           const ll = m.getLatLng();
           s.coordinate = { latitude: ll.lat, longitude: ll.lng };
           save();
         });
         m.on('click', () => {
-          if (mode.kind === 'signatur' && t.sign) { mode.selId = s.id; renderDrawing(); renderUI(); }
+          if (mode.kind === 'signatur' && t.sign && groupOf(t) === mode.group) { mode.selId = s.id; renderDrawing(); renderUI(); }
           else if (mode.kind === 'ansehen' || mode.kind === 'edit') setMode({ kind: 'edit', ref: 'symbol', selId: s.id });
           // beim Zeichnen zählt ein Tipp auf einen Eintrag wie ein Tipp auf die Karte
           else if (mode.kind === 'linie' || mode.kind === 'symbol') onMapClick({ latlng: m.getLatLng() });
@@ -593,10 +624,10 @@
         return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
       }
       if (mode.kind === 'signatur') {
-        if (!mode.typeId) return 'Wähle unten eine Signatur aus.';
+        if (!mode.typeId) return mode.group === 'fahrzeug' ? 'Wähle unten ein Fahrzeug aus.' : 'Wähle unten eine Signatur aus.';
         const name = findSymbol(mode.typeId).name;
         return mode.selId && findItem(mode.selId)
-          ? 'Unten drehen und Grösse anpassen. Erneut auf die Karte tippen setzt noch eine «' + name + '».'
+          ? 'Unten drehen und Grösse anpassen. Erneut auf die Karte tippen setzt noch ein «' + name + '».'
           : 'Tippe auf die Karte, um «' + name + '» zu setzen.';
       }
       if (mode.kind === 'linie') {
@@ -688,7 +719,7 @@
           if (isLine) drawing.lines = drawing.lines.filter((l) => l.id !== item.id);
           else drawing.symbols = drawing.symbols.filter((x) => x.id !== item.id);
           save();
-          setMode(mode.kind === 'signatur' ? { kind: 'signatur', typeId: mode.typeId, selId: null } : { kind: 'ansehen' });
+          setMode(mode.kind === 'signatur' ? { kind: 'signatur', group: mode.group, typeId: mode.typeId, selId: null } : { kind: 'ansehen' });
         } },
       ]);
     }
@@ -726,7 +757,7 @@
           button('📤 Ausschnitt teilen', 'primary', shareSnapshot),
           button('Alles löschen', 'danger', () => {
             if (!drawing.symbols.length && !drawing.lines.length) return;
-            dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Zonen und Fassaden werden entfernt.', [
+            dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen und Fassaden werden entfernt.', [
               { label: 'Abbrechen' },
               { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
             ]);
@@ -754,11 +785,11 @@
       if (mode.kind === 'signatur') {
         const pal = document.createElement('div');
         pal.className = 'palette';
-        SIGN_TYPES.forEach((t) => {
+        SIGN_TYPES.filter((t) => groupOf(t) === mode.group).forEach((t) => {
           const item = document.createElement('div');
           item.className = 'palItem' + (mode.typeId === t.id ? ' active' : '');
           item.innerHTML = '<div class="palPic">' + signHtml(t, 54) + '</div><span>' + esc(t.name) + '</span>';
-          item.onclick = () => setMode({ kind: 'signatur', typeId: t.id, selId: null });
+          item.onclick = () => setMode({ kind: 'signatur', group: mode.group, typeId: t.id, selId: null });
           pal.appendChild(item);
         });
         panel.appendChild(pal);
@@ -827,6 +858,7 @@
     function finishPanel(panel) {
       const h = panel.offsetHeight;
       document.getElementById('locate').style.bottom = (h + 14) + 'px';
+      document.getElementById('compass').style.bottom = (h + 74) + 'px';
       document.getElementById('attribution').style.bottom = (h + 6) + 'px';
     }
 
@@ -846,10 +878,17 @@
       ctx.fillRect(0, 0, w, h);
 
       // Kartenkacheln so übernehmen, wie sie gerade auf dem Bildschirm liegen
-      container.querySelectorAll('.leaflet-tile-pane img.leaflet-tile-loaded').forEach((img) => {
-        const r = img.getBoundingClientRect();
-        if (r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom) return;
-        ctx.drawImage(img, r.left - box.left, r.top - box.top, r.width, r.height);
+      // (über die Ecken jeder Kachel, damit es auch bei gedrehter Karte stimmt)
+      Object.values(tileLayer._tiles || {}).forEach((tile) => {
+        const img = tile.el;
+        if (!img || !img.complete || !img.naturalWidth || !tile.coords) return;
+        const z = tile.coords.z, size = 256;
+        const corner = (dx, dy) => map.latLngToContainerPoint(map.unproject([(tile.coords.x + dx) * size, (tile.coords.y + dy) * size], z));
+        const nw = corner(0, 0), ne = corner(1, 0), sw = corner(0, 1);
+        ctx.save();
+        ctx.transform(ne.x - nw.x, ne.y - nw.y, sw.x - nw.x, sw.y - nw.y, nw.x, nw.y);
+        ctx.drawImage(img, -0.002, -0.002, 1.004, 1.004);
+        ctx.restore();
       });
 
       const pt = (lat, lng) => map.latLngToContainerPoint([lat, lng]);
@@ -945,7 +984,7 @@
           ctx.save();
           ctx.translate(p.x, p.y);
           if (t.sign) {
-            ctx.rotate(((s.rotation || 0) * Math.PI) / 180);
+            ctx.rotate((((s.rotation || 0) + bearingDeg()) * Math.PI) / 180);
             ctx.shadowColor = 'rgba(0,0,0,.5)';
             ctx.shadowBlur = 2;
             ctx.shadowOffsetY = 1;
@@ -967,6 +1006,21 @@
           if (img && img.complete) ctx.drawImage(img, -size / 2 + 2 * k, -size / 2 + 2 * k, size - 4 * k, size - 4 * k);
           ctx.restore();
         });
+
+      // Nordpfeil oben links, wenn die Karte gedreht ist
+      if (bearingDeg() !== 0) {
+        ctx.save();
+        ctx.translate(34, 34);
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill();
+        ctx.rotate((bearingDeg() * Math.PI) / 180);
+        ctx.fillStyle = '#D32F2F';
+        ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(7, 4); ctx.lineTo(-7, 4); ctx.closePath(); ctx.fill();
+        ctx.font = '800 12px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('N', 0, 14);
+        ctx.restore();
+      }
 
       // Logo oben rechts
       const logo = document.getElementById('logo');
