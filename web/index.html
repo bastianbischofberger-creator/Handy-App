@@ -43,6 +43,15 @@
     .btn { flex: 1; border: 0; padding: 14px 6px; border-radius: 12px; background: #eee;
       font-size: 15px; font-weight: 600; color: #222; line-height: 1.2; }
     .btn:active { opacity: .7; }
+    .btn.add { background: #1565C0; color: #fff; font-size: 17px; }
+    .menu { display: flex; flex-direction: column; gap: 8px; }
+    .btn.menuItem { text-align: left; padding: 15px 16px; font-size: 16px; background: #f1f4f8; }
+    .rubric { width: 100%; font-size: 16px; font-weight: 700; padding: 10px 12px; border-radius: 10px; border: 2px solid #1565C0;
+      background: #E3F2FD; color: #0D47A1; -webkit-appearance: none; appearance: none; }
+    .legend { display: flex; gap: 6px; justify-content: space-between; font-size: 13px; font-weight: 600; color: #222; }
+    .legend div { display: flex; align-items: center; gap: 4px; }
+    .legend i { display: inline-block; width: 22px; height: 8px; border-radius: 4px; border: 1.5px solid #333; }
+    .btn.small { font-size: 14px; padding: 14px 2px; }
     .btn.primary { background: #1565C0; color: #fff; }
     .btn.danger { background: #C62828; color: #fff; }
 
@@ -66,6 +75,18 @@
     .palItem { position: relative; }
     .palItem .nr { position: absolute; top: 4px; left: 6px; width: 18px; height: 18px; border-radius: 9px; background: #D32F2F;
       color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+    .item { display: flex; align-items: center; justify-content: center; }
+    .item.sel { outline: 3px dashed #1565C0; outline-offset: 3px; border-radius: 8px; }
+    .signRot { display: flex; line-height: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+    .palPic { height: 42px; display: flex; align-items: center; justify-content: center; }
+    .adjRow { display: flex; align-items: center; gap: 8px; }
+    .adjLabel { width: 54px; font-size: 14px; font-weight: 700; color: #222; flex: 0 0 auto; }
+    .adjVal { min-width: 50px; text-align: center; font-size: 14px; font-weight: 600; color: #222; flex: 0 0 auto; }
+    .adjRow input[type=range] { flex: 1; min-width: 0; height: 32px; }
+    .mini { flex: 0 0 44px; height: 40px; border: 0; border-radius: 10px; background: #eee; font-size: 20px; font-weight: 700; color: #222; padding: 0; }
+    .mini.wide { flex: 1; font-size: 15px; }
+    .mini:disabled { opacity: .35; }
+    .editTitle { font-size: 16px; font-weight: 700; color: #222; }
     .badge { display: flex; align-items: center; justify-content: center; border-radius: 50%;
       border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); color: #fff; font-weight: 800; }
     .symbolIcon { background: none; border: 0; }
@@ -136,6 +157,43 @@
       { id: 'warteraum', nr: 6, name: 'Warteraum', svg: FKS_RECT + '<text x="20" y="28" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + FKS_BLUE + '" stroke="none">W</text>' },
     ];
     const PLACEABLE = SYMBOL_TYPES.filter((t) => !t.zone);
+    // Signaturen (drehbar). w/h = Grösse in Bildschirmpunkten bei 100 %
+    const SIGN_BLUE = '#2E9BE0';
+    const SIGN_TEXT = '#1B75BB';
+    const FONT = 'font-family="Arial, Helvetica, sans-serif" font-weight="800" text-anchor="middle"';
+    const circleSign = (id, letter, name, color) => ({ id, name, sign: true, w: 40, h: 40,
+      svg: '<circle cx="20" cy="20" r="17" fill="' + color + '" stroke="#000" stroke-width="2.5"/><text x="20" y="27.5" font-size="21" ' + FONT + ' fill="#000">' + letter + '</text>' });
+    const VEHICLE_FRAME = '<rect x="1.5" y="1.5" width="69" height="29" rx="2" fill="#fff" stroke="' + SIGN_BLUE + '" stroke-width="3"/>'
+      + '<path d="M54 1.5V30.5" stroke="' + SIGN_BLUE + '" stroke-width="3"/><path d="M58 8L67 16L58 24Z" fill="' + SIGN_BLUE + '"/>';
+    const vehicle = (id, name, label) => ({ id, name, sign: true, w: 72, h: 32,
+      svg: VEHICLE_FRAME + '<text x="27.5" y="21.5" font-size="15" ' + FONT + ' fill="' + SIGN_TEXT + '">' + label + '</text>' });
+    const SIGN_TYPES = [
+      circleSign('sig_r', 'R', 'Rettung Mensch/Tier', '#FFD600'),
+      circleSign('sig_f', 'F', 'Feuer / Brandherd', '#E53935'),
+      circleSign('sig_u', 'U', 'Unfall', '#43A047'),
+      circleSign('sig_c', 'C', 'Gefährliche Stoffe', '#FB8C00'),
+      circleSign('sig_w', 'W', 'Wasser', '#1E88E5'),
+      { id: 'sig_rauch', name: 'Rauch', sign: true, w: 44, h: 32,
+        svg: '<path d="M11 29C3 29 2 19 9 17C8 9 17 5 22 11C25 3 37 5 36 13C44 13 44 26 36 29Z" fill="#fff" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>'
+          + '<path d="M13 22C16 19 20 24 23 21C26 18 30 23 33 20" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>' },
+      { id: 'sig_wind', name: 'Windrichtung', sign: true, w: 40, h: 40,
+        svg: '<path d="M20 2L33 17H24.5V38H15.5V17H7Z" fill="#000" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>' },
+      vehicle('sig_tlf', 'TLF', 'TLF'),
+      vehicle('sig_hlf', 'HLF', 'HLF'),
+      vehicle('sig_mt', 'MT', 'MT'),
+      vehicle('sig_rw', 'RW', 'RW'),
+      vehicle('sig_elw', 'ELW', 'ELW'),
+      { id: 'sig_adl', name: 'Autodrehleiter', sign: true, w: 72, h: 32,
+        svg: VEHICLE_FRAME + '<path d="M7 10H49M7 22H49M11 10V22M17 10V22M23 10V22M29 10V22M35 10V22M41 10V22M47 10V22" stroke="' + SIGN_BLUE + '" stroke-width="2.5"/>' },
+      { id: 'sig_luefter', name: 'Lüfter', sign: true, w: 72, h: 32,
+        svg: '<path d="M3 11H12L23 3V29L12 21H3Z" fill="' + SIGN_BLUE + '"/><path d="M29 4V28M34 4V28" stroke="' + SIGN_BLUE + '" stroke-width="3"/>'
+          + '<path d="M39 11H52V4L69 16L52 28V21H39Z" fill="' + SIGN_BLUE + '"/>' },
+      { id: 'sig_ms', name: 'Motorspritze', sign: true, w: 36, h: 36,
+        svg: '<rect x="1.5" y="1.5" width="33" height="33" fill="#fff" stroke="' + SIGN_BLUE + '" stroke-width="3"/><text x="18" y="23.5" font-size="15" ' + FONT + ' fill="' + SIGN_TEXT + '">MS</text>' },
+    ];
+    const ITEM_TYPES = PLACEABLE.concat(SIGN_TYPES);
+    // Grössen-Stufen für «grösser / kleiner»
+    const SCALES = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
     // Zonen wie im FKS-Schema: Gefahrenzone rot, Sperrzone gelb (beide mit rot-weisser Absperrung),
     // Verkehrsumleitzone nur als Umriss. «order» bestimmt, was oben liegt.
     const LINE_TYPES = [
@@ -143,10 +201,23 @@
       { id: 'gefahrenzone', name: 'Gefahrenzone', color: '#D32F2F', width: 4, closed: true, dashed: true, barrier: true, fill: '#E8603C', fillOpacity: 0.6, order: 2 },
       { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true, barrier: true, fill: '#FFE45C', fillOpacity: 0.45, order: 1 },
       { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 4, closed: true, dashed: true, order: 0 },
+      // Fassade: 4 Punkte, jede Seite in eigener Farbe (1 weiss, 2 grün, 3 schwarz, 4 rot)
+      { id: 'fassade', name: 'Fassade', color: '#2E7D32', width: 7, closed: true, facade: true, order: 4 },
     ];
+    const ZONE_TYPES = LINE_TYPES.filter((t) => !t.facade);
+    const FACADE_COLORS = ['#FFFFFF', '#2E7D32', '#000000', '#D32F2F'];
+    const FACADE_NAMES = ['weiss', 'grün', 'schwarz', 'rot'];
+    // Rubriken für die Auswahl «Einfügen»
+    const RUBRICS = [
+      { id: 'symbol', name: 'Absprachepunkte (1–6)', mode: () => ({ kind: 'symbol', typeId: null }) },
+      { id: 'signatur', name: 'Signaturen', mode: () => ({ kind: 'signatur', typeId: null, selId: null }) },
+      { id: 'zone', name: 'Zonen', mode: () => ({ kind: 'linie', typeId: null, points: [] }) },
+      { id: 'fassade', name: 'Fassaden', mode: () => ({ kind: 'linie', typeId: 'fassade', points: [] }) },
+    ];
+    const rubricOf = (m) => (m.kind === 'linie' ? (m.typeId === 'fassade' ? 'fassade' : 'zone') : m.kind);
     const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
 
-    const findSymbol = (id) => PLACEABLE.find((s) => s.id === id) || PLACEABLE[0];
+    const findSymbol = (id) => ITEM_TYPES.find((s) => s.id === id) || PLACEABLE[0];
     const findLine = (id) => LINE_TYPES.find((l) => l.id === id) || LINE_TYPES[0];
     const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -155,13 +226,14 @@
     let drawing = load();
     let mode = { kind: 'ansehen' };
     let baseKey = 'karte';
+    let menuOpen = false;
 
     function load() {
       try {
         const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
         if (d && Array.isArray(d.symbols) && Array.isArray(d.lines)) {
           // Symbole aus früheren Versionen, die es nicht mehr gibt, weglassen
-          d.symbols = d.symbols.filter((x) => PLACEABLE.some((t) => t.id === x.typeId));
+          d.symbols = d.symbols.filter((x) => ITEM_TYPES.some((t) => t.id === x.typeId));
           return d;
         }
       } catch (e) {}
@@ -239,29 +311,51 @@
     };
 
     // ---------- Zeichnen ----------
-    function svgDoc(t, size) {
+    function svgDoc(t, size, height) {
+      if (t.sign) {
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + (height || size) + '" viewBox="0 0 ' + t.w + ' ' + t.h + '">' + t.svg + '</svg>';
+      }
       return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" fill="none" stroke="' + FKS_BLUE + '" stroke-width="4">' + t.svg + '</svg>';
     }
     function symbolHtml(t, size) {
       return '<div class="fksIcon" style="width:' + size + 'px;height:' + size + 'px">' + svgDoc(t, size - 4) + '</div>';
     }
+    // Vorschau einer Signatur, so skaliert, dass sie in «max» Punkte passt
+    function signHtml(t, max, rotation) {
+      const f = Math.min(1, max / Math.max(t.w, t.h));
+      return '<div class="signRot" style="transform:rotate(' + (rotation || 0) + 'deg)">' + svgDoc(t, Math.round(t.w * f), Math.round(t.h * f)) + '</div>';
+    }
+    const scaleOf = (x) => x.scale || 1;
+    // Grösse eines gesetzten Eintrags auf der Karte (Rahmen, in dem er gedreht wird)
+    function itemBox(t, s) {
+      const k = scaleOf(s);
+      return Math.round((t.sign ? Math.max(t.w, t.h) : 46) * k);
+    }
+    function itemHtml(t, s, selected) {
+      const k = scaleOf(s), box = itemBox(t, s);
+      const inner = t.sign
+        ? '<div class="signRot" style="transform:rotate(' + (s.rotation || 0) + 'deg)">' + svgDoc(t, Math.round(t.w * k), Math.round(t.h * k)) + '</div>'
+        : symbolHtml(t, box);
+      return '<div class="item' + (selected ? ' sel' : '') + '" style="width:' + box + 'px;height:' + box + 'px">' + inner + '</div>';
+    }
     // Symbole auch als Bild bereithalten, für «Ausschnitt teilen»
     const symbolImg = {};
-    PLACEABLE.forEach((t) => {
+    ITEM_TYPES.forEach((t) => {
       const img = new Image();
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgDoc(t, 64));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t.sign ? svgDoc(t, t.w * 4, t.h * 4) : svgDoc(t, 160));
       symbolImg[t.id] = img;
     });
 
     // Rettungsachse: Positionen für die «R» entlang der Linie und den Pfeil am Ende (in Bildschirmpunkten)
-    function axisMarks(pts) {
+    function axisMarks(pts, k) {
+      k = k || 1;
       const marks = [];
-      const step = 90;
-      let next = 45, walked = 0;
+      const step = 90 * k;
+      let next = 45 * k, walked = 0;
       for (let i = 1; i < pts.length; i++) {
         const a = pts[i - 1], b = pts[i];
         const len = Math.hypot(b.x - a.x, b.y - a.y);
-        while (next <= walked + len - 20) {
+        while (next <= walked + len - 20 * k) {
           const f = (next - walked) / len;
           marks.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
           next += step;
@@ -271,40 +365,46 @@
       const a = pts[pts.length - 2], b = pts[pts.length - 1];
       return { marks, arrow: { x: b.x, y: b.y, angle: Math.atan2(b.y - a.y, b.x - a.x) } };
     }
-    const arrowSvg = (color) => '<svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 3L20 11L2 19Z" fill="' + color + '"/></svg>';
+    const arrowSvg = (color, size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 22 22"><path d="M2 3L20 11L2 19Z" fill="' + color + '"/></svg>';
 
-    function addAxisDecor(layer, latlngs, t) {
+    function addAxisDecor(layer, latlngs, t, k) {
       if (latlngs.length < 2) return;
+      k = k || 1;
       const pts = latlngs.map((ll) => map.latLngToContainerPoint(ll));
-      const { marks, arrow } = axisMarks(pts);
+      const { marks, arrow } = axisMarks(pts, k);
+      const rw = Math.round(18 * k), rh = Math.round(20 * k), as = Math.round(22 * k);
       marks.forEach((m) => {
         L.marker(map.containerPointToLatLng([m.x, m.y]), {
-          icon: L.divIcon({ className: 'symbolIcon', html: '<div class="rLabel">R</div>', iconSize: [18, 20], iconAnchor: [9, 10] }),
+          icon: L.divIcon({ className: 'symbolIcon', html: '<div class="rLabel" style="width:' + rw + 'px;height:' + rh + 'px;font-size:' + Math.round(15 * k) + 'px">R</div>', iconSize: [rw, rh], iconAnchor: [rw / 2, rh / 2] }),
           interactive: false, keyboard: false,
         }).addTo(layer);
       });
       L.marker(map.containerPointToLatLng([arrow.x, arrow.y]), {
-        icon: L.divIcon({ className: 'symbolIcon', html: '<div style="transform:rotate(' + arrow.angle + 'rad)">' + arrowSvg(t.color) + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] }),
+        icon: L.divIcon({ className: 'symbolIcon', html: '<div style="transform:rotate(' + arrow.angle + 'rad)">' + arrowSvg(t.color, as) + '</div>', iconSize: [as, as], iconAnchor: [as / 2, as / 2] }),
         interactive: false, keyboard: false,
       }).addTo(layer);
     }
 
-    function lineStyle(t) {
-      return { color: t.color, weight: t.width, dashArray: t.dashed ? (t.axis ? '14 10' : '12 8') : null,
+    const dashFor = (t, k) => (t.dashed ? (t.axis ? [14, 10] : [12, 8]).map((d) => d * k) : null);
+    function lineStyle(t, k) {
+      k = k || 1;
+      const dash = dashFor(t, k);
+      return { color: t.color, weight: t.width * k, dashArray: dash ? dash.join(' ') : null,
         lineCap: t.barrier ? 'butt' : 'round', lineJoin: 'round',
         fill: !!t.fill, fillColor: t.fill || t.color, fillOpacity: t.fill ? t.fillOpacity : 0 };
     }
 
     // points: [[lat, lng], ...]; holes: weitere Ringe, die aus der Fläche ausgespart werden
-    function shapeFor(t, points, opts, holes) {
-      const style = Object.assign(lineStyle(t), opts || {});
+    function shapeFor(t, points, opts, holes, k) {
+      const style = Object.assign(lineStyle(t, k), opts || {});
       if (!(t.closed && points.length >= 3)) return L.polyline(points, style);
       return L.polygon(holes && holes.length ? [points].concat(holes) : points, style);
     }
 
     // Weisse Linie unter der roten Strichlinie: ergibt die rot-weisse Absperrung
-    function barrierUnderlay(t, points) {
-      const o = { color: '#fff', weight: t.width + 2, fill: false, interactive: false, lineJoin: 'round' };
+    function barrierUnderlay(t, points, k) {
+      k = k || 1;
+      const o = { color: '#fff', weight: (t.width + 2) * k, fill: false, interactive: false, lineJoin: 'round' };
       return t.closed && points.length >= 3 ? L.polygon(points, o) : L.polyline(points, o);
     }
 
@@ -332,41 +432,80 @@
         });
     }
 
+    // Gesetzte Einträge, damit Drehen und Grösse ohne Neuzeichnen der ganzen Karte gehen
+    let markers = {};
+    const selectedId = () => (mode.kind === 'edit' || mode.kind === 'signatur' ? mode.selId : null);
+    const findItem = (id) => drawing.symbols.find((x) => x.id === id);
+    const findZone = (id) => drawing.lines.find((x) => x.id === id);
+
+    function iconFor(s) {
+      const t = findSymbol(s.typeId), box = itemBox(t, s);
+      return L.divIcon({ className: 'symbolIcon', html: itemHtml(t, s, selectedId() === s.id), iconSize: [box, box], iconAnchor: [box / 2, box / 2] });
+    }
+    function refreshItem(s) {
+      const m = markers[s.id];
+      if (m) m.setIcon(iconFor(s));
+    }
+
+    // Seiten einer Fassade: je eine Linie mit Rand (weiss bekommt schwarzen Rand, sonst weiss)
+    function facadeSides(pts, closed) {
+      const sides = [];
+      for (let i = 1; i < pts.length; i++) sides.push([pts[i - 1], pts[i]]);
+      if (closed && pts.length === 4) sides.push([pts[3], pts[0]]);
+      return sides;
+    }
+    function addFacade(layer, pts, k, closed) {
+      facadeSides(pts, closed).forEach((seg, i) => {
+        L.polyline(seg, { color: i === 0 ? '#000' : '#fff', weight: 7 * k + 4, lineCap: 'round', interactive: false }).addTo(layer);
+      });
+      facadeSides(pts, closed).forEach((seg, i) => {
+        L.polyline(seg, { color: FACADE_COLORS[i], weight: 7 * k, lineCap: 'round', interactive: false }).addTo(layer);
+      });
+    }
+
     function renderDrawing() {
       drawLayer.clearLayers();
+      markers = {};
       layeredLines().forEach(({ line, t, pts, holes }) => {
-        if (t.barrier) barrierUnderlay(t, pts).addTo(drawLayer);
-        const shape = shapeFor(t, pts, { bubblingMouseEvents: false }, holes);
-        shape.on('click', (e) => {
-          if (mode.kind === 'ansehen') {
-            dialog(t.name, 'Möchtest du diese Zone löschen?', [
-              { label: 'Abbrechen' },
-              { label: 'Löschen', danger: true, onClick: () => { drawing.lines = drawing.lines.filter((l) => l.id !== line.id); save(); renderDrawing(); } },
-            ]);
-          } else {
-            onMapClick(e);
-          }
-        });
-        shape.addTo(drawLayer);
-        if (t.axis) addAxisDecor(drawLayer, line.points.map((p) => L.latLng(p.latitude, p.longitude)), t);
+        const k = scaleOf(line);
+        if (selectedId() === line.id) {
+          // ausgewählte Zone hellblau hinterlegen
+          const o = { color: '#1565C0', opacity: 0.35, weight: t.width * k + 14, fill: false, interactive: false, lineJoin: 'round' };
+          (t.closed && pts.length >= 3 ? L.polygon(pts, o) : L.polyline(pts, o)).addTo(drawLayer);
+        }
+        const onTap = (e) => {
+          if (mode.kind === 'ansehen' || mode.kind === 'edit') setMode({ kind: 'edit', ref: 'line', selId: line.id });
+          else onMapClick(e);
+        };
+        if (t.facade) {
+          addFacade(drawLayer, pts, k, true);
+        } else {
+          if (t.barrier) barrierUnderlay(t, pts, k).addTo(drawLayer);
+          const shape = shapeFor(t, pts, { bubblingMouseEvents: false }, holes, k);
+          shape.on('click', onTap);
+          shape.addTo(drawLayer);
+        }
+        // unsichtbare breite Linie, damit man die Zone mit dem Finger gut trifft
+        const hitOpts = { opacity: 0, weight: 26, fill: false, bubblingMouseEvents: false };
+        (t.closed && pts.length >= 3 ? L.polygon(pts, hitOpts) : L.polyline(pts, hitOpts)).on('click', onTap).addTo(drawLayer);
+        if (t.axis) addAxisDecor(drawLayer, line.points.map((p) => L.latLng(p.latitude, p.longitude)), t, k);
       });
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
-        const icon = L.divIcon({ className: 'symbolIcon', html: symbolHtml(t, 46), iconSize: [46, 46], iconAnchor: [23, 23] });
-        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon, draggable: true, autoPan: true });
+        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: true, autoPan: true, zIndexOffset: t.sign ? 0 : 100 });
         m.on('dragend', () => {
           const ll = m.getLatLng();
           s.coordinate = { latitude: ll.lat, longitude: ll.lng };
           save();
         });
         m.on('click', () => {
-          if (mode.kind !== 'ansehen') return;
-          dialog(t.name, 'Möchtest du diesen Absprachepunkt löschen? Zum Verschieben gedrückt halten und ziehen.', [
-            { label: 'Abbrechen' },
-            { label: 'Löschen', danger: true, onClick: () => { drawing.symbols = drawing.symbols.filter((x) => x.id !== s.id); save(); renderDrawing(); } },
-          ]);
+          if (mode.kind === 'signatur' && t.sign) { mode.selId = s.id; renderDrawing(); renderUI(); }
+          else if (mode.kind === 'ansehen' || mode.kind === 'edit') setMode({ kind: 'edit', ref: 'symbol', selId: s.id });
+          // beim Zeichnen zählt ein Tipp auf einen Eintrag wie ein Tipp auf die Karte
+          else if (mode.kind === 'linie' || mode.kind === 'symbol') onMapClick({ latlng: m.getLatLng() });
         });
         m.addTo(drawLayer);
+        markers[s.id] = m;
       });
     }
 
@@ -374,8 +513,11 @@
       draftLayer.clearLayers();
       if (mode.kind !== 'linie' || !mode.typeId || mode.points.length === 0) return;
       const t = findLine(mode.typeId);
-      if (t.barrier) barrierUnderlay(t, mode.points).addTo(draftLayer);
-      shapeFor(t, mode.points, { interactive: false }).addTo(draftLayer);
+      if (t.facade) addFacade(draftLayer, mode.points, 1, true);
+      else {
+        if (t.barrier) barrierUnderlay(t, mode.points).addTo(draftLayer);
+        shapeFor(t, mode.points, { interactive: false }).addTo(draftLayer);
+      }
       if (t.axis) addAxisDecor(draftLayer, mode.points.map((p) => L.latLng(p[0], p[1])), t);
       mode.points.forEach((p) => {
         L.marker(p, {
@@ -391,10 +533,23 @@
         drawing.symbols.push({ id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng } });
         save();
         renderDrawing();
+      } else if (mode.kind === 'signatur' && mode.typeId) {
+        // neue Signatur übernimmt die Grösse der zuletzt gesetzten
+        const last = findItem(mode.selId);
+        const s = { id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng }, rotation: 0, scale: last ? scaleOf(last) : 1 };
+        drawing.symbols.push(s);
+        mode.selId = s.id;
+        save();
+        renderDrawing();
+        renderUI();
       } else if (mode.kind === 'linie' && mode.typeId) {
         mode.points.push([ll.lat, ll.lng]);
+        // Fassade ist nach dem 4. Punkt automatisch fertig
+        if (mode.typeId === 'fassade' && mode.points.length === 4) { finishLine(); return; }
         renderDraft();
         renderUI();
+      } else if (mode.kind === 'edit') {
+        setMode({ kind: 'ansehen' });
       }
     }
     map.on('click', onMapClick);
@@ -410,13 +565,13 @@
       }
       drawing.lines.push({ id: newId(), typeId: t.id, points: mode.points.map((p) => ({ latitude: p[0], longitude: p[1] })) });
       save();
-      setMode({ kind: 'linie', typeId: null, points: [] });
-      renderDrawing();
+      setMode({ kind: 'linie', typeId: t.facade ? 'fassade' : null, points: [] });
     }
 
     // ---------- Oberfläche ----------
     function setMode(m) {
       mode = m;
+      renderDrawing();
       renderDraft();
       renderUI();
     }
@@ -437,14 +592,32 @@
       if (mode.kind === 'symbol') {
         return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
       }
+      if (mode.kind === 'signatur') {
+        if (!mode.typeId) return 'Wähle unten eine Signatur aus.';
+        const name = findSymbol(mode.typeId).name;
+        return mode.selId && findItem(mode.selId)
+          ? 'Unten drehen und Grösse anpassen. Erneut auf die Karte tippen setzt noch eine «' + name + '».'
+          : 'Tippe auf die Karte, um «' + name + '» zu setzen.';
+      }
       if (mode.kind === 'linie') {
         if (!mode.typeId) return 'Wähle unten die Art der Zone.';
         const t = findLine(mode.typeId);
+        if (t.facade) {
+          const n = mode.points.length;
+          return n === 0
+            ? 'Tippe 4 Ecken der Fassade auf die Karte. Seite 1 wird weiss, 2 grün, 3 schwarz, 4 rot.'
+            : 'Ecke ' + (n + 1) + ' von 4 tippen' + (n >= 1 ? ' (Seite ' + n + ' wird ' + FACADE_NAMES[n - 1] + ').' : '.');
+        }
         return mode.points.length === 0
           ? 'Tippe Punkt für Punkt auf die Karte, um die ' + t.name + ' zu zeichnen.' + (t.axis ? ' Der Pfeil zeigt zum letzten Punkt.' : '')
           : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Zone fertig» drücken.';
       }
-      return 'Tippe auf einen Absprachepunkt oder eine Zone, um ihn zu löschen. Absprachepunkte gedrückt halten und ziehen zum Verschieben.';
+      if (mode.kind === 'edit') {
+        if (mode.ref === 'line') return 'Mit «Kleiner» und «Grösser» machst du die Linie der Zone dünner oder dicker.';
+        const it = findItem(mode.selId);
+        return (it && findSymbol(it.typeId).sign ? 'Unten drehen und Grösse ändern.' : 'Unten die Grösse ändern.') + ' Gedrückt halten und ziehen zum Verschieben.';
+      }
+      return 'Tippe auf einen Eintrag, um ihn zu drehen, die Grösse zu ändern oder zu löschen.';
     }
 
     function button(label, cls, onClick) {
@@ -461,21 +634,99 @@
       return r;
     }
 
+    // Regler zum Drehen (nur Signaturen) und Knöpfe für die Grösse
+    function adjustControls(item, isLine) {
+      const t = isLine ? findLine(item.typeId) : findSymbol(item.typeId);
+      const redraw = () => (isLine ? renderDrawing() : refreshItem(item));
+      const out = [];
+      if (!isLine && t.sign) {
+        const r = document.createElement('div');
+        r.className = 'adjRow';
+        r.innerHTML = '<span class="adjLabel">Drehen</span><button class="mini">↺</button><input type="range" min="0" max="359" step="1" /><button class="mini">↻</button><span class="adjVal"></span>';
+        const [left, right] = r.querySelectorAll('button');
+        const slider = r.querySelector('input');
+        const val = r.querySelector('.adjVal');
+        const show = () => { slider.value = item.rotation || 0; val.textContent = (item.rotation || 0) + '°'; };
+        const set = (deg) => { item.rotation = ((Math.round(deg) % 360) + 360) % 360; show(); redraw(); };
+        slider.oninput = () => set(+slider.value);
+        slider.onchange = save;
+        left.onclick = () => { set((item.rotation || 0) - 15); save(); };
+        right.onclick = () => { set((item.rotation || 0) + 15); save(); };
+        show();
+        out.push(r);
+      }
+      const r = document.createElement('div');
+      r.className = 'adjRow';
+      r.innerHTML = '<span class="adjLabel">Grösse</span><button class="mini wide">− Kleiner</button><span class="adjVal"></span><button class="mini wide">+ Grösser</button>';
+      const [minus, plus] = r.querySelectorAll('button');
+      const val = r.querySelector('.adjVal');
+      const show = () => {
+        const k = scaleOf(item);
+        val.textContent = Math.round(k * 100) + ' %';
+        minus.disabled = k <= SCALES[0];
+        plus.disabled = k >= SCALES[SCALES.length - 1];
+      };
+      const step = (dir) => {
+        const k = scaleOf(item);
+        const next = dir > 0 ? SCALES.find((x) => x > k + 0.001) : SCALES.slice().reverse().find((x) => x < k - 0.001);
+        if (!next) return;
+        item.scale = next;
+        show(); redraw(); save();
+      };
+      minus.onclick = () => step(-1);
+      plus.onclick = () => step(1);
+      show();
+      out.push(r);
+      return out;
+    }
+
+    function askDelete(item, isLine) {
+      const t = isLine ? findLine(item.typeId) : findSymbol(item.typeId);
+      dialog(t.name, 'Möchtest du diesen Eintrag löschen?', [
+        { label: 'Abbrechen' },
+        { label: 'Löschen', danger: true, onClick: () => {
+          if (isLine) drawing.lines = drawing.lines.filter((l) => l.id !== item.id);
+          else drawing.symbols = drawing.symbols.filter((x) => x.id !== item.id);
+          save();
+          setMode(mode.kind === 'signatur' ? { kind: 'signatur', typeId: mode.typeId, selId: null } : { kind: 'ansehen' });
+        } },
+      ]);
+    }
+
     function renderUI() {
       document.getElementById('hint').textContent = hintText();
       const panel = document.getElementById('panel');
       panel.innerHTML = '';
 
+      // Auswahlfeld oben: zwischen den Rubriken wechseln
+      if (mode.kind === 'symbol' || mode.kind === 'signatur' || mode.kind === 'linie') {
+        const sel = document.createElement('select');
+        sel.className = 'rubric';
+        sel.innerHTML = RUBRICS.map((r) => '<option value="' + r.id + '">' + esc(r.name) + ' ▾</option>').join('');
+        sel.value = rubricOf(mode);
+        sel.onchange = () => setMode(RUBRICS.find((r) => r.id === sel.value).mode());
+        panel.appendChild(sel);
+      }
+
       if (mode.kind === 'ansehen') {
-        panel.appendChild(row([
-          button('Absprachepunkt setzen', '', () => setMode({ kind: 'symbol', typeId: null })),
-          button('Zone zeichnen', '', () => setMode({ kind: 'linie', typeId: null, points: [] })),
-        ]));
+        if (menuOpen) {
+          const menu = document.createElement('div');
+          menu.className = 'menu';
+          RUBRICS.forEach((r) => {
+            const b = button(r.name, 'menuItem', () => { menuOpen = false; setMode(r.mode()); });
+            menu.appendChild(b);
+          });
+          panel.appendChild(menu);
+          panel.appendChild(row([button('Abbrechen', '', () => { menuOpen = false; renderUI(); })]));
+          finishPanel(panel);
+          return;
+        }
+        panel.appendChild(row([button('➕ Einfügen ▾', 'add', () => { menuOpen = true; renderUI(); })]));
         panel.appendChild(row([
           button('📤 Ausschnitt teilen', 'primary', shareSnapshot),
           button('Alles löschen', 'danger', () => {
             if (!drawing.symbols.length && !drawing.lines.length) return;
-            dialog('Alles löschen?', 'Alle Absprachepunkte und Zonen werden entfernt.', [
+            dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Zonen und Fassaden werden entfernt.', [
               { label: 'Abbrechen' },
               { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
             ]);
@@ -500,6 +751,42 @@
         if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
       }
 
+      if (mode.kind === 'signatur') {
+        const pal = document.createElement('div');
+        pal.className = 'palette';
+        SIGN_TYPES.forEach((t) => {
+          const item = document.createElement('div');
+          item.className = 'palItem' + (mode.typeId === t.id ? ' active' : '');
+          item.innerHTML = '<div class="palPic">' + signHtml(t, 54) + '</div><span>' + esc(t.name) + '</span>';
+          item.onclick = () => setMode({ kind: 'signatur', typeId: t.id, selId: null });
+          pal.appendChild(item);
+        });
+        panel.appendChild(pal);
+        const sel = findItem(mode.selId);
+        if (sel) adjustControls(sel, false).forEach((el) => panel.appendChild(el));
+        panel.appendChild(row(sel
+          ? [button('Löschen', 'danger', () => askDelete(sel, false)), button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]
+          : [button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
+        const active = pal.querySelector('.active');
+        if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      }
+
+      if (mode.kind === 'edit') {
+        const isLine = mode.ref === 'line';
+        const item = isLine ? findZone(mode.selId) : findItem(mode.selId);
+        if (!item) { mode = { kind: 'ansehen' }; renderUI(); return; }
+        const t = isLine ? findLine(item.typeId) : findSymbol(item.typeId);
+        const title = document.createElement('div');
+        title.className = 'editTitle';
+        title.textContent = t.name;
+        panel.appendChild(title);
+        adjustControls(item, isLine).forEach((el) => panel.appendChild(el));
+        panel.appendChild(row([
+          button('Löschen', 'danger', () => askDelete(item, isLine)),
+          button('Fertig', 'primary', () => setMode({ kind: 'ansehen' })),
+        ]));
+      }
+
       if (mode.kind === 'linie') {
         const locked = mode.points.length > 0;
         const choice = (t) => {
@@ -518,17 +805,26 @@
           c.onclick = () => { if (!locked) setMode({ kind: 'linie', typeId: t.id, points: [] }); };
           return c;
         };
-        for (let k = 0; k < LINE_TYPES.length; k += 2) panel.appendChild(row(LINE_TYPES.slice(k, k + 2).map(choice)));
+        if (mode.typeId === 'fassade') {
+          const legend = document.createElement('div');
+          legend.className = 'legend';
+          legend.innerHTML = FACADE_COLORS.map((c, i) => '<div><i style="background:' + c + '"></i>' + (i + 1) + ' ' + FACADE_NAMES[i] + '</div>').join('');
+          panel.appendChild(legend);
+        }
+        if (mode.typeId !== 'fassade') for (let k = 0; k < ZONE_TYPES.length; k += 2) panel.appendChild(row(ZONE_TYPES.slice(k, k + 2).map(choice)));
         panel.appendChild(row(locked
           ? [
               button('Punkt zurück', '', () => { mode.points.pop(); renderDraft(); renderUI(); }),
               button('Verwerfen', 'danger', () => { mode.points = []; renderDraft(); renderUI(); }),
-              button('Zone fertig', 'primary', finishLine),
-            ]
+            ].concat(mode.typeId === 'fassade' ? [] : [button('Zone fertig', 'primary', finishLine)])
           : [button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
       }
 
-      // Standort-Knopf und Quellenangabe über dem Werkzeug-Bereich halten
+      finishPanel(panel);
+    }
+
+    // Standort-Knopf und Quellenangabe über dem Werkzeug-Bereich halten
+    function finishPanel(panel) {
       const h = panel.offsetHeight;
       document.getElementById('locate').style.bottom = (h + 14) + 'px';
       document.getElementById('attribution').style.bottom = (h + 6) + 'px';
@@ -559,9 +855,23 @@
       const pt = (lat, lng) => map.latLngToContainerPoint([lat, lng]);
 
       // Zonen (gleiche Reihenfolge und Aussparungen wie auf der Karte)
-      layeredLines().forEach(({ t, pts: ll, holes }) => {
+      layeredLines().forEach(({ line, t, pts: ll, holes }) => {
+        const k = scaleOf(line);
         const pts = ll.map((p) => pt(p[0], p[1]));
         if (pts.length < 2) return;
+        if (t.facade) {
+          ctx.setLineDash([]);
+          ctx.lineCap = 'round';
+          [0, 1].forEach((pass) => facadeSides(pts, true).forEach((seg, i) => {
+            ctx.beginPath();
+            ctx.moveTo(seg[0].x, seg[0].y);
+            ctx.lineTo(seg[1].x, seg[1].y);
+            ctx.lineWidth = pass ? 7 * k : 7 * k + 4;
+            ctx.strokeStyle = pass ? FACADE_COLORS[i] : i === 0 ? '#000' : '#fff';
+            ctx.stroke();
+          }));
+          return;
+        }
         const closed = t.closed && pts.length >= 3;
         const ring = (r) => { r.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); if (closed) ctx.closePath(); };
         if (closed && t.fill) {
@@ -578,30 +888,31 @@
         ctx.lineJoin = 'round';
         if (t.barrier) {
           ctx.setLineDash([]);
-          ctx.lineWidth = t.width + 2;
+          ctx.lineWidth = (t.width + 2) * k;
           ctx.strokeStyle = '#fff';
           ctx.stroke();
         }
-        ctx.setLineDash(t.dashed ? (t.axis ? [14, 10] : [12, 8]) : []);
-        ctx.lineWidth = t.width;
+        ctx.setLineDash(dashFor(t, k) || []);
+        ctx.lineWidth = t.width * k;
         ctx.lineCap = t.barrier ? 'butt' : 'round';
         ctx.strokeStyle = t.color;
         ctx.stroke();
         ctx.setLineDash([]);
         if (t.axis) {
-          const { marks, arrow } = axisMarks(pts);
-          ctx.font = '800 15px -apple-system, BlinkMacSystemFont, sans-serif';
+          const { marks, arrow } = axisMarks(pts, k);
+          ctx.font = '800 ' + Math.round(15 * k) + 'px -apple-system, BlinkMacSystemFont, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           marks.forEach((m) => {
             ctx.fillStyle = '#fff';
-            ctx.fillRect(m.x - 7, m.y - 9, 14, 18);
+            ctx.fillRect(m.x - 7 * k, m.y - 9 * k, 14 * k, 18 * k);
             ctx.fillStyle = t.color;
-            ctx.fillText('R', m.x, m.y + 1);
+            ctx.fillText('R', m.x, m.y + k);
           });
           ctx.save();
           ctx.translate(arrow.x, arrow.y);
           ctx.rotate(arrow.angle);
+          ctx.scale(k, k);
           ctx.beginPath();
           ctx.moveTo(9, 0); ctx.lineTo(-9, -8); ctx.lineTo(-9, 8); ctx.closePath();
           ctx.fillStyle = t.color;
@@ -622,24 +933,40 @@
         ctx.stroke();
       }
 
-      // Absprachepunkte
-      drawing.symbols.forEach((s) => {
-        const t = findSymbol(s.typeId);
-        const p = pt(s.coordinate.latitude, s.coordinate.longitude);
-        const size = 46;
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,.4)';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetY = 1;
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(p.x - size / 2, p.y - size / 2, size, size, 6);
-        else ctx.rect(p.x - size / 2, p.y - size / 2, size, size);
-        ctx.fill();
-        ctx.restore();
-        const img = symbolImg[t.id];
-        if (img && img.complete) ctx.drawImage(img, p.x - size / 2 + 2, p.y - size / 2 + 2, size - 4, size - 4);
-      });
+      // Signaturen zuerst, Absprachepunkte darüber (wie auf der Karte)
+      drawing.symbols
+        .slice()
+        .sort((a, b) => (findSymbol(a.typeId).sign ? 0 : 1) - (findSymbol(b.typeId).sign ? 0 : 1))
+        .forEach((s) => {
+          const t = findSymbol(s.typeId);
+          const p = pt(s.coordinate.latitude, s.coordinate.longitude);
+          const k = scaleOf(s);
+          const img = symbolImg[t.id];
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          if (t.sign) {
+            ctx.rotate(((s.rotation || 0) * Math.PI) / 180);
+            ctx.shadowColor = 'rgba(0,0,0,.5)';
+            ctx.shadowBlur = 2;
+            ctx.shadowOffsetY = 1;
+            const w = t.w * k, hh = t.h * k;
+            if (img && img.complete) ctx.drawImage(img, -w / 2, -hh / 2, w, hh);
+            ctx.restore();
+            return;
+          }
+          const size = 46 * k;
+          ctx.shadowColor = 'rgba(0,0,0,.4)';
+          ctx.shadowBlur = 3;
+          ctx.shadowOffsetY = 1;
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(-size / 2, -size / 2, size, size, 6 * k);
+          else ctx.rect(-size / 2, -size / 2, size, size);
+          ctx.fill();
+          ctx.shadowColor = 'transparent';
+          if (img && img.complete) ctx.drawImage(img, -size / 2 + 2 * k, -size / 2 + 2 * k, size - 4 * k, size - 4 * k);
+          ctx.restore();
+        });
 
       // Logo oben rechts
       const logo = document.getElementById('logo');
