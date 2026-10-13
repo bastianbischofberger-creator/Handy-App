@@ -59,6 +59,13 @@
     .lineChoice.disabled { opacity: .35; }
     .sample { display: flex; align-items: center; height: 8px; gap: 4px; }
 
+    .fksIcon { display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+    .rLabel { width: 18px; height: 20px; display: flex; align-items: center; justify-content: center; background: #fff;
+      color: #2F6DB5; font-weight: 800; font-size: 15px; border-radius: 3px; }
+    .palItem { position: relative; }
+    .palItem .nr { position: absolute; top: 4px; left: 6px; width: 18px; height: 18px; border-radius: 9px; background: #D32F2F;
+      color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
     .badge { display: flex; align-items: center; justify-content: center; border-radius: 50%;
       border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); color: #fff; font-weight: 800; }
     .symbolIcon { background: none; border: 0; }
@@ -116,25 +123,27 @@
       karte: { label: 'Karte', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg' },
       luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg' },
     };
+    // Die 6 Absprachepunkte nach FKS (Feuerwehr Koordination Schweiz)
+    const FKS_BLUE = '#2F6DB5';
+    const FKS_RECT = '<rect x="6" y="6" width="28" height="28"/>';
     const SYMBOL_TYPES = [
-      { id: 'absprachepunkt', name: 'Absprachepunkt', short: 'AP', color: '#1565C0' },
-      { id: 'feuerwehrauto', name: 'Feuerwehrauto', short: '🚒', color: '#FFCDD2' },
-      { id: 'kommandoposten', name: 'Kommandoposten', short: 'KP', color: '#6A1B9A' },
-      { id: 'sammelplatz', name: 'Sammelplatz', short: 'SP', color: '#2E7D32' },
-      { id: 'patientensammelstelle', name: 'Patientensammelstelle', short: 'PS', color: '#C62828' },
-      { id: 'helilandeplatz', name: 'Helilandeplatz', short: 'H', color: '#00838F' },
-      { id: 'wasserbezug', name: 'Wasserbezug', short: 'W', color: '#0277BD' },
-      { id: 'gefahr', name: 'Gefahr', short: '!', color: '#EF6C00' },
-      { id: 'materialdepot', name: 'Materialdepot', short: 'MD', color: '#5D4037' },
+      { id: 'patientensammelstelle', nr: 1, name: 'Patientensammelstelle', svg: FKS_RECT + '<path d="M20 6V34M6 20H34"/>' },
+      { id: 'sanhist', nr: 2, name: 'San Hist', svg: FKS_RECT + '<path d="M20 6V34M6 18H34M6 22.5H34"/>' },
+      { id: 'rettungsachse', nr: 3, name: 'Rettungsachse', zone: 'rettungsachse',
+        svg: '<path d="M20 2V9M20 24V29"/><text x="20" y="21" text-anchor="middle" font-size="13" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + FKS_BLUE + '" stroke="none">R</text><path d="M14 29H26L20 38Z" fill="' + FKS_BLUE + '" stroke="none"/>' },
+      { id: 'einsatzleitung', nr: 4, name: 'Einsatzleitung', svg: '<path d="M15 3V25M13.3 4.7H31M15 13H29"/><circle cx="15" cy="31" r="6"/>' },
+      { id: 'sammelstelle', nr: 5, name: 'Sammelstelle Unverletzte', svg: FKS_RECT + '<path d="M6 18H34M6 22.5H34"/>' },
+      { id: 'warteraum', nr: 6, name: 'Warteraum', svg: FKS_RECT + '<text x="20" y="28" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + FKS_BLUE + '" stroke="none">W</text>' },
     ];
+    const PLACEABLE = SYMBOL_TYPES.filter((t) => !t.zone);
     const LINE_TYPES = [
-      { id: 'rettungsachse', name: 'Rettungsachse', color: '#2E7D32', width: 6, closed: false },
+      { id: 'rettungsachse', name: 'Rettungsachse', color: FKS_BLUE, width: 4, closed: false, dashed: true, axis: true },
       { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true },
       { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 5, closed: false, dashed: true },
     ];
     const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
 
-    const findSymbol = (id) => SYMBOL_TYPES.find((s) => s.id === id) || SYMBOL_TYPES[0];
+    const findSymbol = (id) => PLACEABLE.find((s) => s.id === id) || PLACEABLE[0];
     const findLine = (id) => LINE_TYPES.find((l) => l.id === id) || LINE_TYPES[0];
     const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -147,7 +156,11 @@
     function load() {
       try {
         const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-        if (d && Array.isArray(d.symbols) && Array.isArray(d.lines)) return d;
+        if (d && Array.isArray(d.symbols) && Array.isArray(d.lines)) {
+          // Symbole aus früheren Versionen, die es nicht mehr gibt, weglassen
+          d.symbols = d.symbols.filter((x) => PLACEABLE.some((t) => t.id === x.typeId));
+          return d;
+        }
       } catch (e) {}
       return { symbols: [], lines: [] };
     }
@@ -223,14 +236,58 @@
     };
 
     // ---------- Zeichnen ----------
-    function badgeHtml(t, size) {
-      const len = Array.from(t.short).length;
-      const fs = Math.round(size * (len > 1 ? 0.38 : 0.5));
-      return '<div class="badge" style="width:' + size + 'px;height:' + size + 'px;background:' + t.color + ';font-size:' + fs + 'px">' + esc(t.short) + '</div>';
+    function svgDoc(t, size) {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" fill="none" stroke="' + FKS_BLUE + '" stroke-width="3.5">' + t.svg + '</svg>';
+    }
+    function symbolHtml(t, size) {
+      return '<div class="fksIcon" style="width:' + size + 'px;height:' + size + 'px">' + svgDoc(t, size - 4) + '</div>';
+    }
+    // Symbole auch als Bild bereithalten, für «Ausschnitt teilen»
+    const symbolImg = {};
+    PLACEABLE.forEach((t) => {
+      const img = new Image();
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgDoc(t, 64));
+      symbolImg[t.id] = img;
+    });
+
+    // Rettungsachse: Positionen für die «R» entlang der Linie und den Pfeil am Ende (in Bildschirmpunkten)
+    function axisMarks(pts) {
+      const marks = [];
+      const step = 90;
+      let next = 45, walked = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        while (next <= walked + len - 20) {
+          const f = (next - walked) / len;
+          marks.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+          next += step;
+        }
+        walked += len;
+      }
+      const a = pts[pts.length - 2], b = pts[pts.length - 1];
+      return { marks, arrow: { x: b.x, y: b.y, angle: Math.atan2(b.y - a.y, b.x - a.x) } };
+    }
+    const arrowSvg = (color) => '<svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 3L20 11L2 19Z" fill="' + color + '"/></svg>';
+
+    function addAxisDecor(layer, latlngs, t) {
+      if (latlngs.length < 2) return;
+      const pts = latlngs.map((ll) => map.latLngToContainerPoint(ll));
+      const { marks, arrow } = axisMarks(pts);
+      marks.forEach((m) => {
+        L.marker(map.containerPointToLatLng([m.x, m.y]), {
+          icon: L.divIcon({ className: 'symbolIcon', html: '<div class="rLabel">R</div>', iconSize: [18, 20], iconAnchor: [9, 10] }),
+          interactive: false, keyboard: false,
+        }).addTo(layer);
+      });
+      L.marker(map.containerPointToLatLng([arrow.x, arrow.y]), {
+        icon: L.divIcon({ className: 'symbolIcon', html: '<div style="transform:rotate(' + arrow.angle + 'rad)">' + arrowSvg(t.color) + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] }),
+        interactive: false, keyboard: false,
+      }).addTo(layer);
     }
 
     function lineStyle(t) {
-      return { color: t.color, weight: t.width, dashArray: t.dashed ? '12 8' : null, lineCap: 'round', lineJoin: 'round',
+      return { color: t.color, weight: t.width, dashArray: t.dashed ? (t.axis ? '14 10' : '12 8') : null, lineCap: 'round', lineJoin: 'round',
         fillColor: t.color, fillOpacity: t.closed ? 0.2 : 0 };
     }
 
@@ -246,7 +303,7 @@
         const shape = shapeFor(t, line.points.map((p) => [p.latitude, p.longitude]), { bubblingMouseEvents: false });
         shape.on('click', (e) => {
           if (mode.kind === 'ansehen') {
-            dialog(t.name, 'Möchtest du diese Linie löschen?', [
+            dialog(t.name, 'Möchtest du diese Zone löschen?', [
               { label: 'Abbrechen' },
               { label: 'Löschen', danger: true, onClick: () => { drawing.lines = drawing.lines.filter((l) => l.id !== line.id); save(); renderDrawing(); } },
             ]);
@@ -255,10 +312,11 @@
           }
         });
         shape.addTo(drawLayer);
+        if (t.axis) addAxisDecor(drawLayer, line.points.map((p) => L.latLng(p.latitude, p.longitude)), t);
       });
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
-        const icon = L.divIcon({ className: 'symbolIcon', html: badgeHtml(t, 36), iconSize: [36, 36], iconAnchor: [18, 18] });
+        const icon = L.divIcon({ className: 'symbolIcon', html: symbolHtml(t, 38), iconSize: [38, 38], iconAnchor: [19, 19] });
         const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon, draggable: true, autoPan: true });
         m.on('dragend', () => {
           const ll = m.getLatLng();
@@ -267,7 +325,7 @@
         });
         m.on('click', () => {
           if (mode.kind !== 'ansehen') return;
-          dialog(t.name, 'Möchtest du dieses Symbol löschen? Zum Verschieben das Symbol gedrückt halten und ziehen.', [
+          dialog(t.name, 'Möchtest du diesen Absprachepunkt löschen? Zum Verschieben gedrückt halten und ziehen.', [
             { label: 'Abbrechen' },
             { label: 'Löschen', danger: true, onClick: () => { drawing.symbols = drawing.symbols.filter((x) => x.id !== s.id); save(); renderDrawing(); } },
           ]);
@@ -281,6 +339,7 @@
       if (mode.kind !== 'linie' || !mode.typeId || mode.points.length === 0) return;
       const t = findLine(mode.typeId);
       shapeFor(t, mode.points, { interactive: false }).addTo(draftLayer);
+      if (t.axis) addAxisDecor(draftLayer, mode.points.map((p) => L.latLng(p[0], p[1])), t);
       mode.points.forEach((p) => {
         L.marker(p, {
           icon: L.divIcon({ className: 'symbolIcon', html: '<div class="draftDot" style="border-color:' + t.color + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
@@ -302,6 +361,8 @@
       }
     }
     map.on('click', onMapClick);
+    // «R» und Pfeil der Rettungsachse nach dem Zoomen neu verteilen
+    map.on('zoomend', () => { renderDrawing(); renderDraft(); });
 
     function finishLine() {
       const t = findLine(mode.typeId);
@@ -337,16 +398,16 @@
 
     function hintText() {
       if (mode.kind === 'symbol') {
-        return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten ein Symbol aus.';
+        return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
       }
       if (mode.kind === 'linie') {
-        if (!mode.typeId) return 'Wähle unten die Art der Linie.';
+        if (!mode.typeId) return 'Wähle unten die Art der Zone.';
         const t = findLine(mode.typeId);
         return mode.points.length === 0
-          ? 'Tippe Punkt für Punkt auf die Karte, um die ' + t.name + ' zu zeichnen.'
-          : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Linie fertig» drücken.';
+          ? 'Tippe Punkt für Punkt auf die Karte, um die ' + t.name + ' zu zeichnen.' + (t.axis ? ' Der Pfeil zeigt zum letzten Punkt.' : '')
+          : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Zone fertig» drücken.';
       }
-      return 'Tippe auf ein Symbol oder eine Linie, um es zu löschen. Symbole gedrückt halten und ziehen zum Verschieben.';
+      return 'Tippe auf einen Absprachepunkt oder eine Zone, um ihn zu löschen. Absprachepunkte gedrückt halten und ziehen zum Verschieben.';
     }
 
     function button(label, cls, onClick) {
@@ -370,14 +431,14 @@
 
       if (mode.kind === 'ansehen') {
         panel.appendChild(row([
-          button('Symbol setzen', '', () => setMode({ kind: 'symbol', typeId: null })),
-          button('Linie zeichnen', '', () => setMode({ kind: 'linie', typeId: null, points: [] })),
+          button('Absprachepunkt setzen', '', () => setMode({ kind: 'symbol', typeId: null })),
+          button('Zone zeichnen', '', () => setMode({ kind: 'linie', typeId: null, points: [] })),
         ]));
         panel.appendChild(row([
           button('📤 Ausschnitt teilen', 'primary', shareSnapshot),
           button('Alles löschen', 'danger', () => {
             if (!drawing.symbols.length && !drawing.lines.length) return;
-            dialog('Alles löschen?', 'Alle Symbole und Linien werden entfernt.', [
+            dialog('Alles löschen?', 'Alle Absprachepunkte und Zonen werden entfernt.', [
               { label: 'Abbrechen' },
               { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
             ]);
@@ -391,8 +452,9 @@
         SYMBOL_TYPES.forEach((t) => {
           const item = document.createElement('div');
           item.className = 'palItem' + (mode.typeId === t.id ? ' active' : '');
-          item.innerHTML = badgeHtml(t, 40) + '<span>' + esc(t.name) + '</span>';
-          item.onclick = () => setMode({ kind: 'symbol', typeId: t.id });
+          item.innerHTML = '<b class="nr">' + t.nr + '</b>' + symbolHtml(t, 42) + '<span>' + esc(t.name) + '</span>';
+          // Nr. 3 ist keine Markierung, sondern eine Linie: direkt zum Zeichnen der Rettungsachse
+          item.onclick = () => setMode(t.zone ? { kind: 'linie', typeId: t.zone, points: [] } : { kind: 'symbol', typeId: t.id });
           pal.appendChild(item);
         });
         panel.appendChild(pal);
@@ -408,7 +470,9 @@
           const selected = mode.typeId === t.id;
           c.className = 'lineChoice' + (locked && !selected ? ' disabled' : '');
           if (selected) { c.style.borderColor = t.color; c.style.background = t.color + '22'; }
-          const sample = t.dashed
+          const sample = t.axis
+            ? '<div style="width:10px;height:4px;background:' + t.color + '"></div><b style="color:' + t.color + ';font-size:12px;line-height:8px">R</b><div style="width:10px;height:4px;background:' + t.color + '"></div><div style="width:0;height:0;border-left:8px solid ' + t.color + ';border-top:5px solid transparent;border-bottom:5px solid transparent"></div>'
+            : t.dashed
             ? [0, 1, 2].map(() => '<div style="width:10px;height:4px;background:' + t.color + '"></div>').join('')
             : '<div style="width:38px;height:5px;border-radius:3px;background:' + t.color + '"></div>';
           c.innerHTML = '<div class="sample">' + sample + '</div><span>' + esc(t.name) + '</span>';
@@ -419,7 +483,7 @@
           ? [
               button('Punkt zurück', '', () => { mode.points.pop(); renderDraft(); renderUI(); }),
               button('Verwerfen', 'danger', () => { mode.points = []; renderDraft(); renderUI(); }),
-              button('Linie fertig', 'primary', finishLine),
+              button('Zone fertig', 'primary', finishLine),
             ]
           : [button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
       }
@@ -468,13 +532,33 @@
           ctx.fill();
           ctx.globalAlpha = 1;
         }
-        ctx.setLineDash(t.dashed ? [12, 8] : []);
+        ctx.setLineDash(t.dashed ? (t.axis ? [14, 10] : [12, 8]) : []);
         ctx.lineWidth = t.width;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.strokeStyle = t.color;
         ctx.stroke();
         ctx.setLineDash([]);
+        if (t.axis) {
+          const { marks, arrow } = axisMarks(pts);
+          ctx.font = '800 15px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          marks.forEach((m) => {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(m.x - 7, m.y - 9, 14, 18);
+            ctx.fillStyle = t.color;
+            ctx.fillText('R', m.x, m.y + 1);
+          });
+          ctx.save();
+          ctx.translate(arrow.x, arrow.y);
+          ctx.rotate(arrow.angle);
+          ctx.beginPath();
+          ctx.moveTo(9, 0); ctx.lineTo(-9, -8); ctx.lineTo(-9, 8); ctx.closePath();
+          ctx.fillStyle = t.color;
+          ctx.fill();
+          ctx.restore();
+        }
       });
 
       // Eigener Standort
@@ -489,29 +573,23 @@
         ctx.stroke();
       }
 
-      // Symbole
+      // Absprachepunkte
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
         const p = pt(s.coordinate.latitude, s.coordinate.longitude);
-        const size = 36;
+        const size = 38;
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,.4)';
         ctx.shadowBlur = 3;
         ctx.shadowOffsetY = 1;
+        ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = t.color;
+        if (ctx.roundRect) ctx.roundRect(p.x - size / 2, p.y - size / 2, size, size, 6);
+        else ctx.rect(p.x - size / 2, p.y - size / 2, size, size);
         ctx.fill();
         ctx.restore();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#fff';
-        ctx.stroke();
-        const len = Array.from(t.short).length;
-        ctx.font = '800 ' + Math.round(size * (len > 1 ? 0.38 : 0.5)) + 'px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(t.short, p.x, p.y + 1);
+        const img = symbolImg[t.id];
+        if (img && img.complete) ctx.drawImage(img, p.x - size / 2 + 2, p.y - size / 2 + 2, size - 4, size - 4);
       });
 
       // Logo oben rechts
