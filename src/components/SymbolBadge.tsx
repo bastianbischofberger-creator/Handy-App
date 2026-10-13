@@ -11,7 +11,7 @@ export function SymbolBadge({ type, size = 36 }: Props) {
         { width: size, height: size, borderRadius: size / 2, backgroundColor: type.color },
       ]}
     >
-      <Text style={[styles.text, { fontSize: size * (type.short.length > 1 ? 0.38 : 0.5) }]}>
+      <Text style={[styles.text, { fontSize: size * (Array.from(type.short).length > 1 ? 0.38 : 0.5) }]}>
         {type.short}
       </Text>
     </View>

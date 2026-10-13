@@ -26,6 +26,7 @@ export const SWITZERLAND_REGION = {
 
 export const SYMBOL_TYPES: SymbolType[] = [
   { id: 'absprachepunkt', name: 'Absprachepunkt', short: 'AP', color: '#1565C0' },
+  { id: 'feuerwehrauto', name: 'Feuerwehrauto', short: '🚒', color: '#FFCDD2' },
   { id: 'kommandoposten', name: 'Kommandoposten', short: 'KP', color: '#6A1B9A' },
   { id: 'sammelplatz', name: 'Sammelplatz', short: 'SP', color: '#2E7D32' },
   { id: 'patientensammelstelle', name: 'Patientensammelstelle', short: 'PS', color: '#C62828' },
