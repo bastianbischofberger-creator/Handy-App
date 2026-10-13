@@ -66,6 +66,11 @@
     .meDot { width: 18px; height: 18px; border-radius: 50%; background: #1E88E5; border: 3px solid #fff;
       box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 1px 4px rgba(0,0,0,.4); }
 
+    #shareView { position: fixed; inset: 0; z-index: 1900; background: rgba(0,0,0,.85); display: none;
+      flex-direction: column; padding: calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); gap: 12px; }
+    #shareView.open { display: flex; }
+    #shareImg { flex: 1; min-height: 0; width: 100%; object-fit: contain; -webkit-touch-callout: default; }
+    #shareNote { color: #fff; font-size: 14px; text-align: center; }
     #dialog { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.35); display: none;
       align-items: center; justify-content: center; padding: 24px; }
     #dialog.open { display: flex; }
@@ -88,6 +93,12 @@
   <button id="locate" aria-label="Zu meinem Standort">◎</button>
   <div id="attribution">© swisstopo</div>
   <div id="panel"></div>
+
+  <div id="shareView">
+    <img id="shareImg" alt="Kartenausschnitt" />
+    <div id="shareNote"></div>
+    <div class="row" id="shareButtons"></div>
+  </div>
 
   <div id="dialog">
     <div id="dialogBox">
@@ -155,10 +166,19 @@
     }).setView([46.8, 8.23], 8);
 
     let tileLayer = null;
+    // Kacheln mit CORS laden, damit sie ins geteilte Bild dürfen. Klappt das nicht, ohne CORS weiter.
+    let useCors = true;
     function setBase(key) {
       baseKey = key;
       if (tileLayer) map.removeLayer(tileLayer);
-      tileLayer = L.tileLayer(BASE_MAPS[key].url, { maxNativeZoom: 18, maxZoom: 20 }).addTo(map);
+      let loadedAny = false;
+      const opts = { maxNativeZoom: 18, maxZoom: 20 };
+      if (useCors) opts.crossOrigin = 'anonymous';
+      tileLayer = L.tileLayer(BASE_MAPS[key].url, opts).addTo(map);
+      tileLayer.on('tileload', () => { loadedAny = true; });
+      tileLayer.on('tileerror', () => {
+        if (useCors && !loadedAny) { useCors = false; setBase(baseKey); }
+      });
       renderBaseSwitch();
     }
 
@@ -352,6 +372,9 @@
         panel.appendChild(row([
           button('Symbol setzen', '', () => setMode({ kind: 'symbol', typeId: null })),
           button('Linie zeichnen', '', () => setMode({ kind: 'linie', typeId: null, points: [] })),
+        ]));
+        panel.appendChild(row([
+          button('📤 Ausschnitt teilen', 'primary', shareSnapshot),
           button('Alles löschen', 'danger', () => {
             if (!drawing.symbols.length && !drawing.lines.length) return;
             dialog('Alles löschen?', 'Alle Symbole und Linien werden entfernt.', [
@@ -405,6 +428,153 @@
       const h = panel.offsetHeight;
       document.getElementById('locate').style.bottom = (h + 14) + 'px';
       document.getElementById('attribution').style.bottom = (h + 6) + 'px';
+    }
+
+    // ---------- Ausschnitt als Bild teilen ----------
+    function snapshotCanvas() {
+      const container = map.getContainer();
+      const box = container.getBoundingClientRect();
+      const w = Math.round(box.width), h = Math.round(box.height);
+      const scale = Math.min(window.devicePixelRatio || 1, 2);
+      const footer = 44;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round((h + footer) * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(0, 0, w, h);
+
+      // Kartenkacheln so übernehmen, wie sie gerade auf dem Bildschirm liegen
+      container.querySelectorAll('.leaflet-tile-pane img.leaflet-tile-loaded').forEach((img) => {
+        const r = img.getBoundingClientRect();
+        if (r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom) return;
+        ctx.drawImage(img, r.left - box.left, r.top - box.top, r.width, r.height);
+      });
+
+      const pt = (lat, lng) => map.latLngToContainerPoint([lat, lng]);
+
+      // Linien und Flächen
+      drawing.lines.forEach((line) => {
+        const t = findLine(line.typeId);
+        const pts = line.points.map((p) => pt(p.latitude, p.longitude));
+        if (pts.length < 2) return;
+        ctx.beginPath();
+        pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+        if (t.closed && pts.length >= 3) {
+          ctx.closePath();
+          ctx.globalAlpha = 0.2;
+          ctx.fillStyle = t.color;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.setLineDash(t.dashed ? [12, 8] : []);
+        ctx.lineWidth = t.width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = t.color;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // Eigener Standort
+      if (meMarker) {
+        const p = map.latLngToContainerPoint(meMarker.getLatLng());
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#1E88E5';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+      }
+
+      // Symbole
+      drawing.symbols.forEach((s) => {
+        const t = findSymbol(s.typeId);
+        const p = pt(s.coordinate.latitude, s.coordinate.longitude);
+        const size = 36;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,.4)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetY = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = t.color;
+        ctx.fill();
+        ctx.restore();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        const len = Array.from(t.short).length;
+        ctx.font = '800 ' + Math.round(size * (len > 1 ? 0.38 : 0.5)) + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(t.short, p.x, p.y + 1);
+      });
+
+      // Logo oben rechts
+      const logo = document.getElementById('logo');
+      if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, w - 58, 10, 46, 48);
+
+      // Fusszeile mit Datum, Kartenmitte und Quelle
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, h, w, footer);
+      const c = map.getCenter();
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const stamp = pad(now.getDate()) + '.' + pad(now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+      ctx.fillStyle = '#222';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.font = '600 13px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillText('Einsatzkarte · ' + stamp, 10, h + 14);
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = '#555';
+      ctx.fillText('Kartenmitte ' + c.lat.toFixed(5) + ', ' + c.lng.toFixed(5) + ' · © swisstopo', 10, h + 32);
+      return { canvas, stamp, center: c };
+    }
+
+    function closeShare() {
+      document.getElementById('shareView').classList.remove('open');
+    }
+
+    function shareSnapshot() {
+      let snap, dataUrl;
+      try {
+        snap = snapshotCanvas();
+        dataUrl = snap.canvas.toDataURL('image/png');
+      } catch (e) {
+        dialog('Bild geht gerade nicht', 'Das Bild konnte nicht erstellt werden. Mach stattdessen ein Bildschirmfoto: Seitentaste und Lauter-Taste gleichzeitig drücken.', [{ label: 'OK', primary: true }]);
+        return;
+      }
+      const c = snap.center;
+      const text = 'Einsatzkarte ' + snap.stamp + '\nKartenmitte: https://maps.apple.com/?ll=' + c.lat.toFixed(6) + ',' + c.lng.toFixed(6) + '&q=Einsatzort';
+
+      // Datei schon jetzt vorbereiten, damit «Teilen» direkt beim Tippen öffnet
+      let file = null;
+      try {
+        const bin = atob(dataUrl.split(',')[1]);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        file = new File([bytes], 'Einsatzkarte-' + snap.stamp.replace(/[ .:]/g, '-') + '.png', { type: 'image/png' });
+      } catch (e) {}
+      const canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
+
+      document.getElementById('shareImg').src = dataUrl;
+      document.getElementById('shareNote').textContent = canShareFile
+        ? 'So wird der Ausschnitt verschickt.'
+        : 'Halte das Bild gedrückt und wähle «In Fotos sichern» oder «Teilen».';
+      const btns = document.getElementById('shareButtons');
+      btns.innerHTML = '';
+      btns.appendChild(button('Schliessen', '', closeShare));
+      if (canShareFile) {
+        btns.appendChild(button('📤 Teilen', 'primary', () => {
+          navigator.share({ files: [file], text }).catch(() => {});
+        }));
+      }
+      document.getElementById('shareView').classList.add('open');
     }
 
     // ---------- Dialog ----------
