@@ -57,7 +57,7 @@
     .lineChoice span { font-size: 13px; font-weight: 600; color: #222; margin-top: 6px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .lineChoice.disabled { opacity: .35; }
-    .sample { display: flex; align-items: center; height: 8px; gap: 4px; }
+    .sample { display: flex; align-items: center; min-height: 14px; gap: 4px; }
 
     .fksIcon { display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px;
       box-shadow: 0 1px 3px rgba(0,0,0,.45); }
@@ -136,10 +136,13 @@
       { id: 'warteraum', nr: 6, name: 'Warteraum', svg: FKS_RECT + '<text x="20" y="28" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + FKS_BLUE + '" stroke="none">W</text>' },
     ];
     const PLACEABLE = SYMBOL_TYPES.filter((t) => !t.zone);
+    // Zonen wie im FKS-Schema: Gefahrenzone rot, Sperrzone gelb (beide mit rot-weisser Absperrung),
+    // Verkehrsumleitzone nur als Umriss. «order» bestimmt, was oben liegt.
     const LINE_TYPES = [
-      { id: 'rettungsachse', name: 'Rettungsachse', color: FKS_BLUE, width: 4, closed: false, dashed: true, axis: true },
-      { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true },
-      { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 5, closed: false, dashed: true },
+      { id: 'rettungsachse', name: 'Rettungsachse', color: FKS_BLUE, width: 4, closed: false, dashed: true, axis: true, order: 3 },
+      { id: 'gefahrenzone', name: 'Gefahrenzone', color: '#D32F2F', width: 4, closed: true, dashed: true, barrier: true, fill: '#E8603C', fillOpacity: 0.6, order: 2 },
+      { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true, barrier: true, fill: '#FFE45C', fillOpacity: 0.45, order: 1 },
+      { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 4, closed: true, dashed: true, order: 0 },
     ];
     const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
 
@@ -237,7 +240,7 @@
 
     // ---------- Zeichnen ----------
     function svgDoc(t, size) {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" fill="none" stroke="' + FKS_BLUE + '" stroke-width="3.5">' + t.svg + '</svg>';
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" fill="none" stroke="' + FKS_BLUE + '" stroke-width="4">' + t.svg + '</svg>';
     }
     function symbolHtml(t, size) {
       return '<div class="fksIcon" style="width:' + size + 'px;height:' + size + 'px">' + svgDoc(t, size - 4) + '</div>';
@@ -287,20 +290,53 @@
     }
 
     function lineStyle(t) {
-      return { color: t.color, weight: t.width, dashArray: t.dashed ? (t.axis ? '14 10' : '12 8') : null, lineCap: 'round', lineJoin: 'round',
-        fillColor: t.color, fillOpacity: t.closed ? 0.2 : 0 };
+      return { color: t.color, weight: t.width, dashArray: t.dashed ? (t.axis ? '14 10' : '12 8') : null,
+        lineCap: t.barrier ? 'butt' : 'round', lineJoin: 'round',
+        fill: !!t.fill, fillColor: t.fill || t.color, fillOpacity: t.fill ? t.fillOpacity : 0 };
     }
 
-    function shapeFor(t, points, opts) {
+    // points: [[lat, lng], ...]; holes: weitere Ringe, die aus der Fläche ausgespart werden
+    function shapeFor(t, points, opts, holes) {
       const style = Object.assign(lineStyle(t), opts || {});
-      return t.closed && points.length >= 3 ? L.polygon(points, style) : L.polyline(points, style);
+      if (!(t.closed && points.length >= 3)) return L.polyline(points, style);
+      return L.polygon(holes && holes.length ? [points].concat(holes) : points, style);
+    }
+
+    // Weisse Linie unter der roten Strichlinie: ergibt die rot-weisse Absperrung
+    function barrierUnderlay(t, points) {
+      const o = { color: '#fff', weight: t.width + 2, fill: false, interactive: false, lineJoin: 'round' };
+      return t.closed && points.length >= 3 ? L.polygon(points, o) : L.polyline(points, o);
+    }
+
+    function insideRing(pt, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][1], yi = ring[i][0], xj = ring[j][1], yj = ring[j][0];
+        if ((yi > pt[0]) !== (yj > pt[0]) && pt[1] < ((xj - xi) * (pt[0] - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    }
+    const linePts = (line) => line.points.map((p) => [p.latitude, p.longitude]);
+
+    // Zonen von unten nach oben; die Sperrzone spart Gefahrenzonen aus, die ganz in ihr liegen,
+    // damit deren Rot nicht vom Gelb überdeckt wird.
+    function layeredLines() {
+      const gefahr = drawing.lines.filter((l) => l.typeId === 'gefahrenzone' && l.points.length >= 3).map(linePts);
+      return drawing.lines
+        .slice()
+        .sort((a, b) => findLine(a.typeId).order - findLine(b.typeId).order)
+        .map((line) => {
+          const pts = linePts(line);
+          const holes = line.typeId === 'sperrzone' && pts.length >= 3 ? gefahr.filter((g) => g.every((q) => insideRing(q, pts))) : [];
+          return { line, t: findLine(line.typeId), pts, holes };
+        });
     }
 
     function renderDrawing() {
       drawLayer.clearLayers();
-      drawing.lines.forEach((line) => {
-        const t = findLine(line.typeId);
-        const shape = shapeFor(t, line.points.map((p) => [p.latitude, p.longitude]), { bubblingMouseEvents: false });
+      layeredLines().forEach(({ line, t, pts, holes }) => {
+        if (t.barrier) barrierUnderlay(t, pts).addTo(drawLayer);
+        const shape = shapeFor(t, pts, { bubblingMouseEvents: false }, holes);
         shape.on('click', (e) => {
           if (mode.kind === 'ansehen') {
             dialog(t.name, 'Möchtest du diese Zone löschen?', [
@@ -316,7 +352,7 @@
       });
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
-        const icon = L.divIcon({ className: 'symbolIcon', html: symbolHtml(t, 38), iconSize: [38, 38], iconAnchor: [19, 19] });
+        const icon = L.divIcon({ className: 'symbolIcon', html: symbolHtml(t, 46), iconSize: [46, 46], iconAnchor: [23, 23] });
         const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon, draggable: true, autoPan: true });
         m.on('dragend', () => {
           const ll = m.getLatLng();
@@ -338,6 +374,7 @@
       draftLayer.clearLayers();
       if (mode.kind !== 'linie' || !mode.typeId || mode.points.length === 0) return;
       const t = findLine(mode.typeId);
+      if (t.barrier) barrierUnderlay(t, mode.points).addTo(draftLayer);
       shapeFor(t, mode.points, { interactive: false }).addTo(draftLayer);
       if (t.axis) addAxisDecor(draftLayer, mode.points.map((p) => L.latLng(p[0], p[1])), t);
       mode.points.forEach((p) => {
@@ -465,12 +502,14 @@
 
       if (mode.kind === 'linie') {
         const locked = mode.points.length > 0;
-        panel.appendChild(row(LINE_TYPES.map((t) => {
+        const choice = (t) => {
           const c = document.createElement('div');
           const selected = mode.typeId === t.id;
           c.className = 'lineChoice' + (locked && !selected ? ' disabled' : '');
           if (selected) { c.style.borderColor = t.color; c.style.background = t.color + '22'; }
-          const sample = t.axis
+          const sample = t.fill
+            ? '<div style="width:36px;height:14px;background:' + t.fill + Math.round(t.fillOpacity * 255).toString(16) + ';border:2px dashed ' + t.color + '"></div>'
+            : t.axis
             ? '<div style="width:10px;height:4px;background:' + t.color + '"></div><b style="color:' + t.color + ';font-size:12px;line-height:8px">R</b><div style="width:10px;height:4px;background:' + t.color + '"></div><div style="width:0;height:0;border-left:8px solid ' + t.color + ';border-top:5px solid transparent;border-bottom:5px solid transparent"></div>'
             : t.dashed
             ? [0, 1, 2].map(() => '<div style="width:10px;height:4px;background:' + t.color + '"></div>').join('')
@@ -478,7 +517,8 @@
           c.innerHTML = '<div class="sample">' + sample + '</div><span>' + esc(t.name) + '</span>';
           c.onclick = () => { if (!locked) setMode({ kind: 'linie', typeId: t.id, points: [] }); };
           return c;
-        })));
+        };
+        for (let k = 0; k < LINE_TYPES.length; k += 2) panel.appendChild(row(LINE_TYPES.slice(k, k + 2).map(choice)));
         panel.appendChild(row(locked
           ? [
               button('Punkt zurück', '', () => { mode.points.pop(); renderDraft(); renderUI(); }),
@@ -518,24 +558,33 @@
 
       const pt = (lat, lng) => map.latLngToContainerPoint([lat, lng]);
 
-      // Linien und Flächen
-      drawing.lines.forEach((line) => {
-        const t = findLine(line.typeId);
-        const pts = line.points.map((p) => pt(p.latitude, p.longitude));
+      // Zonen (gleiche Reihenfolge und Aussparungen wie auf der Karte)
+      layeredLines().forEach(({ t, pts: ll, holes }) => {
+        const pts = ll.map((p) => pt(p[0], p[1]));
         if (pts.length < 2) return;
-        ctx.beginPath();
-        pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-        if (t.closed && pts.length >= 3) {
-          ctx.closePath();
-          ctx.globalAlpha = 0.2;
-          ctx.fillStyle = t.color;
-          ctx.fill();
+        const closed = t.closed && pts.length >= 3;
+        const ring = (r) => { r.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); if (closed) ctx.closePath(); };
+        if (closed && t.fill) {
+          ctx.beginPath();
+          ring(pts);
+          holes.forEach((h) => ring(h.map((p) => pt(p[0], p[1]))));
+          ctx.globalAlpha = t.fillOpacity;
+          ctx.fillStyle = t.fill;
+          ctx.fill('evenodd');
           ctx.globalAlpha = 1;
+        }
+        ctx.beginPath();
+        ring(pts);
+        ctx.lineJoin = 'round';
+        if (t.barrier) {
+          ctx.setLineDash([]);
+          ctx.lineWidth = t.width + 2;
+          ctx.strokeStyle = '#fff';
+          ctx.stroke();
         }
         ctx.setLineDash(t.dashed ? (t.axis ? [14, 10] : [12, 8]) : []);
         ctx.lineWidth = t.width;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        ctx.lineCap = t.barrier ? 'butt' : 'round';
         ctx.strokeStyle = t.color;
         ctx.stroke();
         ctx.setLineDash([]);
@@ -577,7 +626,7 @@
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
         const p = pt(s.coordinate.latitude, s.coordinate.longitude);
-        const size = 38;
+        const size = 46;
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,.4)';
         ctx.shadowBlur = 3;
