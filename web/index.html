@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Einsatzkarte</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Einsatzkarte" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #e8e8e8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #map { position: absolute; inset: 0; }
+    .leaflet-container { background: #e8e8e8; }
+
+    #top { position: absolute; z-index: 1000; left: 12px; right: 12px;
+      top: calc(env(safe-area-inset-top) + 8px); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    #topRow { display: flex; justify-content: space-between; align-items: flex-start; }
+    .segment { display: flex; background: #fff; border-radius: 10px; padding: 3px; pointer-events: auto;
+      box-shadow: 0 1px 6px rgba(0,0,0,.25); }
+    .segment button { border: 0; background: none; padding: 7px 14px; border-radius: 8px;
+      font-weight: 600; font-size: 15px; color: #333; }
+    .segment button.active { background: #D32F2F; color: #fff; }
+    #logo { width: 46px; height: 48px; object-fit: contain; }
+    #hint { background: rgba(0,0,0,.7); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+
+    #locate { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px;
+      border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 28px; color: #1565C0; line-height: 50px; padding: 0; }
+    #attribution { position: absolute; z-index: 1000; left: 8px; font-size: 11px; color: #333;
+      background: rgba(255,255,255,.7); padding: 0 4px; border-radius: 3px; }
+
+    #panel { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; background: #fff;
+      border-radius: 18px 18px 0 0; padding: 12px 12px calc(env(safe-area-inset-bottom) + 10px);
+      box-shadow: 0 -2px 10px rgba(0,0,0,.2); display: flex; flex-direction: column; gap: 10px; }
+    .row { display: flex; gap: 8px; }
+    .btn { flex: 1; border: 0; padding: 14px 6px; border-radius: 12px; background: #eee;
+      font-size: 15px; font-weight: 600; color: #222; line-height: 1.2; }
+    .btn:active { opacity: .7; }
+    .btn.primary { background: #1565C0; color: #fff; }
+    .btn.danger { background: #C62828; color: #fff; }
+
+    .palette { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .palItem { flex: 0 0 84px; display: flex; flex-direction: column; align-items: center; padding: 8px 2px;
+      border-radius: 12px; border: 2px solid transparent; background: #f4f4f4; }
+    .palItem.active { border-color: #1565C0; background: #E3F2FD; }
+    .palItem span { font-size: 11px; text-align: center; margin-top: 4px; color: #222; line-height: 1.2; }
+
+    .lineChoice { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 4px;
+      border-radius: 12px; border: 2px solid #ddd; background: #fafafa; min-width: 0; }
+    .lineChoice span { font-size: 13px; font-weight: 600; color: #222; margin-top: 6px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .lineChoice.disabled { opacity: .35; }
+    .sample { display: flex; align-items: center; height: 8px; gap: 4px; }
+
+    .badge { display: flex; align-items: center; justify-content: center; border-radius: 50%;
+      border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); color: #fff; font-weight: 800; }
+    .symbolIcon { background: none; border: 0; }
+    .draftDot { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid; }
+    .meDot { width: 18px; height: 18px; border-radius: 50%; background: #1E88E5; border: 3px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 1px 4px rgba(0,0,0,.4); }
+
+    #dialog { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.35); display: none;
+      align-items: center; justify-content: center; padding: 24px; }
+    #dialog.open { display: flex; }
+    #dialogBox { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 340px; }
+    #dialogTitle { font-weight: 700; font-size: 17px; margin-bottom: 6px; }
+    #dialogText { font-size: 15px; color: #333; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="top">
+    <div id="topRow">
+      <div class="segment" id="baseSwitch"></div>
+      <img id="logo" src="logo.png" alt="Logo" />
+    </div>
+    <div id="hint"></div>
+  </div>
+
+  <button id="locate" aria-label="Zu meinem Standort">◎</button>
+  <div id="attribution">© swisstopo</div>
+  <div id="panel"></div>
+
+  <div id="dialog">
+    <div id="dialogBox">
+      <div id="dialogTitle"></div>
+      <div id="dialogText"></div>
+      <div class="row" id="dialogButtons"></div>
+    </div>
+  </div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script>
+  (function () {
+    // ---------- Einstellungen ----------
+    const BASE_MAPS = {
+      karte: { label: 'Karte', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg' },
+      luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg' },
+    };
+    const SYMBOL_TYPES = [
+      { id: 'absprachepunkt', name: 'Absprachepunkt', short: 'AP', color: '#1565C0' },
+      { id: 'feuerwehrauto', name: 'Feuerwehrauto', short: '🚒', color: '#FFCDD2' },
+      { id: 'kommandoposten', name: 'Kommandoposten', short: 'KP', color: '#6A1B9A' },
+      { id: 'sammelplatz', name: 'Sammelplatz', short: 'SP', color: '#2E7D32' },
+      { id: 'patientensammelstelle', name: 'Patientensammelstelle', short: 'PS', color: '#C62828' },
+      { id: 'helilandeplatz', name: 'Helilandeplatz', short: 'H', color: '#00838F' },
+      { id: 'wasserbezug', name: 'Wasserbezug', short: 'W', color: '#0277BD' },
+      { id: 'gefahr', name: 'Gefahr', short: '!', color: '#EF6C00' },
+      { id: 'materialdepot', name: 'Materialdepot', short: 'MD', color: '#5D4037' },
+    ];
+    const LINE_TYPES = [
+      { id: 'rettungsachse', name: 'Rettungsachse', color: '#2E7D32', width: 6, closed: false },
+      { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true },
+      { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 5, closed: false, dashed: true },
+    ];
+    const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
+
+    const findSymbol = (id) => SYMBOL_TYPES.find((s) => s.id === id) || SYMBOL_TYPES[0];
+    const findLine = (id) => LINE_TYPES.find((l) => l.id === id) || LINE_TYPES[0];
+    const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    // ---------- Zustand ----------
+    let drawing = load();
+    let mode = { kind: 'ansehen' };
+    let baseKey = 'karte';
+
+    function load() {
+      try {
+        const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (d && Array.isArray(d.symbols) && Array.isArray(d.lines)) return d;
+      } catch (e) {}
+      return { symbols: [], lines: [] };
+    }
+    function save() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {}
+    }
+
+    // ---------- Karte ----------
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false,
+      maxZoom: 20,
+      minZoom: 7,
+      maxBounds: [[45.4, 5.4], [48.2, 11.0]],
+      maxBoundsViscosity: 0.8,
+    }).setView([46.8, 8.23], 8);
+
+    let tileLayer = null;
+    function setBase(key) {
+      baseKey = key;
+      if (tileLayer) map.removeLayer(tileLayer);
+      tileLayer = L.tileLayer(BASE_MAPS[key].url, { maxNativeZoom: 18, maxZoom: 20 }).addTo(map);
+      renderBaseSwitch();
+    }
+
+    const drawLayer = L.layerGroup().addTo(map);
+    const draftLayer = L.layerGroup().addTo(map);
+
+    // ---------- Standort ----------
+    let meMarker = null, meCircle = null, firstFix = true;
+    const meIcon = L.divIcon({ className: 'symbolIcon', html: '<div class="meDot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+
+    function showMe(pos) {
+      const ll = [pos.coords.latitude, pos.coords.longitude];
+      if (!meMarker) {
+        meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#1E88E5', weight: 1, fillOpacity: 0.12, interactive: false }).addTo(map);
+        meMarker = L.marker(ll, { icon: meIcon, interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map);
+      } else {
+        meMarker.setLatLng(ll);
+        meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
+      }
+      return ll;
+    }
+
+    function startWatching() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const ll = showMe(pos);
+          if (firstFix) { firstFix = false; map.flyTo(ll, 17, { duration: 0.8 }); }
+        },
+        (err) => {
+          if (err.code === 1) {
+            dialog('Kein Standort', 'Bitte erlaube den Zugriff auf deinen Standort. Auf dem iPhone: Einstellungen › Datenschutz › Ortungsdienste › Safari-Websites › «Beim Verwenden».', [{ label: 'OK', primary: true }]);
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 },
+      );
+    }
+
+    document.getElementById('locate').onclick = () => {
+      if (meMarker) map.flyTo(meMarker.getLatLng(), Math.max(map.getZoom(), 17), { duration: 0.8 });
+      else { firstFix = true; startWatching(); }
+    };
+
+    // ---------- Zeichnen ----------
+    function badgeHtml(t, size) {
+      const len = Array.from(t.short).length;
+      const fs = Math.round(size * (len > 1 ? 0.38 : 0.5));
+      return '<div class="badge" style="width:' + size + 'px;height:' + size + 'px;background:' + t.color + ';font-size:' + fs + 'px">' + esc(t.short) + '</div>';
+    }
+
+    function lineStyle(t) {
+      return { color: t.color, weight: t.width, dashArray: t.dashed ? '12 8' : null, lineCap: 'round', lineJoin: 'round',
+        fillColor: t.color, fillOpacity: t.closed ? 0.2 : 0 };
+    }
+
+    function shapeFor(t, points, opts) {
+      const style = Object.assign(lineStyle(t), opts || {});
+      return t.closed && points.length >= 3 ? L.polygon(points, style) : L.polyline(points, style);
+    }
+
+    function renderDrawing() {
+      drawLayer.clearLayers();
+      drawing.lines.forEach((line) => {
+        const t = findLine(line.typeId);
+        const shape = shapeFor(t, line.points.map((p) => [p.latitude, p.longitude]), { bubblingMouseEvents: false });
+        shape.on('click', (e) => {
+          if (mode.kind === 'ansehen') {
+            dialog(t.name, 'Möchtest du diese Linie löschen?', [
+              { label: 'Abbrechen' },
+              { label: 'Löschen', danger: true, onClick: () => { drawing.lines = drawing.lines.filter((l) => l.id !== line.id); save(); renderDrawing(); } },
+            ]);
+          } else {
+            onMapClick(e);
+          }
+        });
+        shape.addTo(drawLayer);
+      });
+      drawing.symbols.forEach((s) => {
+        const t = findSymbol(s.typeId);
+        const icon = L.divIcon({ className: 'symbolIcon', html: badgeHtml(t, 36), iconSize: [36, 36], iconAnchor: [18, 18] });
+        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon, draggable: true, autoPan: true });
+        m.on('dragend', () => {
+          const ll = m.getLatLng();
+          s.coordinate = { latitude: ll.lat, longitude: ll.lng };
+          save();
+        });
+        m.on('click', () => {
+          if (mode.kind !== 'ansehen') return;
+          dialog(t.name, 'Möchtest du dieses Symbol löschen? Zum Verschieben das Symbol gedrückt halten und ziehen.', [
+            { label: 'Abbrechen' },
+            { label: 'Löschen', danger: true, onClick: () => { drawing.symbols = drawing.symbols.filter((x) => x.id !== s.id); save(); renderDrawing(); } },
+          ]);
+        });
+        m.addTo(drawLayer);
+      });
+    }
+
+    function renderDraft() {
+      draftLayer.clearLayers();
+      if (mode.kind !== 'linie' || !mode.typeId || mode.points.length === 0) return;
+      const t = findLine(mode.typeId);
+      shapeFor(t, mode.points, { interactive: false }).addTo(draftLayer);
+      mode.points.forEach((p) => {
+        L.marker(p, {
+          icon: L.divIcon({ className: 'symbolIcon', html: '<div class="draftDot" style="border-color:' + t.color + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+          interactive: false,
+        }).addTo(draftLayer);
+      });
+    }
+
+    function onMapClick(e) {
+      const ll = e.latlng;
+      if (mode.kind === 'symbol' && mode.typeId) {
+        drawing.symbols.push({ id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng } });
+        save();
+        renderDrawing();
+      } else if (mode.kind === 'linie' && mode.typeId) {
+        mode.points.push([ll.lat, ll.lng]);
+        renderDraft();
+        renderUI();
+      }
+    }
+    map.on('click', onMapClick);
+
+    function finishLine() {
+      const t = findLine(mode.typeId);
+      const needed = t.closed ? 3 : 2;
+      if (mode.points.length < needed) {
+        dialog('Zu wenig Punkte', 'Für eine ' + t.name + ' braucht es mindestens ' + needed + ' Punkte.', [{ label: 'OK', primary: true }]);
+        return;
+      }
+      drawing.lines.push({ id: newId(), typeId: t.id, points: mode.points.map((p) => ({ latitude: p[0], longitude: p[1] })) });
+      save();
+      setMode({ kind: 'linie', typeId: null, points: [] });
+      renderDrawing();
+    }
+
+    // ---------- Oberfläche ----------
+    function setMode(m) {
+      mode = m;
+      renderDraft();
+      renderUI();
+    }
+
+    function renderBaseSwitch() {
+      const el = document.getElementById('baseSwitch');
+      el.innerHTML = '';
+      Object.keys(BASE_MAPS).forEach((key) => {
+        const b = document.createElement('button');
+        b.textContent = BASE_MAPS[key].label;
+        if (key === baseKey) b.className = 'active';
+        b.onclick = () => setBase(key);
+        el.appendChild(b);
+      });
+    }
+
+    function hintText() {
+      if (mode.kind === 'symbol') {
+        return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten ein Symbol aus.';
+      }
+      if (mode.kind === 'linie') {
+        if (!mode.typeId) return 'Wähle unten die Art der Linie.';
+        const t = findLine(mode.typeId);
+        return mode.points.length === 0
+          ? 'Tippe Punkt für Punkt auf die Karte, um die ' + t.name + ' zu zeichnen.'
+          : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Linie fertig» drücken.';
+      }
+      return 'Tippe auf ein Symbol oder eine Linie, um es zu löschen. Symbole gedrückt halten und ziehen zum Verschieben.';
+    }
+
+    function button(label, cls, onClick) {
+      const b = document.createElement('button');
+      b.className = 'btn' + (cls ? ' ' + cls : '');
+      b.textContent = label;
+      b.onclick = onClick;
+      return b;
+    }
+    function row(children) {
+      const r = document.createElement('div');
+      r.className = 'row';
+      children.forEach((c) => r.appendChild(c));
+      return r;
+    }
+
+    function renderUI() {
+      document.getElementById('hint').textContent = hintText();
+      const panel = document.getElementById('panel');
+      panel.innerHTML = '';
+
+      if (mode.kind === 'ansehen') {
+        panel.appendChild(row([
+          button('Symbol setzen', '', () => setMode({ kind: 'symbol', typeId: null })),
+          button('Linie zeichnen', '', () => setMode({ kind: 'linie', typeId: null, points: [] })),
+          button('Alles löschen', 'danger', () => {
+            if (!drawing.symbols.length && !drawing.lines.length) return;
+            dialog('Alles löschen?', 'Alle Symbole und Linien werden entfernt.', [
+              { label: 'Abbrechen' },
+              { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
+            ]);
+          }),
+        ]));
+      }
+
+      if (mode.kind === 'symbol') {
+        const pal = document.createElement('div');
+        pal.className = 'palette';
+        SYMBOL_TYPES.forEach((t) => {
+          const item = document.createElement('div');
+          item.className = 'palItem' + (mode.typeId === t.id ? ' active' : '');
+          item.innerHTML = badgeHtml(t, 40) + '<span>' + esc(t.name) + '</span>';
+          item.onclick = () => setMode({ kind: 'symbol', typeId: t.id });
+          pal.appendChild(item);
+        });
+        panel.appendChild(pal);
+        panel.appendChild(row([button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
+        const active = pal.querySelector('.active');
+        if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      }
+
+      if (mode.kind === 'linie') {
+        const locked = mode.points.length > 0;
+        panel.appendChild(row(LINE_TYPES.map((t) => {
+          const c = document.createElement('div');
+          const selected = mode.typeId === t.id;
+          c.className = 'lineChoice' + (locked && !selected ? ' disabled' : '');
+          if (selected) { c.style.borderColor = t.color; c.style.background = t.color + '22'; }
+          const sample = t.dashed
+            ? [0, 1, 2].map(() => '<div style="width:10px;height:4px;background:' + t.color + '"></div>').join('')
+            : '<div style="width:38px;height:5px;border-radius:3px;background:' + t.color + '"></div>';
+          c.innerHTML = '<div class="sample">' + sample + '</div><span>' + esc(t.name) + '</span>';
+          c.onclick = () => { if (!locked) setMode({ kind: 'linie', typeId: t.id, points: [] }); };
+          return c;
+        })));
+        panel.appendChild(row(locked
+          ? [
+              button('Punkt zurück', '', () => { mode.points.pop(); renderDraft(); renderUI(); }),
+              button('Verwerfen', 'danger', () => { mode.points = []; renderDraft(); renderUI(); }),
+              button('Linie fertig', 'primary', finishLine),
+            ]
+          : [button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
+      }
+
+      // Standort-Knopf und Quellenangabe über dem Werkzeug-Bereich halten
+      const h = panel.offsetHeight;
+      document.getElementById('locate').style.bottom = (h + 14) + 'px';
+      document.getElementById('attribution').style.bottom = (h + 6) + 'px';
+    }
+
+    // ---------- Dialog ----------
+    function dialog(title, text, buttons) {
+      document.getElementById('dialogTitle').textContent = title;
+      document.getElementById('dialogText').textContent = text;
+      const box = document.getElementById('dialogButtons');
+      box.innerHTML = '';
+      const el = document.getElementById('dialog');
+      buttons.forEach((b) => {
+        box.appendChild(button(b.label, b.danger ? 'danger' : b.primary ? 'primary' : '', () => {
+          el.classList.remove('open');
+          if (b.onClick) b.onClick();
+        }));
+      });
+      el.classList.add('open');
+    }
+
+    // ---------- Start ----------
+    setBase('karte');
+    renderDrawing();
+    renderUI();
+    window.addEventListener('resize', renderUI);
+    startWatching();
+  })();
+  </script>
+</body>
+</html>
