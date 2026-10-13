@@ -24,20 +24,18 @@ export const SWITZERLAND_REGION = {
   longitudeDelta: 4.5,
 };
 
+// Absprachepunkte nach FKS. Die Web-App (web/index.html) zeichnet die echten FKS-Symbole;
+// hier stehen Kürzel. Nr. 3 (Rettungsachse) ist eine Zone, siehe LINE_TYPES.
 export const SYMBOL_TYPES: SymbolType[] = [
-  { id: 'absprachepunkt', name: 'Absprachepunkt', short: 'AP', color: '#1565C0' },
-  { id: 'feuerwehrauto', name: 'Feuerwehrauto', short: '🚒', color: '#FFCDD2' },
-  { id: 'kommandoposten', name: 'Kommandoposten', short: 'KP', color: '#6A1B9A' },
-  { id: 'sammelplatz', name: 'Sammelplatz', short: 'SP', color: '#2E7D32' },
-  { id: 'patientensammelstelle', name: 'Patientensammelstelle', short: 'PS', color: '#C62828' },
-  { id: 'helilandeplatz', name: 'Helilandeplatz', short: 'H', color: '#00838F' },
-  { id: 'wasserbezug', name: 'Wasserbezug', short: 'W', color: '#0277BD' },
-  { id: 'gefahr', name: 'Gefahr', short: '!', color: '#EF6C00' },
-  { id: 'materialdepot', name: 'Materialdepot', short: 'MD', color: '#5D4037' },
+  { id: 'patientensammelstelle', name: '1 Patientensammelstelle', short: 'PS', color: '#2F6DB5' },
+  { id: 'sanhist', name: '2 San Hist', short: 'SH', color: '#2F6DB5' },
+  { id: 'einsatzleitung', name: '4 Einsatzleitung', short: 'EL', color: '#2F6DB5' },
+  { id: 'sammelstelle', name: '5 Sammelstelle Unverletzte', short: 'SU', color: '#2F6DB5' },
+  { id: 'warteraum', name: '6 Warteraum', short: 'W', color: '#2F6DB5' },
 ];
 
 export const LINE_TYPES: LineType[] = [
-  { id: 'rettungsachse', name: 'Rettungsachse', color: '#2E7D32', width: 6, closed: false },
+  { id: 'rettungsachse', name: 'Rettungsachse', color: '#2F6DB5', width: 4, closed: false, dashed: true },
   { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true },
   { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 5, closed: false, dashed: true },
 ];
