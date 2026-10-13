@@ -36,8 +36,9 @@ export const SYMBOL_TYPES: SymbolType[] = [
 
 export const LINE_TYPES: LineType[] = [
   { id: 'rettungsachse', name: 'Rettungsachse', color: '#2F6DB5', width: 4, closed: false, dashed: true },
+  { id: 'gefahrenzone', name: 'Gefahrenzone', color: '#D32F2F', width: 4, closed: true, dashed: true },
   { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true },
-  { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 5, closed: false, dashed: true },
+  { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 4, closed: true, dashed: true },
 ];
 
 export const findSymbolType = (id: string) => SYMBOL_TYPES.find((s) => s.id === id) ?? SYMBOL_TYPES[0];
