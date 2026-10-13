@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import MapView, { Marker, Polygon, Polyline, UrlTile, type MapPressEvent } from 'react-native-maps';
@@ -213,18 +213,21 @@ function Einsatzkarte() {
 
       {/* Oben: Hinweis und Wahl Karte / Luftbild */}
       <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
-        <View style={styles.segment}>
-          {(Object.keys(BASE_MAPS) as BaseMapKey[]).map((key) => (
-            <Pressable
-              key={key}
-              onPress={() => setBaseMap(key)}
-              style={[styles.segmentItem, baseMap === key && styles.segmentItemActive]}
-            >
-              <Text style={[styles.segmentText, baseMap === key && styles.segmentTextActive]}>
-                {BASE_MAPS[key].label}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={styles.topRow} pointerEvents="box-none">
+          <View style={styles.segment}>
+            {(Object.keys(BASE_MAPS) as BaseMapKey[]).map((key) => (
+              <Pressable
+                key={key}
+                onPress={() => setBaseMap(key)}
+                style={[styles.segmentItem, baseMap === key && styles.segmentItemActive]}
+              >
+                <Text style={[styles.segmentText, baseMap === key && styles.segmentTextActive]}>
+                  {BASE_MAPS[key].label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Image source={require('./assets/logo.png')} style={styles.logo} accessibilityLabel="Logo" />
         </View>
         <HintText mode={mode} />
       </View>
@@ -437,9 +440,10 @@ function ToolButton({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#e8e8e8' },
   topBar: { position: 'absolute', left: 12, right: 12, gap: 8 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  logo: { width: 46, height: 48, resizeMode: 'contain' },
   segment: {
     flexDirection: 'row',
-    alignSelf: 'flex-start',
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 3,
