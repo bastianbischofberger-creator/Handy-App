@@ -1241,7 +1241,31 @@
       document.getElementById('shareView').classList.remove('open');
     }
 
+    // Beim Teilen wählen: so wie jetzt auf dem Bildschirm, oder so, dass alle Einträge drauf sind
     function shareSnapshot() {
+      const pts = drawing.symbols.map((s) => s.coordinate)
+        .concat(...drawing.lines.map((l) => l.points))
+        .map((c) => [c.latitude, c.longitude]);
+      if (pts.length === 0) { shareNow(); return; }
+      dialog('Was soll aufs Bild?', 'Wähle den Ausschnitt für das Bild.', [
+        { label: 'Aktueller Ausschnitt', onClick: shareNow },
+        { label: 'Alles zeigen', primary: true, onClick: () => shareAll(pts) },
+      ]);
+    }
+
+    function shareAll(pts) {
+      // Karte so hinschieben, dass alle Einträge sichtbar sind, und warten bis die Kacheln geladen sind
+      let done = false;
+      const go = () => { if (done) return; done = true; tileLayer.off('load', go); shareNow(); };
+      tileLayer.on('load', go);
+      const b = L.latLngBounds(pts);
+      if (pts.length === 1 || b.getNorthEast().equals(b.getSouthWest())) map.setView(b.getCenter(), Math.max(map.getZoom(), 17), { animate: false });
+      else map.fitBounds(b, { padding: [60, 60], maxZoom: 18, animate: false });
+      setTimeout(() => { if (!tileLayer.isLoading()) go(); }, 150);
+      setTimeout(go, 4000);
+    }
+
+    function shareNow() {
       let snap, dataUrl;
       try {
         snap = snapshotCanvas();
