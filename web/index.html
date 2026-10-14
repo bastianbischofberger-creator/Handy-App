@@ -391,12 +391,20 @@
     }
     const scaleOf = (x) => x.scale || 1;
     // Grösse eines gesetzten Eintrags auf der Karte (Rahmen, in dem er gedreht wird)
+    // Symbole wachsen und schrumpfen mit der Karte: Grösse gilt für die Zoomstufe beim Setzen (z)
+    const REF_ZOOM = 17;
+    function viewK(t, s) {
+      const base = t.sign ? Math.max(t.w, t.h) : 46;
+      let k = scaleOf(s) * Math.pow(2, map.getZoom() - (s.z != null ? s.z : REF_ZOOM));
+      // nie ganz verschwinden und nicht riesig werden
+      k = Math.max(16 / base, Math.min(240 / base, k));
+      return k;
+    }
     function itemBox(t, s) {
-      const k = scaleOf(s);
-      return Math.round((t.sign ? Math.max(t.w, t.h) : 46) * k);
+      return Math.round((t.sign ? Math.max(t.w, t.h) : 46) * viewK(t, s));
     }
     function itemHtml(t, s, selected) {
-      const k = scaleOf(s), box = itemBox(t, s);
+      const k = viewK(t, s), box = itemBox(t, s);
       const inner = t.sign
         ? '<div class="signRot" style="transform:rotate(' + (s.rotation || 0) + 'deg)">' + svgDoc(t, Math.round(t.w * k), Math.round(t.h * k)) + '</div>'
         : symbolHtml(t, box);
@@ -599,7 +607,7 @@
     function onMapClick(e) {
       const ll = e.latlng;
       if (mode.kind === 'symbol' && mode.typeId) {
-        drawing.symbols.push({ id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng } });
+        drawing.symbols.push({ id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng }, z: map.getZoom() });
         // nur einmal setzen; für ein weiteres muss man es unten wieder antippen
         mode.typeId = null;
         save();
@@ -608,7 +616,7 @@
       } else if (mode.kind === 'signatur' && mode.typeId) {
         // neue Signatur übernimmt die Grösse der zuletzt gesetzten
         const last = findItem(mode.selId);
-        const s = { id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng }, rotation: 0, scale: last ? scaleOf(last) : 1 };
+        const s = { id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng }, rotation: 0, scale: last ? scaleOf(last) : 1, z: map.getZoom() };
         drawing.symbols.push(s);
         mode.selId = s.id;
         mode.typeId = null;
@@ -674,6 +682,8 @@
     document.getElementById('pen').onclick = () => setMode(mode.kind === 'stift' ? { kind: 'ansehen' } : { kind: 'stift' });
     // «R» und Pfeil der Rettungsachse nach dem Zoomen neu verteilen
     map.on('zoomend', () => { renderDrawing(); renderDraft(); });
+    // Symbolgrösse schon während des Zoomens mitführen
+    map.on('zoom', () => drawing.symbols.forEach(refreshItem));
 
     function finishLine() {
       const t = findLine(mode.typeId);
@@ -1123,7 +1133,7 @@
         .forEach((s) => {
           const t = findSymbol(s.typeId);
           const p = pt(s.coordinate.latitude, s.coordinate.longitude);
-          const k = scaleOf(s);
+          const k = viewK(t, s);
           const img = symbolImg[t.id];
           ctx.save();
           ctx.translate(p.x, p.y);
