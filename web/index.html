@@ -130,7 +130,7 @@
     .btn.cancel { flex-basis: 100%; background: transparent; color: #555; padding: 10px 6px; }
     #dialogBox { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 340px; }
     #dialogTitle { font-weight: 700; font-size: 17px; margin-bottom: 6px; }
-    #dialogText { font-size: 15px; color: #333; margin-bottom: 14px; }
+    #dialogText { font-size: 15px; color: #333; margin-bottom: 14px; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -1308,7 +1308,7 @@
         dialog('Noch nichts eingezeichnet', 'Zeichne zuerst etwas ein, dann kannst du die Lage teilen.', [{ label: 'OK', primary: true }]);
         return;
       }
-      dialog('Lage teilen', 'Was dürfen die anderen mit dem Link machen? Bei «Bearbeiten» sehen nur sie selbst ihre Änderungen; deine Karte bleibt gleich.', [
+      dialog('Lage teilen', '👁 Nur ansehen: Der Empfänger sieht die Lagekarte, kann aber nichts verändern.\n\n✏️ Bearbeiten: Der Empfänger kann die Lagekarte nur für sich verändern. Du siehst seine Änderungen nicht.', [
         { label: '👁 Nur ansehen', onClick: () => sendLage(false) },
         { label: '✏️ Bearbeiten', primary: true, onClick: () => sendLage(true) },
       ], true);
@@ -1341,13 +1341,13 @@
         drawing = lage.drawing;
         save();
         renderDrawing();
-        dialog('Lage übernommen', 'Du kannst jetzt weiterzeichnen. Deine Änderungen sind nur für dich sichtbar. Wenn andere sie sehen sollen, teile die Lage wieder.', [{ label: 'OK', primary: true }]);
+        dialog('Lage übernommen', 'Du kannst diese Lagekarte jetzt verändern. Die Änderungen gelten nur für dich; der Absender sieht sie nicht. Wenn andere sie sehen sollen, teile die Lage wieder.', [{ label: 'OK', primary: true }]);
       };
       if (!lage.editable) {
         viewOnly = true;
         drawing = lage.drawing;
       } else if (drawing.symbols.length || drawing.lines.length) {
-        dialog('Geteilte Lage übernehmen?', 'Deine eigene Zeichnung auf diesem Gerät wird dabei ersetzt.', [
+        dialog('Geteilte Lage übernehmen?', 'Du kannst diese Lagekarte nur für dich verändern. Deine eigene Zeichnung auf diesem Gerät wird dabei ersetzt.', [
           { label: 'Abbrechen' },
           { label: 'Übernehmen', primary: true, onClick: take },
         ]);
