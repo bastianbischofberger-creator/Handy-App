@@ -88,7 +88,7 @@
     .fksIcon { display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px;
       box-shadow: 0 1px 3px rgba(0,0,0,.45); }
     .rLabel { width: 18px; height: 20px; display: flex; align-items: center; justify-content: center; background: #fff;
-      color: #2F6DB5; font-weight: 800; font-size: 15px; border-radius: 3px; }
+      color: #00A651; font-weight: 800; font-size: 15px; border-radius: 3px; border: 2px solid #00A651; box-sizing: border-box; }
     .palItem { position: relative; }
     .palItem .nr { position: absolute; top: 4px; left: 6px; width: 18px; height: 18px; border-radius: 9px; background: #D32F2F;
       color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
@@ -169,12 +169,13 @@
     };
     // Die 6 Absprachepunkte nach FKS (Feuerwehr Koordination Schweiz)
     const FKS_BLUE = '#2F6DB5';
+    const RA_GREEN = '#00A651'; // Rettungsachse: grün, damit sie sich von Wasser und blauen Symbolen abhebt
     const FKS_RECT = '<rect x="6" y="6" width="28" height="28"/>';
     const SYMBOL_TYPES = [
       { id: 'patientensammelstelle', nr: 1, name: 'Patientensammelstelle', svg: FKS_RECT + '<path d="M20 6V34M6 20H34"/>' },
       { id: 'sanhist', nr: 2, name: 'San Hist', svg: FKS_RECT + '<path d="M20 6V34M6 18H34M6 22.5H34"/>' },
-      { id: 'rettungsachse', nr: 3, name: 'Rettungsachse', zone: 'rettungsachse',
-        svg: '<path d="M20 2V9M20 24V29"/><text x="20" y="21" text-anchor="middle" font-size="13" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + FKS_BLUE + '" stroke="none">R</text><path d="M14 29H26L20 38Z" fill="' + FKS_BLUE + '" stroke="none"/>' },
+      { id: 'rettungsachse', nr: 3, name: 'Rettungsachse', zone: 'rettungsachse', stroke: RA_GREEN,
+        svg: '<path d="M20 2V9M20 24V29"/><text x="20" y="21" text-anchor="middle" font-size="13" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + RA_GREEN + '" stroke="none">R</text><path d="M14 29H26L20 38Z" fill="' + RA_GREEN + '" stroke="none"/>' },
       { id: 'einsatzleitung', nr: 4, name: 'Einsatzleitung', svg: '<path d="M15 3V25M13.3 4.7H31M15 13H29"/><circle cx="15" cy="31" r="6"/>' },
       { id: 'sammelstelle', nr: 5, name: 'Sammelstelle Unverletzte', svg: FKS_RECT + '<path d="M6 18H34M6 22.5H34"/>' },
       { id: 'warteraum', nr: 6, name: 'Warteraum', svg: FKS_RECT + '<text x="20" y="28" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="' + FKS_BLUE + '" stroke="none">W</text>' },
@@ -218,7 +219,7 @@
     // Zonen wie im FKS-Schema: Gefahrenzone rot, Sperrzone gelb (beide mit rot-weisser Absperrung),
     // Verkehrsumleitzone nur als Umriss. «order» bestimmt, was oben liegt.
     const LINE_TYPES = [
-      { id: 'rettungsachse', name: 'Rettungsachse', color: FKS_BLUE, width: 4, closed: false, dashed: true, axis: true, order: 3 },
+      { id: 'rettungsachse', name: 'Rettungsachse', color: RA_GREEN, width: 6, closed: false, dashed: true, axis: true, casing: true, order: 3 },
       { id: 'gefahrenzone', name: 'Gefahrenzone', color: '#D32F2F', width: 4, closed: true, dashed: true, barrier: true, fill: '#E8603C', fillOpacity: 0.6, order: 2 },
       { id: 'sperrzone', name: 'Sperrzone', color: '#D32F2F', width: 4, closed: true, dashed: true, barrier: true, fill: '#FFE45C', fillOpacity: 0.45, order: 1 },
       { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 4, closed: true, dashed: true, order: 0 },
@@ -388,7 +389,7 @@
       if (t.sign) {
         return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + (height || size) + '" viewBox="0 0 ' + t.w + ' ' + t.h + '">' + t.svg + '</svg>';
       }
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" fill="none" stroke="' + FKS_BLUE + '" stroke-width="4">' + t.svg + '</svg>';
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" fill="none" stroke="' + (t.stroke || FKS_BLUE) + '" stroke-width="4">' + t.svg + '</svg>';
     }
     function symbolHtml(t, size) {
       return '<div class="fksIcon" style="width:' + size + 'px;height:' + size + 'px">' + svgDoc(t, size - 4) + '</div>';
@@ -446,7 +447,7 @@
       const a = pts[pts.length - 2], b = pts[pts.length - 1];
       return { marks, arrow: { x: b.x, y: b.y, angle: Math.atan2(b.y - a.y, b.x - a.x) } };
     }
-    const arrowSvg = (color, size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 22 22"><path d="M2 3L20 11L2 19Z" fill="' + color + '"/></svg>';
+    const arrowSvg = (color, size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 22 22"><path d="M3 4L19 11L3 18Z" fill="' + color + '" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
 
     function addAxisDecor(layer, latlngs, t, k) {
       if (latlngs.length < 2) return;
@@ -567,6 +568,8 @@
           L.polyline(pts, { color: c, weight: t.width * k, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(drawLayer);
         } else {
           if (t.barrier) barrierUnderlay(t, pts, k).addTo(drawLayer);
+          // weisser Rand unter der Rettungsachse, damit sie auf jeder Karte gut sichtbar ist
+          if (t.casing) L.polyline(pts, { color: '#fff', weight: t.width * k + 5, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(drawLayer);
           const shape = shapeFor(t, pts, { bubblingMouseEvents: false }, holes, k);
           shape.on('click', onTap);
           shape.addTo(drawLayer);
@@ -602,6 +605,7 @@
       if (t.facade) addFacade(draftLayer, mode.points, 1, true);
       else {
         if (t.barrier) barrierUnderlay(t, mode.points).addTo(draftLayer);
+        if (t.casing && mode.points.length > 1) L.polyline(mode.points, { color: '#fff', weight: t.width + 5, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(draftLayer);
         shapeFor(t, mode.points, { interactive: false }).addTo(draftLayer);
       }
       if (t.axis) addAxisDecor(draftLayer, mode.points.map((p) => L.latLng(p[0], p[1])), t);
@@ -1088,9 +1092,10 @@
         ctx.beginPath();
         ring(pts);
         ctx.lineJoin = 'round';
-        if (t.barrier) {
+        if (t.barrier || t.casing) {
           ctx.setLineDash([]);
-          ctx.lineWidth = (t.width + 2) * k;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = (t.width + (t.casing ? 5 : 2)) * k;
           ctx.strokeStyle = '#fff';
           ctx.stroke();
         }
@@ -1119,6 +1124,9 @@
           ctx.moveTo(9, 0); ctx.lineTo(-9, -8); ctx.lineTo(-9, 8); ctx.closePath();
           ctx.fillStyle = t.color;
           ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#fff';
+          ctx.stroke();
           ctx.restore();
         }
       });
