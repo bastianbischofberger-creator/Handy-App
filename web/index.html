@@ -36,6 +36,13 @@
     #compass { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px; border: 0; padding: 0;
       background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
     #compass.on { box-shadow: 0 0 0 4px #1565C0, 0 1px 6px rgba(0,0,0,.3); }
+    #map.penMode, #map.penMode * { touch-action: none !important; }
+    #pen { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px; border: 0; padding: 0;
+      background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 24px; line-height: 50px; }
+    #pen.on { box-shadow: 0 0 0 4px #1565C0, 0 1px 6px rgba(0,0,0,.3); }
+    .colors { display: flex; gap: 8px; justify-content: space-between; }
+    .colors button { flex: 1; height: 40px; border-radius: 20px; border: 2px solid #999; padding: 0; }
+    .colors button.active { border: 4px solid #1565C0; box-shadow: 0 0 0 2px #fff inset; }
     #northBtn { position: absolute; z-index: 1000; right: 74px; height: 40px; border: 0; border-radius: 20px; padding: 0 14px;
       background: #1565C0; color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 1px 6px rgba(0,0,0,.3); display: none; }
     #northBtn.show { display: block; }
@@ -129,6 +136,7 @@
   </div>
 
   <button id="northBtn">↑ Nach Norden</button>
+  <button id="pen" aria-label="Frei zeichnen">✏️</button>
   <button id="compass" aria-label="Karte drehen ein/aus"><div id="needle"><b>N</b><i></i></div></button>
   <button id="locate" aria-label="Zu meinem Standort">◎</button>
   <div id="attribution">© swisstopo</div>
@@ -216,8 +224,18 @@
       { id: 'verkehrsumleitung', name: 'Verkehrsumleitzone', color: '#F57C00', width: 4, closed: true, dashed: true, order: 0 },
       // Fassade: 4 Punkte, jede Seite in eigener Farbe (1 weiss, 2 grün, 3 schwarz, 4 rot)
       { id: 'fassade', name: 'Fassade', color: '#2E7D32', width: 7, closed: true, facade: true, order: 4 },
+      // Freihand mit dem Stift; Farbe pro Strich gespeichert
+      { id: 'stift', name: 'Freihand', color: '#D32F2F', width: 4, closed: false, freehand: true, order: 5 },
     ];
-    const ZONE_TYPES = LINE_TYPES.filter((t) => !t.facade);
+    const ZONE_TYPES = LINE_TYPES.filter((t) => !t.facade && !t.freehand);
+    const PEN_COLORS = [
+      { c: '#D32F2F', n: 'Rot' }, { c: '#1565C0', n: 'Blau' }, { c: '#000000', n: 'Schwarz' }, { c: '#2E7D32', n: 'Grün' },
+      { c: '#F57C00', n: 'Orange' }, { c: '#FFD600', n: 'Gelb' }, { c: '#7B1FA2', n: 'Violett' }, { c: '#FFFFFF', n: 'Weiss' },
+    ];
+    const PEN_KEY = 'einsatzkarte.stiftfarbe';
+    let penColor = (() => { try { return localStorage.getItem(PEN_KEY) || PEN_COLORS[0].c; } catch (e) { return PEN_COLORS[0].c; } })();
+    // helle Farben bekommen einen dunklen Rand, damit man sie sieht
+    const needsCasing = (c) => c === '#FFFFFF' || c === '#FFD600';
     const FACADE_COLORS = ['#FFFFFF', '#2E7D32', '#000000', '#D32F2F'];
     const FACADE_NAMES = ['weiss', 'grün', 'schwarz', 'rot'];
     // Rubriken für die Auswahl «Einfügen»
@@ -527,6 +545,10 @@
         };
         if (t.facade) {
           addFacade(drawLayer, pts, k, true);
+        } else if (t.freehand) {
+          const c = line.color || t.color;
+          if (needsCasing(c)) L.polyline(pts, { color: '#333', weight: t.width * k + 2, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(drawLayer);
+          L.polyline(pts, { color: c, weight: t.width * k, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(drawLayer);
         } else {
           if (t.barrier) barrierUnderlay(t, pts, k).addTo(drawLayer);
           const shape = shapeFor(t, pts, { bubblingMouseEvents: false }, holes, k);
@@ -540,7 +562,7 @@
       });
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
-        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: true, autoPan: true, zIndexOffset: t.sign ? 0 : 100, rotateWithView: !!t.sign });
+        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: mode.kind !== 'stift', autoPan: true, zIndexOffset: t.sign ? 0 : 100, rotateWithView: !!t.sign });
         m.on('dragend', () => {
           const ll = m.getLatLng();
           s.coordinate = { latitude: ll.lat, longitude: ll.lng };
@@ -579,14 +601,18 @@
       const ll = e.latlng;
       if (mode.kind === 'symbol' && mode.typeId) {
         drawing.symbols.push({ id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng } });
+        // nur einmal setzen; für ein weiteres muss man es unten wieder antippen
+        mode.typeId = null;
         save();
         renderDrawing();
+        renderUI();
       } else if (mode.kind === 'signatur' && mode.typeId) {
         // neue Signatur übernimmt die Grösse der zuletzt gesetzten
         const last = findItem(mode.selId);
         const s = { id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng }, rotation: 0, scale: last ? scaleOf(last) : 1 };
         drawing.symbols.push(s);
         mode.selId = s.id;
+        mode.typeId = null;
         save();
         renderDrawing();
         renderUI();
@@ -601,6 +627,52 @@
       }
     }
     map.on('click', onMapClick);
+
+    // ---------- Frei zeichnen mit dem Stift ----------
+    const penPointers = new Set();
+    let stroke = null; // { points: [L.LatLng], last: {x,y}, line: L.Polyline }
+    const mapEl = document.getElementById('map');
+    function endStroke(keep) {
+      if (!stroke) return;
+      draftLayer.removeLayer(stroke.line);
+      if (stroke.casing) draftLayer.removeLayer(stroke.casing);
+      if (keep && stroke.points.length >= 2) {
+        drawing.lines.push({ id: newId(), typeId: 'stift', color: penColor, points: stroke.points.map((ll) => ({ latitude: ll.lat, longitude: ll.lng })) });
+        save();
+        renderDrawing();
+        renderUI();
+      }
+      stroke = null;
+    }
+    mapEl.addEventListener('pointerdown', (e) => {
+      if (mode.kind !== 'stift') return;
+      penPointers.add(e.pointerId);
+      // zweiter Finger: Strich abbrechen, damit man zoomen kann
+      if (penPointers.size > 1) { endStroke(false); return; }
+      const ll = map.mouseEventToLatLng(e);
+      const opts = { color: penColor, weight: 4, lineCap: 'round', lineJoin: 'round', interactive: false };
+      stroke = { points: [ll], last: { x: e.clientX, y: e.clientY }, line: L.polyline([ll], opts).addTo(draftLayer) };
+      if (needsCasing(penColor)) {
+        stroke.casing = L.polyline([ll], Object.assign({}, opts, { color: '#333', weight: 6 })).addTo(draftLayer);
+        stroke.line.bringToFront();
+      }
+    }, true);
+    mapEl.addEventListener('pointermove', (e) => {
+      if (!stroke || penPointers.size > 1) return;
+      if (Math.hypot(e.clientX - stroke.last.x, e.clientY - stroke.last.y) < 3) return;
+      stroke.last = { x: e.clientX, y: e.clientY };
+      const ll = map.mouseEventToLatLng(e);
+      stroke.points.push(ll);
+      stroke.line.addLatLng(ll);
+      if (stroke.casing) stroke.casing.addLatLng(ll);
+    }, true);
+    const penUp = (e) => {
+      penPointers.delete(e.pointerId);
+      if (stroke && penPointers.size === 0) endStroke(true);
+    };
+    mapEl.addEventListener('pointerup', penUp, true);
+    mapEl.addEventListener('pointercancel', (e) => { penPointers.delete(e.pointerId); endStroke(false); }, true);
+    document.getElementById('pen').onclick = () => setMode(mode.kind === 'stift' ? { kind: 'ansehen' } : { kind: 'stift' });
     // «R» und Pfeil der Rettungsachse nach dem Zoomen neu verteilen
     map.on('zoomend', () => { renderDrawing(); renderDraft(); });
 
@@ -619,6 +691,11 @@
     // ---------- Oberfläche ----------
     function setMode(m) {
       mode = m;
+      // beim Zeichnen mit dem Stift verschiebt ein Finger die Karte nicht
+      if (mode.kind === 'stift') map.dragging.disable(); else map.dragging.enable();
+      // ohne Verschieben würde der Browser sonst selbst wischen (zurück, scrollen)
+      document.getElementById('map').classList.toggle('penMode', mode.kind === 'stift');
+      document.getElementById('pen').classList.toggle('on', mode.kind === 'stift');
       renderDrawing();
       renderDraft();
       renderUI();
@@ -637,15 +714,18 @@
     }
 
     function hintText() {
+      if (mode.kind === 'stift') return 'Mit einem Finger frei zeichnen. Mit zwei Fingern Karte verschieben und zoomen.';
       if (mode.kind === 'symbol') {
         return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
       }
       if (mode.kind === 'signatur') {
-        if (!mode.typeId) return mode.group === 'fahrzeug' ? 'Wähle unten ein Fahrzeug aus.' : 'Wähle unten eine Signatur aus.';
-        const name = findSymbol(mode.typeId).name;
-        return mode.selId && findItem(mode.selId)
-          ? 'Unten drehen und Grösse anpassen. Erneut auf die Karte tippen setzt noch ein «' + name + '».'
-          : 'Tippe auf die Karte, um «' + name + '» zu setzen.';
+        if (!mode.typeId) {
+          const what = mode.group === 'fahrzeug' ? 'ein Fahrzeug' : 'eine Signatur';
+          return mode.selId && findItem(mode.selId)
+            ? 'Unten drehen und Grösse anpassen. Für ein weiteres Symbol unten wieder eines antippen.'
+            : 'Wähle unten ' + what + ' aus.';
+        }
+        return 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.';
       }
       if (mode.kind === 'linie') {
         if (!mode.typeId) return 'Wähle unten die Art der Zone.';
@@ -808,7 +888,7 @@
           const item = document.createElement('div');
           item.className = 'palItem' + (mode.typeId === t.id ? ' active' : '');
           item.innerHTML = '<div class="palPic">' + signHtml(t, 54) + '</div><span>' + esc(t.name) + '</span>';
-          item.onclick = () => setMode({ kind: 'signatur', group: mode.group, typeId: t.id, selId: null });
+          item.onclick = () => setMode({ kind: 'signatur', group: mode.group, typeId: t.id, selId: mode.selId });
           pal.appendChild(item);
         });
         panel.appendChild(pal);
@@ -819,6 +899,30 @@
           : [button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
         const active = pal.querySelector('.active');
         if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      }
+
+      if (mode.kind === 'stift') {
+        const colors = document.createElement('div');
+        colors.className = 'colors';
+        PEN_COLORS.forEach((pc) => {
+          const b = document.createElement('button');
+          b.style.background = pc.c;
+          b.setAttribute('aria-label', pc.n);
+          if (pc.c === penColor) b.className = 'active';
+          b.onclick = () => { penColor = pc.c; try { localStorage.setItem(PEN_KEY, penColor); } catch (e) {} renderUI(); };
+          colors.appendChild(b);
+        });
+        panel.appendChild(colors);
+        const mine = drawing.lines.filter((l) => l.typeId === 'stift');
+        panel.appendChild(row([
+          button('Letzten Strich weg', '', () => {
+            const last = mine[mine.length - 1];
+            if (!last) return;
+            drawing.lines = drawing.lines.filter((l) => l !== last);
+            save(); renderDrawing(); renderUI();
+          }),
+          button('Fertig', 'primary', () => setMode({ kind: 'ansehen' })),
+        ]));
       }
 
       if (mode.kind === 'edit') {
@@ -879,6 +983,7 @@
       document.getElementById('locate').style.bottom = (h + 14) + 'px';
       document.getElementById('compass').style.bottom = (h + 74) + 'px';
       document.getElementById('northBtn').style.bottom = (h + 79) + 'px';
+      document.getElementById('pen').style.bottom = (h + 134) + 'px';
       document.getElementById('attribution').style.bottom = (h + 6) + 'px';
     }
 
@@ -918,6 +1023,21 @@
         const k = scaleOf(line);
         const pts = ll.map((p) => pt(p[0], p[1]));
         if (pts.length < 2) return;
+        if (t.freehand) {
+          const c = line.color || t.color;
+          ctx.setLineDash([]);
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          [needsCasing(c) ? '#333' : null, c].forEach((col, pass) => {
+            if (!col) return;
+            ctx.beginPath();
+            pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+            ctx.lineWidth = t.width * k + (pass ? 0 : 2);
+            ctx.strokeStyle = col;
+            ctx.stroke();
+          });
+          return;
+        }
         if (t.facade) {
           ctx.setLineDash([]);
           ctx.lineCap = 'round';
