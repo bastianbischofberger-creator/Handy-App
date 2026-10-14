@@ -283,7 +283,7 @@
       attributionControl: false,
       maxZoom: 20,
       minZoom: 7,
-      maxBounds: [[45.4, 5.4], [48.2, 11.0]],
+      maxBounds: [[45.4, 5.4], [48.2, 11.0]],  // siehe updateBounds
       maxBoundsViscosity: 0.8,
       // Karte drehen (Erweiterung leaflet-rotate); mit zwei Fingern erst nach Tipp auf «N»
       rotate: true,
@@ -299,6 +299,14 @@
       needle.style.transform = 'rotate(' + bearingDeg() + 'deg)';
     }
     map.on('rotate', updateCompass);
+    // Die Grenze um die Schweiz rechnet in gedrehter Karte falsch und lässt die Karte
+    // beim Verschieben wegspringen. Darum gilt sie nur, solange Norden oben ist.
+    const SWISS_BOUNDS = L.latLngBounds([[45.4, 5.4], [48.2, 11.0]]);
+    function updateBounds() {
+      const want = bearingDeg() === 0;
+      if (want !== !!map.options.maxBounds) map.setMaxBounds(want ? SWISS_BOUNDS : L.latLngBounds([]));
+    }
+    map.on('rotate', updateBounds);
     // Drehen ist gesperrt, damit die Karte beim Zoomen nicht verdreht wird.
     // Tipp auf «N» gibt das Drehen frei, nochmals tippen sperrt es wieder.
     let rotateOn = false;
