@@ -352,14 +352,23 @@
     const draftLayer = L.layerGroup().addTo(map);
 
     // ---------- Standort ----------
-    let meMarker = null, meCircle = null, firstFix = true;
+    let meMarker = null, meCircle = null, firstFix = true, meHidden = false;
     const meIcon = L.divIcon({ className: 'symbolIcon', html: '<div class="meDot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
 
     function showMe(pos) {
       const ll = [pos.coords.latitude, pos.coords.longitude];
       if (!meMarker) {
-        meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#1E88E5', weight: 1, fillOpacity: 0.12, interactive: false }).addTo(map);
-        meMarker = L.marker(ll, { icon: meIcon, interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map);
+        meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#1E88E5', weight: 1, fillOpacity: 0.12, interactive: false });
+        meMarker = L.marker(ll, { icon: meIcon, keyboard: false, zIndexOffset: 1000 });
+        // Tipp auf den blauen Punkt: ausblenden (beim Setzen von Symbolen zählt der Tipp normal)
+        meMarker.on('click', (e) => {
+          if (mode.kind !== 'ansehen') { onMapClick(e); return; }
+          dialog('Standort ausblenden?', 'Der blaue Punkt verschwindet von der Karte und aus dem geteilten Bild. Mit ◎ unten rechts holst du ihn wieder.', [
+            { label: 'Abbrechen' },
+            { label: 'Ausblenden', primary: true, onClick: () => setMeHidden(true) },
+          ]);
+        });
+        setMeHidden(meHidden);
       } else {
         meMarker.setLatLng(ll);
         meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
@@ -383,7 +392,14 @@
       );
     }
 
+    function setMeHidden(hidden) {
+      meHidden = hidden;
+      if (!meMarker) return;
+      [meCircle, meMarker].forEach((l) => (hidden ? map.removeLayer(l) : l.addTo(map)));
+    }
+
     document.getElementById('locate').onclick = () => {
+      if (meHidden) setMeHidden(false);
       if (meMarker) map.flyTo(meMarker.getLatLng(), Math.max(map.getZoom(), 17), { duration: 0.8 });
       else { firstFix = true; startWatching(); }
     };
@@ -1136,7 +1152,7 @@
       });
 
       // Eigener Standort
-      if (meMarker) {
+      if (meMarker && !meHidden) {
         const p = map.latLngToContainerPoint(meMarker.getLatLng());
         ctx.beginPath();
         ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
