@@ -35,6 +35,10 @@
       border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 28px; color: #1565C0; line-height: 50px; padding: 0; }
     #compass { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px; border: 0; padding: 0;
       background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
+    #compass.on { box-shadow: 0 0 0 4px #1565C0, 0 1px 6px rgba(0,0,0,.3); }
+    #northBtn { position: absolute; z-index: 1000; right: 74px; height: 40px; border: 0; border-radius: 20px; padding: 0 14px;
+      background: #1565C0; color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 1px 6px rgba(0,0,0,.3); display: none; }
+    #northBtn.show { display: block; }
     #needle { width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     #needle b { color: #D32F2F; font-size: 14px; line-height: 14px; }
     #needle i { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent;
@@ -124,7 +128,8 @@
     <div id="hint"></div>
   </div>
 
-  <button id="compass" aria-label="Karte nach Norden ausrichten"><div id="needle"><b>N</b><i></i></div></button>
+  <button id="northBtn">↑ Nach Norden</button>
+  <button id="compass" aria-label="Karte drehen ein/aus"><div id="needle"><b>N</b><i></i></div></button>
   <button id="locate" aria-label="Zu meinem Standort">◎</button>
   <div id="attribution">© swisstopo</div>
   <div id="panel"></div>
@@ -262,9 +267,9 @@
       minZoom: 7,
       maxBounds: [[45.4, 5.4], [48.2, 11.0]],
       maxBoundsViscosity: 0.8,
-      // Karte mit zwei Fingern drehen (Erweiterung leaflet-rotate)
+      // Karte drehen (Erweiterung leaflet-rotate); mit zwei Fingern erst nach Tipp auf «N»
       rotate: true,
-      touchRotate: true,
+      touchRotate: false,
       rotateControl: false,
       bearing: 0,
     }).setView([46.8, 8.23], 8);
@@ -276,9 +281,21 @@
       needle.style.transform = 'rotate(' + bearingDeg() + 'deg)';
     }
     map.on('rotate', updateCompass);
-    document.getElementById('compass').onclick = () => { if (map.setBearing) map.setBearing(0); };
+    // Drehen ist gesperrt, damit die Karte beim Zoomen nicht verdreht wird.
+    // Tipp auf «N» gibt das Drehen frei, nochmals tippen sperrt es wieder.
+    let rotateOn = false;
+    function setRotateOn(on) {
+      rotateOn = on;
+      if (map.touchRotate) (on ? map.touchRotate.enable() : map.touchRotate.disable());
+      document.getElementById('compass').classList.toggle('on', on);
+      document.getElementById('northBtn').classList.toggle('show', on);
+      renderUI();
+    }
+    document.getElementById('compass').onclick = () => setRotateOn(!rotateOn);
+    document.getElementById('northBtn').onclick = () => { if (map.setBearing) map.setBearing(0); setRotateOn(false); };
     // Fast nach Norden gedreht: ganz nach Norden einrasten
     document.addEventListener('touchend', () => {
+      if (!rotateOn) return;
       const b = bearingDeg();
       if (b !== 0 && (b < 6 || b > 354)) map.setBearing(0);
     });
@@ -725,7 +742,9 @@
     }
 
     function renderUI() {
-      document.getElementById('hint').textContent = hintText();
+      document.getElementById('hint').textContent = rotateOn
+        ? 'Drehen ist an: mit zwei Fingern die Karte drehen. Zum Fixieren nochmals auf «N» tippen.'
+        : hintText();
       const panel = document.getElementById('panel');
       panel.innerHTML = '';
 
@@ -859,6 +878,7 @@
       const h = panel.offsetHeight;
       document.getElementById('locate').style.bottom = (h + 14) + 'px';
       document.getElementById('compass').style.bottom = (h + 74) + 'px';
+      document.getElementById('northBtn').style.bottom = (h + 79) + 'px';
       document.getElementById('attribution').style.bottom = (h + 6) + 'px';
     }
 
