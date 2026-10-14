@@ -114,8 +114,9 @@
       border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); color: #fff; font-weight: 800; }
     .symbolIcon { background: none; border: 0; }
     .draftDot { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid; }
+    /* eigener Standort: halb durchsichtig, damit er nichts verdeckt */
     .meDot { width: 18px; height: 18px; border-radius: 50%; background: #1E88E5; border: 3px solid #fff;
-      box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 1px 4px rgba(0,0,0,.4); }
+      box-shadow: 0 0 0 1px rgba(0,0,0,.2); opacity: .45; pointer-events: none; }
 
     #shareView { position: fixed; inset: 0; z-index: 1900; background: rgba(0,0,0,.85); display: none;
       flex-direction: column; padding: calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); gap: 12px; }
@@ -359,23 +360,15 @@
     const draftLayer = L.layerGroup().addTo(map);
 
     // ---------- Standort ----------
-    let meMarker = null, meCircle = null, firstFix = true, meHidden = false;
+    let meMarker = null, meCircle = null, firstFix = true;
     const meIcon = L.divIcon({ className: 'symbolIcon', html: '<div class="meDot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
 
     function showMe(pos) {
       const ll = [pos.coords.latitude, pos.coords.longitude];
       if (!meMarker) {
-        meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#1E88E5', weight: 1, fillOpacity: 0.12, interactive: false });
-        meMarker = L.marker(ll, { icon: meIcon, keyboard: false, zIndexOffset: 1000 });
-        // Tipp auf den blauen Punkt: ausblenden (beim Setzen von Symbolen zählt der Tipp normal)
-        meMarker.on('click', (e) => {
-          if (mode.kind !== 'ansehen') { onMapClick(e); return; }
-          dialog('Standort ausblenden?', 'Der blaue Punkt verschwindet von der Karte und aus dem geteilten Bild. Mit ◎ unten rechts holst du ihn wieder.', [
-            { label: 'Abbrechen' },
-            { label: 'Ausblenden', primary: true, onClick: () => setMeHidden(true) },
-          ]);
-        });
-        setMeHidden(meHidden);
+        // Tipps gehen durch den Punkt hindurch auf die Karte und die Einträge darunter
+        meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#1E88E5', weight: 1, opacity: 0.3, fillOpacity: 0.06, interactive: false }).addTo(map);
+        meMarker = L.marker(ll, { icon: meIcon, interactive: false, keyboard: false, zIndexOffset: -1000 }).addTo(map);
       } else {
         meMarker.setLatLng(ll);
         meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
@@ -399,14 +392,7 @@
       );
     }
 
-    function setMeHidden(hidden) {
-      meHidden = hidden;
-      if (!meMarker) return;
-      [meCircle, meMarker].forEach((l) => (hidden ? map.removeLayer(l) : l.addTo(map)));
-    }
-
     document.getElementById('locate').onclick = () => {
-      if (meHidden) setMeHidden(false);
       if (meMarker) map.flyTo(meMarker.getLatLng(), Math.max(map.getZoom(), 17), { duration: 0.8 });
       else { firstFix = true; startWatching(); }
     };
@@ -1175,8 +1161,9 @@
       });
 
       // Eigener Standort
-      if (meMarker && !meHidden) {
+      if (meMarker) {
         const p = map.latLngToContainerPoint(meMarker.getLatLng());
+        ctx.globalAlpha = 0.45;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
         ctx.fillStyle = '#1E88E5';
@@ -1184,6 +1171,7 @@
         ctx.lineWidth = 3;
         ctx.strokeStyle = '#fff';
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
       // Signaturen zuerst, Absprachepunkte darüber (wie auf der Karte)
@@ -1320,14 +1308,14 @@
         dialog('Noch nichts eingezeichnet', 'Zeichne zuerst etwas ein, dann kannst du die Lage teilen.', [{ label: 'OK', primary: true }]);
         return;
       }
-      dialog('Lage teilen', 'Was dürfen die anderen mit dem Link machen?', [
+      dialog('Lage teilen', 'Was dürfen die anderen mit dem Link machen? Bei «Bearbeiten» sehen nur sie selbst ihre Änderungen; deine Karte bleibt gleich.', [
         { label: '👁 Nur ansehen', onClick: () => sendLage(false) },
-        { label: '✏️ Mitarbeiten', primary: true, onClick: () => sendLage(true) },
+        { label: '✏️ Bearbeiten', primary: true, onClick: () => sendLage(true) },
       ], true);
     }
     function sendLage(editable) {
       const url = encodeLage(editable);
-      const text = editable ? 'Einsatzkarte: Lage zum Mitarbeiten' : 'Einsatzkarte: Lage zum Ansehen';
+      const text = editable ? 'Einsatzkarte: Lage zum Bearbeiten' : 'Einsatzkarte: Lage zum Ansehen';
       if (navigator.share) {
         navigator.share({ title: 'Einsatzkarte', text, url }).catch(() => {});
         return;
@@ -1353,7 +1341,7 @@
         drawing = lage.drawing;
         save();
         renderDrawing();
-        dialog('Lage übernommen', 'Du kannst jetzt weiterzeichnen. Deine Änderungen sehen die anderen nicht automatisch: teile die Lage wieder, um sie zu schicken.', [{ label: 'OK', primary: true }]);
+        dialog('Lage übernommen', 'Du kannst jetzt weiterzeichnen. Deine Änderungen sind nur für dich sichtbar. Wenn andere sie sehen sollen, teile die Lage wieder.', [{ label: 'OK', primary: true }]);
       };
       if (!lage.editable) {
         viewOnly = true;
