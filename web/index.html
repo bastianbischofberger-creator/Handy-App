@@ -22,14 +22,11 @@
 
     #top { position: absolute; z-index: 1000; left: 12px; right: 12px;
       top: calc(env(safe-area-inset-top) + 8px); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-    #topRow { display: flex; justify-content: space-between; align-items: flex-start; }
-    .segment { display: flex; background: #fff; border-radius: 10px; padding: 3px; pointer-events: auto;
-      box-shadow: 0 1px 6px rgba(0,0,0,.25); }
-    .segment button { border: 0; background: none; padding: 7px 14px; border-radius: 8px;
-      font-weight: 600; font-size: 15px; color: #333; }
-    .segment button.active { background: #D32F2F; color: #fff; }
+    #topRow { display: flex; justify-content: flex-end; align-items: flex-start; }
     #logo { width: 46px; height: 48px; object-fit: contain; }
+    /* Hinweis erscheint nur beim Einfügen */
     #hint { background: rgba(0,0,0,.7); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+    #hint:empty { display: none; }
 
     #locate { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px;
       border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 28px; color: #1565C0; line-height: 50px; padding: 0; }
@@ -114,9 +111,6 @@
       border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); color: #fff; font-weight: 800; }
     .symbolIcon { background: none; border: 0; }
     .draftDot { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid; }
-    /* eigener Standort: halb durchsichtig, damit er nichts verdeckt */
-    .meDot { width: 18px; height: 18px; border-radius: 50%; background: #1E88E5; border: 3px solid #fff;
-      box-shadow: 0 0 0 1px rgba(0,0,0,.2); opacity: .45; pointer-events: none; }
 
     #shareView { position: fixed; inset: 0; z-index: 1900; background: rgba(0,0,0,.85); display: none;
       flex-direction: column; padding: calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); gap: 12px; }
@@ -131,6 +125,31 @@
     #dialogBox { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 340px; }
     #dialogTitle { font-weight: 700; font-size: 17px; margin-bottom: 6px; }
     #dialogText { font-size: 15px; color: #333; margin-bottom: 14px; white-space: pre-line; }
+    #dialogText:empty { display: none; }
+    #dialogButtons.stack { flex-direction: column; margin-bottom: 14px; }
+    #dialogButtons.stack .btn { flex: 0 0 auto; }
+    #dialogBox > .btn.cancel { width: 100%; margin-top: 4px; }
+    #dialogExtra:not(:empty) { margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
+    /* Optionen: Kartenart */
+    .optLabel { font-size: 13px; font-weight: 700; color: #666; margin-top: 4px; }
+    .segment { display: flex; background: #eee; border-radius: 12px; padding: 3px; }
+    .segment button { flex: 1; border: 0; background: none; padding: 11px 4px; border-radius: 10px;
+      font-weight: 600; font-size: 15px; color: #333; }
+    .segment button.active { background: #D32F2F; color: #fff; }
+    /* Adresssuche */
+    .searchInput { width: 100%; font-size: 17px; padding: 11px 12px; border: 2px solid #1565C0; border-radius: 10px; -webkit-appearance: none; }
+    .results { border: 1px solid #ddd; border-radius: 10px; overflow: hidden; max-height: 46vh; overflow-y: auto; }
+    .results:empty { display: none; }
+    .results button { display: block; width: 100%; text-align: left; border: 0; border-top: 1px solid #eee; background: #fff;
+      padding: 12px 10px; font-size: 15px; color: #222; }
+    .results button:first-child { border-top: 0; }
+    .results button:active { background: #E3F2FD; }
+    .results .msg { padding: 12px 10px; font-size: 14px; color: #666; }
+    /* rote Nadel der gesuchten Adresse, Spitze genau auf dem Ort */
+    .pin { position: relative; width: 0; height: 0; }
+    .pin svg { position: absolute; left: -17px; top: -44px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+    .pin span { position: absolute; left: 0; bottom: 48px; transform: translateX(-50%); background: #fff; border: 2px solid #D32F2F;
+      border-radius: 8px; padding: 3px 8px; font-size: 14px; font-weight: 700; color: #222; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
   </style>
 </head>
 <body>
@@ -138,7 +157,6 @@
 
   <div id="top">
     <div id="topRow">
-      <div class="segment" id="baseSwitch"></div>
       <img id="logo" src="logo.png" alt="Logo" />
     </div>
     <div id="hint"></div>
@@ -160,6 +178,7 @@
     <div id="dialogBox">
       <div id="dialogTitle"></div>
       <div id="dialogText"></div>
+      <div id="dialogExtra"></div>
       <div class="row" id="dialogButtons"></div>
     </div>
   </div>
@@ -278,6 +297,7 @@
         if (d && Array.isArray(d.symbols) && Array.isArray(d.lines)) {
           // Symbole aus früheren Versionen, die es nicht mehr gibt, weglassen
           d.symbols = d.symbols.filter((x) => ITEM_TYPES.some((t) => t.id === x.typeId));
+          if (d.pin && !(typeof d.pin.latitude === 'number' && typeof d.pin.longitude === 'number')) delete d.pin;
           return d;
         }
       } catch (e) {}
@@ -321,14 +341,15 @@
     // Drehen ist gesperrt, damit die Karte beim Zoomen nicht verdreht wird.
     // Tipp auf «N» gibt das Drehen frei, nochmals tippen sperrt es wieder.
     let rotateOn = false;
+    let mapLocked = false; // beim Zeichnen mit dem Stift, siehe lockMap
     function setRotateOn(on) {
       rotateOn = on;
-      if (map.touchRotate) (on ? map.touchRotate.enable() : map.touchRotate.disable());
+      if (map.touchRotate && !mapLocked) (on ? map.touchRotate.enable() : map.touchRotate.disable());
       document.getElementById('compass').classList.toggle('on', on);
       document.getElementById('northBtn').classList.toggle('show', on);
       renderUI();
     }
-    document.getElementById('compass').onclick = () => setRotateOn(!rotateOn);
+    document.getElementById('compass').onclick = () => { if (!mapLocked) setRotateOn(!rotateOn); };
     document.getElementById('northBtn').onclick = () => { if (map.setBearing) map.setBearing(0); setRotateOn(false); };
     // Fast nach Norden gedreht: ganz nach Norden einrasten
     document.addEventListener('touchend', () => {
@@ -353,34 +374,21 @@
       tileLayer.on('tileerror', () => {
         if (useCors && !loadedAny) { useCors = false; setBase(baseKey); }
       });
-      renderBaseSwitch();
     }
 
     const drawLayer = L.layerGroup().addTo(map);
     const draftLayer = L.layerGroup().addTo(map);
 
     // ---------- Standort ----------
-    let meMarker = null, meCircle = null, firstFix = true;
-    const meIcon = L.divIcon({ className: 'symbolIcon', html: '<div class="meDot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
-
-    function showMe(pos) {
-      const ll = [pos.coords.latitude, pos.coords.longitude];
-      if (!meMarker) {
-        // Tipps gehen durch den Punkt hindurch auf die Karte und die Einträge darunter
-        meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#1E88E5', weight: 1, opacity: 0.3, fillOpacity: 0.06, interactive: false }).addTo(map);
-        meMarker = L.marker(ll, { icon: meIcon, interactive: false, keyboard: false, zIndexOffset: -1000 }).addTo(map);
-      } else {
-        meMarker.setLatLng(ll);
-        meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
-      }
-      return ll;
-    }
+    // Der eigene Standort wird nicht als Punkt gezeigt; der Knopf ◎ springt nur dorthin.
+    let myPos = null, firstFix = true;
 
     function startWatching() {
       if (!navigator.geolocation) return;
       navigator.geolocation.watchPosition(
         (pos) => {
-          const ll = showMe(pos);
+          const ll = [pos.coords.latitude, pos.coords.longitude];
+          myPos = ll;
           if (firstFix) { firstFix = false; map.flyTo(ll, 17, { duration: 0.8 }); }
         },
         (err) => {
@@ -393,7 +401,7 @@
     }
 
     document.getElementById('locate').onclick = () => {
-      if (meMarker) map.flyTo(meMarker.getLatLng(), Math.max(map.getZoom(), 17), { duration: 0.8 });
+      if (myPos) map.flyTo(myPos, Math.max(map.getZoom(), 17), { duration: 0.8 });
       else { firstFix = true; startWatching(); }
     };
 
@@ -609,6 +617,22 @@
         m.addTo(drawLayer);
         markers[s.id] = m;
       });
+      if (drawing.pin) {
+        const pin = L.marker([drawing.pin.latitude, drawing.pin.longitude], { icon: pinIcon(drawing.pin.label), zIndexOffset: 1000, keyboard: false });
+        pin.on('click', () => {
+          if (viewOnly || (mode.kind !== 'ansehen' && mode.kind !== 'edit')) return;
+          dialog('Adress-Nadel', (drawing.pin.label || '') + '\n\nMöchtest du die Nadel löschen?', [
+            { label: 'Löschen', danger: true, onClick: () => { delete drawing.pin; save(); renderDrawing(); } },
+          ], true);
+        });
+        pin.addTo(drawLayer);
+      }
+    }
+
+    // ---------- Gesuchte Adresse: rote Nadel ----------
+    const PIN_SVG = '<svg width="34" height="44" viewBox="0 0 34 44"><path d="M17 43C17 43 3 26 3 16a14 14 0 0 1 28 0c0 10-14 27-14 27z" fill="#D32F2F" stroke="#fff" stroke-width="2.5"/><circle cx="17" cy="16" r="5.5" fill="#fff"/></svg>';
+    function pinIcon(label) {
+      return L.divIcon({ className: 'symbolIcon', html: '<div class="pin">' + PIN_SVG + (label ? '<span>' + esc(label) + '</span>' : '') + '</div>', iconSize: [0, 0], iconAnchor: [0, 0] });
     }
 
     function renderDraft() {
@@ -662,8 +686,7 @@
     map.on('click', onMapClick);
 
     // ---------- Frei zeichnen mit dem Stift ----------
-    const penPointers = new Set();
-    let stroke = null; // { points: [L.LatLng], last: {x,y}, line: L.Polyline }
+    let stroke = null; // { id, points: [L.LatLng], last: {x,y}, line: L.Polyline }
     const mapEl = document.getElementById('map');
     function endStroke(keep) {
       if (!stroke) return;
@@ -679,19 +702,18 @@
     }
     mapEl.addEventListener('pointerdown', (e) => {
       if (mode.kind !== 'stift') return;
-      penPointers.add(e.pointerId);
-      // zweiter Finger: Strich abbrechen, damit man zoomen kann
-      if (penPointers.size > 1) { endStroke(false); return; }
+      // nur der erste Finger zeichnet; ein zweiter Finger oder der Handballen stört den Strich nicht
+      if (stroke) return;
       const ll = map.mouseEventToLatLng(e);
       const opts = { color: penColor, weight: 4, lineCap: 'round', lineJoin: 'round', interactive: false };
-      stroke = { points: [ll], last: { x: e.clientX, y: e.clientY }, line: L.polyline([ll], opts).addTo(draftLayer) };
+      stroke = { id: e.pointerId, points: [ll], last: { x: e.clientX, y: e.clientY }, line: L.polyline([ll], opts).addTo(draftLayer) };
       if (needsCasing(penColor)) {
         stroke.casing = L.polyline([ll], Object.assign({}, opts, { color: '#333', weight: 6 })).addTo(draftLayer);
         stroke.line.bringToFront();
       }
     }, true);
     mapEl.addEventListener('pointermove', (e) => {
-      if (!stroke || penPointers.size > 1) return;
+      if (!stroke || e.pointerId !== stroke.id) return;
       if (Math.hypot(e.clientX - stroke.last.x, e.clientY - stroke.last.y) < 3) return;
       stroke.last = { x: e.clientX, y: e.clientY };
       const ll = map.mouseEventToLatLng(e);
@@ -699,12 +721,9 @@
       stroke.line.addLatLng(ll);
       if (stroke.casing) stroke.casing.addLatLng(ll);
     }, true);
-    const penUp = (e) => {
-      penPointers.delete(e.pointerId);
-      if (stroke && penPointers.size === 0) endStroke(true);
-    };
+    const penUp = (e) => { if (stroke && e.pointerId === stroke.id) endStroke(true); };
     mapEl.addEventListener('pointerup', penUp, true);
-    mapEl.addEventListener('pointercancel', (e) => { penPointers.delete(e.pointerId); endStroke(false); }, true);
+    mapEl.addEventListener('pointercancel', penUp, true);
     // «R» und Pfeil der Rettungsachse nach dem Zoomen neu verteilen
     map.on('zoomend', () => { renderDrawing(); renderDraft(); });
     // Symbolgrösse schon während des Zoomens mitführen
@@ -726,8 +745,7 @@
     function setMode(m) {
       if (viewOnly && m.kind !== 'ansehen') return;
       mode = m;
-      // beim Zeichnen mit dem Stift verschiebt ein Finger die Karte nicht
-      if (mode.kind === 'stift') map.dragging.disable(); else map.dragging.enable();
+      lockMap(mode.kind === 'stift');
       // ohne Verschieben würde der Browser sonst selbst wischen (zurück, scrollen)
       document.getElementById('map').classList.toggle('penMode', mode.kind === 'stift');
       renderDrawing();
@@ -735,20 +753,25 @@
       renderUI();
     }
 
-    function renderBaseSwitch() {
-      const el = document.getElementById('baseSwitch');
-      el.innerHTML = '';
-      Object.keys(BASE_MAPS).forEach((key) => {
-        const b = document.createElement('button');
-        b.textContent = BASE_MAPS[key].label;
-        if (key === baseKey) b.className = 'active';
-        b.onclick = () => setBase(key);
-        el.appendChild(b);
-      });
+    // Beim Zeichnen mit dem Stift ist die Karte ganz fest: kein Verschieben, Zoomen oder Drehen.
+    // Sonst bricht ein zweiter Finger oder der Handballen den Strich ab und die Karte rutscht weg.
+    function lockMap(on) {
+      if (on === mapLocked) return;
+      mapLocked = on;
+      const handlers = ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'shiftKeyRotate', 'boxZoom', 'keyboard'];
+      if (on) {
+        handlers.forEach((h) => map[h] && map[h].disable());
+        if (map.touchRotate) map.touchRotate.disable();
+        if (map.touchGestures) map.touchGestures.disable();
+      } else {
+        if (map.touchGestures) map.touchGestures.enable();
+        handlers.forEach((h) => map[h] && map[h].enable());
+        if (map.touchRotate && rotateOn) map.touchRotate.enable();
+      }
     }
 
+    // Grauer Hinweis nur beim Einfügen (Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden)
     function hintText() {
-      if (mode.kind === 'stift') return 'Mit einem Finger frei zeichnen. Mit zwei Fingern Karte verschieben und zoomen.';
       if (mode.kind === 'symbol') {
         return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
       }
@@ -774,15 +797,12 @@
           ? 'Tippe Punkt für Punkt auf die Karte, um die ' + t.name + ' zu zeichnen.' + (t.axis ? ' Der Pfeil zeigt zum letzten Punkt.' : '')
           : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Zone fertig» drücken.';
       }
-      if (mode.kind === 'edit') {
-        if (mode.ref === 'line') return 'Mit dem Regler «Grösse» machst du die Linie dünner oder dicker.';
-        const it = findItem(mode.selId);
-        return (it && findSymbol(it.typeId).sign ? 'Unten drehen und Grösse ändern.' : 'Unten die Grösse ändern.') + ' Gedrückt halten und ziehen zum Verschieben.';
-      }
+      // Empfänger einer geteilten Lage soll wissen, dass er nur schaut
       if (viewOnly) return 'Geteilte Lage: nur ansehen. Deine eigene Zeichnung bleibt unverändert.';
-      return 'Tippe auf einen Eintrag, um ihn zu drehen, die Grösse zu ändern oder zu löschen.';
+      return '';
     }
 
+    const ICON_MENU = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
     const ICON_SHARE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
     const ICON_TRASH = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
     function button(label, cls, onClick) {
@@ -864,9 +884,7 @@
     }
 
     function renderUI() {
-      document.getElementById('hint').textContent = rotateOn
-        ? 'Drehen ist an: mit zwei Fingern die Karte drehen. Zum Fixieren nochmals auf «N» tippen.'
-        : hintText();
+      document.getElementById('hint').textContent = hintText();
       const panel = document.getElementById('panel');
       panel.innerHTML = '';
 
@@ -881,10 +899,10 @@
       }
 
       if (mode.kind === 'ansehen' && viewOnly) {
-        const imgBtn = button('', 'primary icon', shareSnapshot);
-        imgBtn.innerHTML = ICON_SHARE;
-        imgBtn.setAttribute('aria-label', 'Bild teilen');
-        const bar = row([imgBtn, button('Zurück zu meiner Karte', 'add', leaveViewOnly)]);
+        const optBtn = button('', 'primary icon', optionsMenu);
+        optBtn.innerHTML = ICON_MENU;
+        optBtn.setAttribute('aria-label', 'Optionen');
+        const bar = row([optBtn, button('Zurück zu meiner Karte', 'add', leaveViewOnly)]);
         bar.classList.add('mainBar');
         panel.appendChild(bar);
       } else if (mode.kind === 'ansehen') {
@@ -900,23 +918,23 @@
           finishPanel(panel);
           return;
         }
-        const shareBtn = button('', 'primary icon', shareMenu);
-        shareBtn.innerHTML = ICON_SHARE;
-        shareBtn.setAttribute('aria-label', 'Ausschnitt teilen');
+        const optBtn = button('', 'primary icon', optionsMenu);
+        optBtn.innerHTML = ICON_MENU;
+        optBtn.setAttribute('aria-label', 'Optionen');
         const penBtn = button('✏️', 'icon pen', () => setMode({ kind: 'stift' }));
         penBtn.setAttribute('aria-label', 'Frei zeichnen');
         const plusBtn = button('＋', 'add plus', () => { menuOpen = true; renderUI(); });
         plusBtn.setAttribute('aria-label', 'Einfügen');
         const clearBtn = button('', 'danger icon', () => {
-          if (!drawing.symbols.length && !drawing.lines.length) return;
-          dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen und Fassaden werden entfernt.', [
+          if (!drawing.symbols.length && !drawing.lines.length && !drawing.pin) return;
+          dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden, Zeichnungen und die Adress-Nadel werden entfernt.', [
             { label: 'Abbrechen' },
             { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
           ]);
         });
         clearBtn.innerHTML = ICON_TRASH;
         clearBtn.setAttribute('aria-label', 'Alles löschen');
-        const bar = row([shareBtn, penBtn, plusBtn, clearBtn]);
+        const bar = row([optBtn, penBtn, plusBtn, clearBtn]);
         bar.classList.add('mainBar');
         panel.appendChild(bar);
       }
@@ -1160,20 +1178,6 @@
         }
       });
 
-      // Eigener Standort
-      if (meMarker) {
-        const p = map.latLngToContainerPoint(meMarker.getLatLng());
-        ctx.globalAlpha = 0.45;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
-        ctx.fillStyle = '#1E88E5';
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#fff';
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-
       // Signaturen zuerst, Absprachepunkte darüber (wie auf der Karte)
       drawing.symbols
         .slice()
@@ -1208,6 +1212,44 @@
           if (img && img.complete) ctx.drawImage(img, -size / 2 + 2 * k, -size / 2 + 2 * k, size - 4 * k, size - 4 * k);
           ctx.restore();
         });
+
+      // Adress-Nadel zuoberst
+      if (drawing.pin) {
+        const p = pt(drawing.pin.latitude, drawing.pin.longitude);
+        ctx.save();
+        ctx.translate(p.x - 17, p.y - 44);
+        ctx.shadowColor = 'rgba(0,0,0,.4)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetY = 1;
+        ctx.fill(new Path2D('M17 43C17 43 3 26 3 16a14 14 0 0 1 28 0c0 10-14 27-14 27z'));
+        ctx.restore();
+        ctx.save();
+        ctx.translate(p.x - 17, p.y - 44);
+        const body = new Path2D('M17 43C17 43 3 26 3 16a14 14 0 0 1 28 0c0 10-14 27-14 27z');
+        ctx.fillStyle = '#D32F2F';
+        ctx.fill(body);
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke(body);
+        ctx.beginPath(); ctx.arc(17, 16, 5.5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.restore();
+        if (drawing.pin.label) {
+          ctx.font = '700 14px -apple-system, BlinkMacSystemFont, sans-serif';
+          const tw = ctx.measureText(drawing.pin.label).width;
+          const bw = tw + 20, bh = 26, bx = p.x - bw / 2, by = p.y - 48 - bh;
+          ctx.fillStyle = '#fff';
+          ctx.strokeStyle = '#D32F2F';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 8); else ctx.rect(bx, by, bw, bh);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#222';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(drawing.pin.label, p.x, by + bh / 2 + 1);
+        }
+      }
 
       // Nordpfeil oben links, wenn die Karte gedreht ist
       if (bearingDeg() !== 0) {
@@ -1269,6 +1311,7 @@
           return [x.typeId, flat, x.scale || 1, x.color || 0];
         }),
       };
+      if (drawing.pin) data.p = [toInt(drawing.pin.latitude), toInt(drawing.pin.longitude), drawing.pin.label || ''];
       const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       return location.origin + location.pathname + '#lage=' + b64;
     }
@@ -1293,7 +1336,99 @@
         if (x[3]) ln.color = x[3];
         return ln;
       });
-      return { editable: data.e === 1, center: [data.c[0] / 1e5, data.c[1] / 1e5], zoom: data.c[2], drawing: { symbols, lines } };
+      const d = { symbols, lines };
+      if (Array.isArray(data.p) && typeof data.p[0] === 'number' && typeof data.p[1] === 'number') {
+        d.pin = { latitude: data.p[0] / 1e5, longitude: data.p[1] / 1e5, label: String(data.p[2] || '').slice(0, 120) };
+      }
+      return { editable: data.e === 1, center: [data.c[0] / 1e5, data.c[1] / 1e5], zoom: data.c[2], drawing: d };
+    }
+
+    // ---------- Optionen ----------
+    function optionsMenu() {
+      dialog('Optionen', '', [
+        // bei «Nur ansehen» gibt es nur das Bild
+        { label: '📤  Teilen', primary: true, onClick: viewOnly ? shareSnapshot : shareMenu },
+        { label: '🔍  Adresse suchen', primary: true, onClick: searchAddress },
+      ], true);
+      const box = document.getElementById('dialogButtons');
+      box.classList.add('stack');
+      const extra = document.getElementById('dialogExtra');
+      const label = document.createElement('div');
+      label.className = 'optLabel';
+      label.textContent = 'Kartenart';
+      const seg = document.createElement('div');
+      seg.className = 'segment';
+      Object.keys(BASE_MAPS).forEach((key) => {
+        const b = document.createElement('button');
+        b.textContent = BASE_MAPS[key].label;
+        if (key === baseKey) b.className = 'active';
+        b.onclick = () => { setBase(key); document.getElementById('dialog').classList.remove('open'); };
+        seg.appendChild(b);
+      });
+      extra.appendChild(label);
+      extra.appendChild(seg);
+      // Kartenart unter den Knöpfen, «Abbrechen» ganz unten
+      const dlgBox = document.getElementById('dialogBox');
+      dlgBox.insertBefore(extra, box.nextSibling);
+      dlgBox.appendChild(box.querySelector('.cancel'));
+    }
+
+    // Adresse oder Ort suchen (kostenlose Suche von swisstopo) und dort die rote Nadel setzen
+    const SEARCH_URL = 'https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&sr=4326&limit=8&searchText=';
+    const plainLabel = (html) => {
+      const d = document.createElement('div');
+      // «Bahnhofstrasse 5 <b>8001 Zürich</b>» → «Bahnhofstrasse 5, 8001 Zürich»
+      d.innerHTML = String(html).replace(/([^>\s])\s+<b>/, '$1, <b>');
+      return d.textContent.replace(/\s+/g, ' ').trim();
+    };
+    function searchAddress() {
+      dialog('🔍 Adresse suchen', '', [], true);
+      const extra = document.getElementById('dialogExtra');
+      const input = document.createElement('input');
+      input.className = 'searchInput';
+      input.type = 'search';
+      input.placeholder = 'Strasse Nr., Ort';
+      input.setAttribute('enterkeyhint', 'search');
+      input.autocomplete = 'off';
+      const list = document.createElement('div');
+      list.className = 'results';
+      extra.appendChild(input);
+      extra.appendChild(list);
+      let timer = null, ask = 0;
+      const msg = (t) => { list.innerHTML = '<div class="msg">' + esc(t) + '</div>'; };
+      const run = () => {
+        const q = input.value.trim();
+        if (q.length < 2) { list.innerHTML = ''; return; }
+        const my = ++ask;
+        fetch(SEARCH_URL + encodeURIComponent(q))
+          .then((r) => r.json())
+          .then((data) => {
+            if (my !== ask) return;
+            const res = (data.results || []).filter((r) => r.attrs && typeof r.attrs.lat === 'number' && typeof r.attrs.lon === 'number');
+            if (!res.length) { msg('Nichts gefunden.'); return; }
+            list.innerHTML = '';
+            res.forEach((r) => {
+              const text = plainLabel(r.attrs.label);
+              const b = document.createElement('button');
+              b.textContent = '📍 ' + text;
+              b.onclick = () => placePin(r.attrs.lat, r.attrs.lon, text, r.attrs.origin);
+              list.appendChild(b);
+            });
+          })
+          .catch(() => { if (my === ask) msg('Suche geht gerade nicht. Ist das Internet verbunden?'); });
+      };
+      input.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 300); };
+      input.onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(timer); run(); input.blur(); } };
+      input.focus();
+    }
+    function placePin(lat, lng, label, origin) {
+      document.getElementById('dialog').classList.remove('open');
+      firstFix = false; // nicht mehr zum eigenen Standort springen
+      drawing.pin = { latitude: lat, longitude: lng, label };
+      save();
+      renderDrawing();
+      // Adresse ganz nah, Ort oder Gemeinde etwas weiter weg
+      map.setView([lat, lng], origin === 'address' || origin === 'parcel' ? 18 : 15);
     }
 
     // Teilen-Knopf: zuerst Bild oder Lage
@@ -1304,7 +1439,7 @@
       ], true);
     }
     function shareLage() {
-      if (!drawing.symbols.length && !drawing.lines.length) {
+      if (!drawing.symbols.length && !drawing.lines.length && !drawing.pin) {
         dialog('Noch nichts eingezeichnet', 'Zeichne zuerst etwas ein, dann kannst du die Lage teilen.', [{ label: 'OK', primary: true }]);
         return;
       }
@@ -1365,6 +1500,7 @@
     function shareSnapshot() {
       const pts = drawing.symbols.map((s) => s.coordinate)
         .concat(...drawing.lines.map((l) => l.points))
+        .concat(drawing.pin ? [drawing.pin] : [])
         .map((c) => [c.latitude, c.longitude]);
       if (pts.length === 0) { shareNow(); return; }
       dialog('Was soll aufs Bild?', 'Wähle den Ausschnitt für das Bild.', [
@@ -1429,6 +1565,12 @@
       document.getElementById('dialogText').textContent = text;
       const box = document.getElementById('dialogButtons');
       box.innerHTML = '';
+      box.classList.remove('stack');
+      const extra = document.getElementById('dialogExtra');
+      extra.innerHTML = '';
+      const dlgBox = document.getElementById('dialogBox');
+      dlgBox.insertBefore(extra, box);
+      dlgBox.querySelectorAll(':scope > .cancel').forEach((c) => c.remove());
       const el = document.getElementById('dialog');
       buttons.forEach((b) => {
         box.appendChild(button(b.label, b.danger ? 'danger' : b.primary ? 'primary' : '', () => {
