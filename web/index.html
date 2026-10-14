@@ -63,6 +63,10 @@
       font-size: 15px; font-weight: 600; color: #222; line-height: 1.2; }
     .btn:active { opacity: .7; }
     .btn.add { background: #1565C0; color: #fff; font-size: 17px; }
+    /* Hauptleiste: Teilen · Plus · Löschen; am PC kompakt in der Mitte */
+    .row.mainBar { width: 100%; max-width: 520px; margin: 0 auto; align-items: stretch; }
+    .btn.icon { flex: 0 0 64px; display: flex; align-items: center; justify-content: center; padding: 12px 0; }
+    .btn.plus { font-size: 34px; font-weight: 400; padding: 6px; }
     .menu { display: flex; flex-direction: column; gap: 8px; }
     .btn.menuItem { text-align: left; padding: 15px 16px; font-size: 16px; background: #f1f4f8; }
     .rubric { width: 100%; font-size: 16px; font-weight: 700; padding: 10px 12px; border-radius: 10px; border: 2px solid #1565C0;
@@ -792,6 +796,8 @@
       return 'Tippe auf einen Eintrag, um ihn zu drehen, die Grösse zu ändern oder zu löschen.';
     }
 
+    const ICON_SHARE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+    const ICON_TRASH = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
     function button(label, cls, onClick) {
       const b = document.createElement('button');
       b.className = 'btn' + (cls ? ' ' + cls : '');
@@ -900,17 +906,23 @@
           finishPanel(panel);
           return;
         }
-        panel.appendChild(row([button('➕ Einfügen ▾', 'add', () => { menuOpen = true; renderUI(); })]));
-        panel.appendChild(row([
-          button('📤 Ausschnitt teilen', 'primary', shareSnapshot),
-          button('Alles löschen', 'danger', () => {
-            if (!drawing.symbols.length && !drawing.lines.length) return;
-            dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen und Fassaden werden entfernt.', [
-              { label: 'Abbrechen' },
-              { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
-            ]);
-          }),
-        ]));
+        const shareBtn = button('', 'primary icon', shareSnapshot);
+        shareBtn.innerHTML = ICON_SHARE;
+        shareBtn.setAttribute('aria-label', 'Ausschnitt teilen');
+        const plusBtn = button('＋', 'add plus', () => { menuOpen = true; renderUI(); });
+        plusBtn.setAttribute('aria-label', 'Einfügen');
+        const clearBtn = button('', 'danger icon', () => {
+          if (!drawing.symbols.length && !drawing.lines.length) return;
+          dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen und Fassaden werden entfernt.', [
+            { label: 'Abbrechen' },
+            { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
+          ]);
+        });
+        clearBtn.innerHTML = ICON_TRASH;
+        clearBtn.setAttribute('aria-label', 'Alles löschen');
+        const bar = row([shareBtn, plusBtn, clearBtn]);
+        bar.classList.add('mainBar');
+        panel.appendChild(bar);
       }
 
       if (mode.kind === 'symbol') {
