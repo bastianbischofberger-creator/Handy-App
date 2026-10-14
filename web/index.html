@@ -100,6 +100,7 @@
     .adjLabel { width: 54px; font-size: 14px; font-weight: 700; color: #222; flex: 0 0 auto; }
     .adjVal { min-width: 50px; text-align: center; font-size: 14px; font-weight: 600; color: #222; flex: 0 0 auto; }
     .adjRow input[type=range] { flex: 1; min-width: 0; height: 32px; }
+    .adjRow input.center { background: linear-gradient(90deg, transparent calc(50% - 1px), #1565C0 calc(50% - 1px), #1565C0 calc(50% + 1px), transparent calc(50% + 1px)) no-repeat center / 100% 22px; }
     .mini { flex: 0 0 44px; height: 40px; border: 0; border-radius: 10px; background: #eee; font-size: 20px; font-weight: 700; color: #222; padding: 0; }
     .mini.wide { flex: 1; font-size: 15px; }
     .mini:disabled { opacity: .35; }
@@ -213,8 +214,6 @@
         svg: '<rect x="1.5" y="1.5" width="33" height="33" fill="#fff" stroke="' + SIGN_BLUE + '" stroke-width="3"/><text x="18" y="23.5" font-size="15" ' + FONT + ' fill="' + SIGN_TEXT + '">MS</text>' },
     ];
     const ITEM_TYPES = PLACEABLE.concat(SIGN_TYPES);
-    // Grössen-Stufen für «grösser / kleiner»
-    const SCALES = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
     // Zonen wie im FKS-Schema: Gefahrenzone rot, Sperrzone gelb (beide mit rot-weisser Absperrung),
     // Verkehrsumleitzone nur als Umriss. «order» bestimmt, was oben liegt.
     const LINE_TYPES = [
@@ -741,7 +740,7 @@
           : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Zone fertig» drücken.';
       }
       if (mode.kind === 'edit') {
-        if (mode.ref === 'line') return 'Mit «Kleiner» und «Grösser» machst du die Linie der Zone dünner oder dicker.';
+        if (mode.ref === 'line') return 'Mit dem Regler «Grösse» machst du die Linie dünner oder dicker.';
         const it = findItem(mode.selId);
         return (it && findSymbol(it.typeId).sign ? 'Unten drehen und Grösse ändern.' : 'Unten die Grösse ändern.') + ' Gedrückt halten und ziehen zum Verschieben.';
       }
@@ -768,42 +767,47 @@
       const redraw = () => (isLine ? renderDrawing() : refreshItem(item));
       const out = [];
       if (!isLine && t.sign) {
+        // Regler startet in der Mitte (0°); von dort bis 360° nach links oder rechts
         const r = document.createElement('div');
         r.className = 'adjRow';
-        r.innerHTML = '<span class="adjLabel">Drehen</span><button class="mini">↺</button><input type="range" min="0" max="359" step="1" /><button class="mini">↻</button><span class="adjVal"></span>';
+        r.innerHTML = '<span class="adjLabel">Drehen</span><button class="mini">↺</button><input type="range" min="-360" max="360" step="1" class="center" /><button class="mini">↻</button><span class="adjVal"></span>';
         const [left, right] = r.querySelectorAll('button');
         const slider = r.querySelector('input');
         const val = r.querySelector('.adjVal');
-        const show = () => { slider.value = item.rotation || 0; val.textContent = (item.rotation || 0) + '°'; };
-        const set = (deg) => { item.rotation = ((Math.round(deg) % 360) + 360) % 360; show(); redraw(); };
+        const rot = item.rotation || 0;
+        let v = rot > 180 ? rot - 360 : rot;
+        const set = (deg) => {
+          v = Math.max(-360, Math.min(360, Math.round(deg)));
+          item.rotation = ((v % 360) + 360) % 360;
+          slider.value = v;
+          val.textContent = (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '°';
+          redraw();
+        };
         slider.oninput = () => set(+slider.value);
         slider.onchange = save;
-        left.onclick = () => { set((item.rotation || 0) - 15); save(); };
-        right.onclick = () => { set((item.rotation || 0) + 15); save(); };
-        show();
+        left.onclick = () => { set(v - 15); save(); };
+        right.onclick = () => { set(v + 15); save(); };
+        set(v);
         out.push(r);
       }
       const r = document.createElement('div');
       r.className = 'adjRow';
-      r.innerHTML = '<span class="adjLabel">Grösse</span><button class="mini wide">− Kleiner</button><span class="adjVal"></span><button class="mini wide">+ Grösser</button>';
+      r.innerHTML = '<span class="adjLabel">Grösse</span><button class="mini">−</button><input type="range" min="50" max="300" step="5" /><button class="mini">+</button><span class="adjVal"></span>';
       const [minus, plus] = r.querySelectorAll('button');
+      const slider = r.querySelector('input');
       const val = r.querySelector('.adjVal');
-      const show = () => {
-        const k = scaleOf(item);
-        val.textContent = Math.round(k * 100) + ' %';
-        minus.disabled = k <= SCALES[0];
-        plus.disabled = k >= SCALES[SCALES.length - 1];
+      const setPct = (pct) => {
+        pct = Math.max(50, Math.min(300, Math.round(pct / 5) * 5));
+        item.scale = pct / 100;
+        slider.value = pct;
+        val.textContent = pct + ' %';
+        redraw();
       };
-      const step = (dir) => {
-        const k = scaleOf(item);
-        const next = dir > 0 ? SCALES.find((x) => x > k + 0.001) : SCALES.slice().reverse().find((x) => x < k - 0.001);
-        if (!next) return;
-        item.scale = next;
-        show(); redraw(); save();
-      };
-      minus.onclick = () => step(-1);
-      plus.onclick = () => step(1);
-      show();
+      slider.oninput = () => setPct(+slider.value);
+      slider.onchange = save;
+      minus.onclick = () => { setPct(scaleOf(item) * 100 - 10); save(); };
+      plus.onclick = () => { setPct(scaleOf(item) * 100 + 10); save(); };
+      setPct(scaleOf(item) * 100);
       out.push(r);
       return out;
     }
