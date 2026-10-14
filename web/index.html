@@ -165,6 +165,8 @@
     // ---------- Einstellungen ----------
     const BASE_MAPS = {
       karte: { label: 'Karte', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg' },
+      // graue Landeskarte: farbige Symbole und Zonen fallen darauf am stärksten auf
+      grau: { label: 'Grau', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-grau/default/current/3857/{z}/{x}/{y}.jpeg' },
       luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg' },
     };
     // Die 6 Absprachepunkte nach FKS (Feuerwehr Koordination Schweiz)
@@ -330,8 +332,10 @@
     let tileLayer = null;
     // Kacheln mit CORS laden, damit sie ins geteilte Bild dürfen. Klappt das nicht, ohne CORS weiter.
     let useCors = true;
+    const BASE_KEY = 'einsatzkarte.basiskarte';
     function setBase(key) {
       baseKey = key;
+      try { localStorage.setItem(BASE_KEY, key); } catch (e) {}
       if (tileLayer) map.removeLayer(tileLayer);
       let loadedAny = false;
       const opts = { maxNativeZoom: 18, maxZoom: 20 };
@@ -1273,7 +1277,7 @@
     }
 
     // ---------- Start ----------
-    setBase('karte');
+    setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'karte'; } catch (e) { return 'karte'; } })());
     renderDrawing();
     renderUI();
     window.addEventListener('resize', renderUI);
