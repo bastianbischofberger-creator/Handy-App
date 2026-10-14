@@ -57,10 +57,9 @@
       font-size: 15px; font-weight: 600; color: #222; line-height: 1.2; }
     .btn:active { opacity: .7; }
     .btn.add { background: #1565C0; color: #fff; font-size: 17px; }
-    /* Hauptleiste: Teilen · Plus · Löschen; am PC kompakt in der Mitte */
+    /* Hauptleiste: Optionen · Plus · Löschen; am PC kompakt in der Mitte */
     .row.mainBar { width: 100%; max-width: 520px; margin: 0 auto; align-items: stretch; }
     .btn.icon { flex: 0 0 64px; display: flex; align-items: center; justify-content: center; padding: 12px 0; }
-    .btn.pen { font-size: 24px; }
     .btn.plus { font-size: 34px; font-weight: 400; padding: 6px; }
     .menu { display: flex; flex-direction: column; gap: 8px; }
     .btn.menuItem { text-align: left; padding: 15px 16px; font-size: 16px; background: #f1f4f8; }
@@ -273,6 +272,7 @@
       { id: 'fahrzeug', name: 'Fahrzeuge', mode: () => ({ kind: 'signatur', group: 'fahrzeug', typeId: null, selId: null }) },
       { id: 'zone', name: 'Zonen', mode: () => ({ kind: 'linie', typeId: null, points: [] }) },
       { id: 'fassade', name: 'Fassaden', mode: () => ({ kind: 'linie', typeId: 'fassade', points: [] }) },
+      { id: 'stift', name: '✏️ Frei zeichnen', mode: () => ({ kind: 'stift' }) },
     ];
     const rubricOf = (m) => (m.kind === 'linie' ? (m.typeId === 'fassade' ? 'fassade' : 'zone') : m.kind === 'signatur' ? m.group : m.kind);
     // Signaturen und Fahrzeuge teilen sich die gleiche Technik (drehbar), aber getrennte Auswahl
@@ -770,8 +770,9 @@
       }
     }
 
-    // Grauer Hinweis nur beim Einfügen (Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden)
+    // Grauer Hinweis nur beim Einfügen (Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden, Stift)
     function hintText() {
+      if (mode.kind === 'stift') return 'Mit dem Finger zeichnen. Die Karte ist fest; zum Verschieben «Fertig» tippen.';
       if (mode.kind === 'symbol') {
         return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
       }
@@ -889,7 +890,7 @@
       panel.innerHTML = '';
 
       // Auswahlfeld oben: zwischen den Rubriken wechseln
-      if (mode.kind === 'symbol' || mode.kind === 'signatur' || mode.kind === 'linie') {
+      if (mode.kind === 'symbol' || mode.kind === 'signatur' || mode.kind === 'linie' || mode.kind === 'stift') {
         const sel = document.createElement('select');
         sel.className = 'rubric';
         sel.innerHTML = RUBRICS.map((r) => '<option value="' + r.id + '">' + esc(r.name) + ' ▾</option>').join('');
@@ -921,8 +922,6 @@
         const optBtn = button('', 'primary icon', optionsMenu);
         optBtn.innerHTML = ICON_MENU;
         optBtn.setAttribute('aria-label', 'Optionen');
-        const penBtn = button('✏️', 'icon pen', () => setMode({ kind: 'stift' }));
-        penBtn.setAttribute('aria-label', 'Frei zeichnen');
         const plusBtn = button('＋', 'add plus', () => { menuOpen = true; renderUI(); });
         plusBtn.setAttribute('aria-label', 'Einfügen');
         const clearBtn = button('', 'danger icon', () => {
@@ -934,7 +933,7 @@
         });
         clearBtn.innerHTML = ICON_TRASH;
         clearBtn.setAttribute('aria-label', 'Alles löschen');
-        const bar = row([optBtn, penBtn, plusBtn, clearBtn]);
+        const bar = row([optBtn, plusBtn, clearBtn]);
         bar.classList.add('mainBar');
         panel.appendChild(bar);
       }
