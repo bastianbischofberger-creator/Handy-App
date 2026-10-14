@@ -125,6 +125,8 @@
     #dialog { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.35); display: none;
       align-items: center; justify-content: center; padding: 24px; }
     #dialog.open { display: flex; }
+    #dialogButtons { flex-wrap: wrap; }
+    .btn.cancel { flex-basis: 100%; background: transparent; color: #555; padding: 10px 6px; }
     #dialogBox { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 340px; }
     #dialogTitle { font-weight: 700; font-size: 17px; margin-bottom: 6px; }
     #dialogText { font-size: 15px; color: #333; margin-bottom: 14px; }
@@ -267,6 +269,7 @@
     let mode = { kind: 'ansehen' };
     let baseKey = 'karte';
     let menuOpen = false;
+    let viewOnly = false; // geteilte Lage «Nur ansehen»: nichts ändern, nichts speichern
 
     function load() {
       try {
@@ -280,6 +283,7 @@
       return { symbols: [], lines: [] };
     }
     function save() {
+      if (viewOnly) return;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {}
     }
 
@@ -604,7 +608,7 @@
       });
       drawing.symbols.forEach((s) => {
         const t = findSymbol(s.typeId);
-        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: mode.kind !== 'stift', autoPan: true, zIndexOffset: t.sign ? 0 : 100, rotateWithView: !!t.sign });
+        const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: mode.kind !== 'stift' && !viewOnly, autoPan: true, zIndexOffset: t.sign ? 0 : 100, rotateWithView: !!t.sign });
         m.on('dragend', () => {
           const ll = m.getLatLng();
           s.coordinate = { latitude: ll.lat, longitude: ll.lng };
@@ -734,6 +738,7 @@
 
     // ---------- Oberfläche ----------
     function setMode(m) {
+      if (viewOnly && m.kind !== 'ansehen') return;
       mode = m;
       // beim Zeichnen mit dem Stift verschiebt ein Finger die Karte nicht
       if (mode.kind === 'stift') map.dragging.disable(); else map.dragging.enable();
@@ -788,6 +793,7 @@
         const it = findItem(mode.selId);
         return (it && findSymbol(it.typeId).sign ? 'Unten drehen und Grösse ändern.' : 'Unten die Grösse ändern.') + ' Gedrückt halten und ziehen zum Verschieben.';
       }
+      if (viewOnly) return 'Geteilte Lage: nur ansehen. Deine eigene Zeichnung bleibt unverändert.';
       return 'Tippe auf einen Eintrag, um ihn zu drehen, die Grösse zu ändern oder zu löschen.';
     }
 
@@ -888,7 +894,14 @@
         panel.appendChild(sel);
       }
 
-      if (mode.kind === 'ansehen') {
+      if (mode.kind === 'ansehen' && viewOnly) {
+        const imgBtn = button('', 'primary icon', shareSnapshot);
+        imgBtn.innerHTML = ICON_SHARE;
+        imgBtn.setAttribute('aria-label', 'Bild teilen');
+        const bar = row([imgBtn, button('Zurück zu meiner Karte', 'add', leaveViewOnly)]);
+        bar.classList.add('mainBar');
+        panel.appendChild(bar);
+      } else if (mode.kind === 'ansehen') {
         if (menuOpen) {
           const menu = document.createElement('div');
           menu.className = 'menu';
@@ -901,7 +914,7 @@
           finishPanel(panel);
           return;
         }
-        const shareBtn = button('', 'primary icon', shareSnapshot);
+        const shareBtn = button('', 'primary icon', shareMenu);
         shareBtn.innerHTML = ICON_SHARE;
         shareBtn.setAttribute('aria-label', 'Ausschnitt teilen');
         const penBtn = button('✏️', 'icon pen', () => setMode({ kind: 'stift' }));
@@ -1249,6 +1262,117 @@
       document.getElementById('shareView').classList.remove('open');
     }
 
+    // ---------- Lage teilen (Link, in dem die ganze Zeichnung steckt) ----------
+    // Koordinaten als ganze Zahlen in 1/100000 Grad (~1 m), Linienpunkte als Abstände zum Vorgänger: hält den Link kurz
+    const toInt = (n) => Math.round(n * 1e5);
+    function encodeLage(editable) {
+      const c = map.getCenter();
+      const data = {
+        v: 1, e: editable ? 1 : 0, c: [toInt(c.lat), toInt(c.lng), map.getZoom()],
+        s: drawing.symbols.map((x) => [x.typeId, toInt(x.coordinate.latitude), toInt(x.coordinate.longitude), Math.round(x.rotation || 0), x.scale || 1, x.z || 17]),
+        l: drawing.lines.map((x) => {
+          const flat = [];
+          let pa = 0, po = 0;
+          x.points.forEach((p) => {
+            const a = toInt(p.latitude), o = toInt(p.longitude);
+            flat.push(a - pa, o - po);
+            pa = a; po = o;
+          });
+          return [x.typeId, flat, x.scale || 1, x.color || 0];
+        }),
+      };
+      const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return location.origin + location.pathname + '#lage=' + b64;
+    }
+    function decodeLage(b64) {
+      const data = JSON.parse(decodeURIComponent(escape(atob(b64.replace(/-/g, '+').replace(/_/g, '/')))));
+      if (!data || data.v !== 1 || !Array.isArray(data.s) || !Array.isArray(data.l)) throw new Error('lage');
+      const symbols = data.s.filter((x) => ITEM_TYPES.some((t) => t.id === x[0])).map((x) => {
+        const it = { id: newId(), typeId: x[0], coordinate: { latitude: x[1] / 1e5, longitude: x[2] / 1e5 }, z: x[5] };
+        if (x[3]) it.rotation = x[3];
+        if (x[4] !== 1) it.scale = x[4];
+        return it;
+      });
+      const lines = data.l.filter((x) => LINE_TYPES.some((t) => t.id === x[0])).map((x) => {
+        const points = [];
+        let a = 0, o = 0;
+        for (let i = 0; i + 1 < x[1].length; i += 2) {
+          a += x[1][i]; o += x[1][i + 1];
+          points.push({ latitude: a / 1e5, longitude: o / 1e5 });
+        }
+        const ln = { id: newId(), typeId: x[0], points };
+        if (x[2] !== 1) ln.scale = x[2];
+        if (x[3]) ln.color = x[3];
+        return ln;
+      });
+      return { editable: data.e === 1, center: [data.c[0] / 1e5, data.c[1] / 1e5], zoom: data.c[2], drawing: { symbols, lines } };
+    }
+
+    // Teilen-Knopf: zuerst Bild oder Lage
+    function shareMenu() {
+      dialog('Teilen', 'Was möchtest du teilen?', [
+        { label: '📷 Bild', onClick: shareSnapshot },
+        { label: '🔗 Lage teilen', primary: true, onClick: shareLage },
+      ], true);
+    }
+    function shareLage() {
+      if (!drawing.symbols.length && !drawing.lines.length) {
+        dialog('Noch nichts eingezeichnet', 'Zeichne zuerst etwas ein, dann kannst du die Lage teilen.', [{ label: 'OK', primary: true }]);
+        return;
+      }
+      dialog('Lage teilen', 'Was dürfen die anderen mit dem Link machen?', [
+        { label: '👁 Nur ansehen', onClick: () => sendLage(false) },
+        { label: '✏️ Mitarbeiten', primary: true, onClick: () => sendLage(true) },
+      ], true);
+    }
+    function sendLage(editable) {
+      const url = encodeLage(editable);
+      const text = editable ? 'Einsatzkarte: Lage zum Mitarbeiten' : 'Einsatzkarte: Lage zum Ansehen';
+      if (navigator.share) {
+        navigator.share({ title: 'Einsatzkarte', text, url }).catch(() => {});
+        return;
+      }
+      const done = () => dialog('Link kopiert', 'Der Link ist kopiert. Füge ihn in WhatsApp, Mail oder SMS ein.', [{ label: 'OK', primary: true }]);
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => window.prompt('Link kopieren:', url));
+      else window.prompt('Link kopieren:', url);
+    }
+
+    // Beim Öffnen: steckt eine geteilte Lage im Link?
+    function openLageLink() {
+      const m = location.hash.match(/^#lage=([A-Za-z0-9_-]+)$/);
+      if (!m) return;
+      history.replaceState(null, '', location.pathname + location.search);
+      let lage;
+      try { lage = decodeLage(m[1]); } catch (e) {
+        dialog('Link geht nicht', 'Diese geteilte Lage konnte nicht geöffnet werden. Vielleicht wurde der Link abgeschnitten.', [{ label: 'OK', primary: true }]);
+        return;
+      }
+      firstFix = false; // nicht gleich zum eigenen Standort springen
+      map.setView(lage.center, lage.zoom, { animate: false });
+      const take = () => {
+        drawing = lage.drawing;
+        save();
+        renderDrawing();
+        dialog('Lage übernommen', 'Du kannst jetzt weiterzeichnen. Deine Änderungen sehen die anderen nicht automatisch: teile die Lage wieder, um sie zu schicken.', [{ label: 'OK', primary: true }]);
+      };
+      if (!lage.editable) {
+        viewOnly = true;
+        drawing = lage.drawing;
+      } else if (drawing.symbols.length || drawing.lines.length) {
+        dialog('Geteilte Lage übernehmen?', 'Deine eigene Zeichnung auf diesem Gerät wird dabei ersetzt.', [
+          { label: 'Abbrechen' },
+          { label: 'Übernehmen', primary: true, onClick: take },
+        ]);
+      } else {
+        take();
+      }
+    }
+    function leaveViewOnly() {
+      viewOnly = false;
+      drawing = load();
+      setMode({ kind: 'ansehen' });
+    }
+
     // Beim Teilen wählen: so wie jetzt auf dem Bildschirm, oder so, dass alle Einträge drauf sind
     function shareSnapshot() {
       const pts = drawing.symbols.map((s) => s.coordinate)
@@ -1258,7 +1382,7 @@
       dialog('Was soll aufs Bild?', 'Wähle den Ausschnitt für das Bild.', [
         { label: 'Aktueller Ausschnitt', onClick: shareNow },
         { label: 'Alles zeigen', primary: true, onClick: () => shareAll(pts) },
-      ]);
+      ], true);
     }
 
     function shareAll(pts) {
@@ -1311,7 +1435,8 @@
     }
 
     // ---------- Dialog ----------
-    function dialog(title, text, buttons) {
+    // cancel: zusätzlich «Abbrechen» unten; auch ein Tipp neben das Fenster schliesst es
+    function dialog(title, text, buttons, cancel) {
       document.getElementById('dialogTitle').textContent = title;
       document.getElementById('dialogText').textContent = text;
       const box = document.getElementById('dialogButtons');
@@ -1323,6 +1448,8 @@
           if (b.onClick) b.onClick();
         }));
       });
+      if (cancel) box.appendChild(button('Abbrechen', 'cancel', () => el.classList.remove('open')));
+      el.onclick = (e) => { if (cancel && e.target === el) el.classList.remove('open'); };
       el.classList.add('open');
     }
 
@@ -1334,6 +1461,7 @@
 
     // ---------- Start ----------
     setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'karte'; } catch (e) { return 'karte'; } })());
+    openLageLink();
     renderDrawing();
     renderUI();
     window.addEventListener('resize', renderUI);
