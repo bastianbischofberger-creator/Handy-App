@@ -93,7 +93,8 @@
     .palItem .nr { position: absolute; top: 4px; left: 6px; width: 18px; height: 18px; border-radius: 9px; background: #D32F2F;
       color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
     .item { display: flex; align-items: center; justify-content: center; }
-    .item.sel { outline: 3px dashed #1565C0; outline-offset: 3px; border-radius: 8px; }
+    /* ausgewähltes Symbol leuchtet gelb */
+    .item.sel { filter: drop-shadow(0 0 3px #FFD600) drop-shadow(0 0 6px #FFD600) drop-shadow(0 0 10px #FFC400); }
     .signRot { display: flex; line-height: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
     .palPic { height: 42px; display: flex; align-items: center; justify-content: center; }
     .adjRow { display: flex; align-items: center; gap: 8px; }
@@ -542,8 +543,8 @@
       layeredLines().forEach(({ line, t, pts, holes }) => {
         const k = scaleOf(line);
         if (selectedId() === line.id) {
-          // ausgewählte Zone hellblau hinterlegen
-          const o = { color: '#1565C0', opacity: 0.35, weight: t.width * k + 14, fill: false, interactive: false, lineJoin: 'round' };
+          // ausgewählte Zone gelb leuchtend hinterlegen
+          const o = { color: '#FFD600', opacity: 0.55, weight: t.width * k + 14, fill: false, interactive: false, lineJoin: 'round' };
           (t.closed && pts.length >= 3 ? L.polygon(pts, o) : L.polyline(pts, o)).addTo(drawLayer);
         }
         const onTap = (e) => {
