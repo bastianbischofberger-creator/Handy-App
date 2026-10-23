@@ -116,6 +116,7 @@
     #shareView.open { display: flex; }
     #shareImg { flex: 1; min-height: 0; width: 100%; object-fit: contain; -webkit-touch-callout: default; }
     #shareNote { color: #fff; font-size: 14px; text-align: center; }
+    #shareImg.qr { image-rendering: pixelated; }
     #dialog { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.35); display: none;
       align-items: center; justify-content: center; padding: 24px; }
     #dialog.open { display: flex; }
@@ -184,6 +185,7 @@
 
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/leaflet-rotate/leaflet-rotate.js"></script>
+  <script src="vendor/qrcode-generator/qrcode.js"></script>
   <script>
   (function () {
     // ---------- Einstellungen ----------
@@ -254,7 +256,8 @@
       // Freihand mit dem Stift; Farbe pro Strich gespeichert
       { id: 'stift', name: 'Freihand', color: '#D32F2F', width: 4, closed: false, freehand: true, order: 5 },
     ];
-    const ZONE_TYPES = LINE_TYPES.filter((t) => !t.facade && !t.freehand);
+    // Rettungsachse gibt es nur bei den Absprachepunkten (Nr. 3), nicht unter «Zonen»
+    const ZONE_TYPES = LINE_TYPES.filter((t) => !t.facade && !t.freehand && !t.axis);
     const PEN_COLORS = [
       { c: '#D32F2F', n: 'Rot' }, { c: '#1565C0', n: 'Blau' }, { c: '#000000', n: 'Schwarz' }, { c: '#2E7D32', n: 'Grün' },
       { c: '#F57C00', n: 'Orange' }, { c: '#FFD600', n: 'Gelb' }, { c: '#7B1FA2', n: 'Violett' }, { c: '#FFFFFF', n: 'Weiss' },
@@ -274,7 +277,9 @@
       { id: 'fassade', name: 'Fassaden', mode: () => ({ kind: 'linie', typeId: 'fassade', points: [] }) },
       { id: 'stift', name: '✏️ Frei zeichnen', mode: () => ({ kind: 'stift' }) },
     ];
-    const rubricOf = (m) => (m.kind === 'linie' ? (m.typeId === 'fassade' ? 'fassade' : 'zone') : m.kind === 'signatur' ? m.group : m.kind);
+    const rubricOf = (m) => (m.kind === 'linie'
+      ? (m.typeId === 'fassade' ? 'fassade' : m.typeId === 'rettungsachse' ? 'symbol' : 'zone')
+      : m.kind === 'signatur' ? m.group : m.kind);
     // Signaturen und Fahrzeuge teilen sich die gleiche Technik (drehbar), aber getrennte Auswahl
     const groupOf = (t) => (t.vehicle ? 'fahrzeug' : 'signatur');
     const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
@@ -738,7 +743,8 @@
       }
       drawing.lines.push({ id: newId(), typeId: t.id, points: mode.points.map((p) => ({ latitude: p[0], longitude: p[1] })) });
       save();
-      setMode({ kind: 'linie', typeId: t.facade ? 'fassade' : null, points: [] });
+      // nach der Rettungsachse zurück zu den Absprachepunkten
+      setMode(t.axis ? { kind: 'symbol', typeId: null } : { kind: 'linie', typeId: t.facade ? 'fassade' : null, points: [] });
     }
 
     // ---------- Oberfläche ----------
@@ -796,7 +802,7 @@
         }
         return mode.points.length === 0
           ? 'Tippe Punkt für Punkt auf die Karte, um die ' + t.name + ' zu zeichnen.' + (t.axis ? ' Der Pfeil zeigt zum letzten Punkt.' : '')
-          : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «Zone fertig» drücken.';
+          : mode.points.length + ' Punkt(e) gesetzt. Weiter tippen oder «' + (t.axis ? 'Achse' : 'Zone') + ' fertig» drücken.';
       }
       // Empfänger einer geteilten Lage soll wissen, dass er nur schaut
       if (viewOnly) return 'Geteilte Lage: nur ansehen. Deine eigene Zeichnung bleibt unverändert.';
@@ -1039,12 +1045,16 @@
           legend.innerHTML = FACADE_COLORS.map((c, i) => '<div><i style="background:' + c + '"></i>' + (i + 1) + ' ' + FACADE_NAMES[i] + '</div>').join('');
           panel.appendChild(legend);
         }
-        if (mode.typeId !== 'fassade') for (let k = 0; k < ZONE_TYPES.length; k += 2) panel.appendChild(row(ZONE_TYPES.slice(k, k + 2).map(choice)));
+        const isAxis = mode.typeId === 'rettungsachse';
+        if (isAxis) panel.appendChild(row([choice(findLine('rettungsachse'))]));
+        else if (mode.typeId !== 'fassade') for (let k = 0; k < ZONE_TYPES.length; k += 2) panel.appendChild(row(ZONE_TYPES.slice(k, k + 2).map(choice)));
         panel.appendChild(row(locked
           ? [
               button('Punkt zurück', '', () => { mode.points.pop(); renderDraft(); renderUI(); }),
               button('Verwerfen', 'danger', () => { mode.points = []; renderDraft(); renderUI(); }),
-            ].concat(mode.typeId === 'fassade' ? [] : [button('Zone fertig', 'primary', finishLine)])
+            ].concat(mode.typeId === 'fassade' ? [] : [button(isAxis ? 'Achse fertig' : 'Zone fertig', 'primary', finishLine)])
+          : isAxis
+          ? [button('Zurück', '', () => setMode({ kind: 'symbol', typeId: null })), button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]
           : [button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }))]));
       }
 
@@ -1289,11 +1299,32 @@
 
     function closeShare() {
       document.getElementById('shareView').classList.remove('open');
+      document.getElementById('shareImg').classList.remove('qr');
     }
 
     // ---------- Lage teilen (Link, in dem die ganze Zeichnung steckt) ----------
     // Koordinaten als ganze Zahlen in 1/100000 Grad (~1 m), Linienpunkte als Abstände zum Vorgänger: hält den Link kurz
     const toInt = (n) => Math.round(n * 1e5);
+    // Freihand-Striche für den Link vereinfachen (Punkte weglassen, die weniger als ~2 m von der Linie abweichen):
+    // macht Link und QR-Code viel kürzer, ohne dass man es sieht
+    function simplify(pts, tol) {
+      if (pts.length < 3) return pts;
+      const keep = new Array(pts.length).fill(false);
+      keep[0] = keep[pts.length - 1] = true;
+      const stack = [[0, pts.length - 1]];
+      while (stack.length) {
+        const [i, j] = stack.pop();
+        const [ax, ay] = pts[i], [bx, by] = pts[j];
+        const len = Math.hypot(bx - ax, by - ay) || 1;
+        let best = -1, dmax = tol;
+        for (let k = i + 1; k < j; k++) {
+          const d = Math.abs((bx - ax) * (ay - pts[k][1]) - (ax - pts[k][0]) * (by - ay)) / len;
+          if (d > dmax) { dmax = d; best = k; }
+        }
+        if (best >= 0) { keep[best] = true; stack.push([i, best], [best, j]); }
+      }
+      return pts.filter((_, k) => keep[k]);
+    }
     function encodeLage(editable) {
       const c = map.getCenter();
       const data = {
@@ -1302,8 +1333,9 @@
         l: drawing.lines.map((x) => {
           const flat = [];
           let pa = 0, po = 0;
-          x.points.forEach((p) => {
-            const a = toInt(p.latitude), o = toInt(p.longitude);
+          let pts = x.points.map((p) => [toInt(p.latitude), toInt(p.longitude)]);
+          if (findLine(x.typeId).freehand) pts = simplify(pts, 2);
+          pts.forEach(([a, o]) => {
             flat.push(a - pa, o - po);
             pa = a; po = o;
           });
@@ -1443,9 +1475,52 @@
         return;
       }
       dialog('Lage teilen', '👁 Nur ansehen: Der Empfänger sieht die Lagekarte, kann aber nichts verändern.\n\n✏️ Bearbeiten: Der Empfänger kann die Lagekarte nur für sich verändern. Du siehst seine Änderungen nicht.', [
-        { label: '👁 Nur ansehen', onClick: () => sendLage(false) },
-        { label: '✏️ Bearbeiten', primary: true, onClick: () => sendLage(true) },
+        { label: '👁 Nur ansehen', onClick: () => howToSend(false) },
+        { label: '✏️ Bearbeiten', primary: true, onClick: () => howToSend(true) },
       ], true);
+    }
+    // Link verschicken oder als QR-Code zeigen (zum Abscannen mit einem anderen Handy)
+    function howToSend(editable) {
+      dialog(editable ? 'Lage zum Bearbeiten' : 'Lage zum Ansehen', 'Wie möchtest du die Lage weitergeben?', [
+        { label: '🔗 Link senden', onClick: () => sendLage(editable) },
+        { label: '▦ QR-Code zeigen', primary: true, onClick: () => showQr(editable) },
+      ], true);
+    }
+    function showQr(editable) {
+      const url = encodeLage(editable);
+      let qr;
+      try {
+        // längere Links ergeben so feine Codes, dass Handy-Kameras sie kaum noch lesen (getestet: bis ~1100 Zeichen gut)
+        if (url.length > 1500) throw new Error('zu gross');
+        qr = qrcode(0, 'L');
+        qr.addData(url, 'Byte');
+        qr.make();
+      } catch (e) {
+        dialog('Zu gross für einen QR-Code', 'In dieser Lage ist so viel eingezeichnet, dass sie nicht in einen QR-Code passt. Schicke stattdessen den Link.', [
+          { label: '🔗 Link senden', primary: true, onClick: () => sendLage(editable) },
+        ], true);
+        return;
+      }
+      // scharfe Pixel: jedes Kästchen gleich viele Bildpunkte, mit weissem Rand rundherum
+      const n = qr.getModuleCount(), quiet = 4, cell = Math.max(4, Math.floor(1200 / (n + 2 * quiet)));
+      const size = (n + 2 * quiet) * cell;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000';
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
+      const img = document.getElementById('shareImg');
+      img.src = canvas.toDataURL('image/png');
+      img.classList.add('qr');
+      document.getElementById('shareNote').textContent = (editable ? '✏️ Bearbeiten' : '👁 Nur ansehen') + ': Mit der Handy-Kamera scannen.'
+        + (url.length > 700 ? ' Der Code ist sehr fein: Kamera nah und ruhig halten. Klappt es nicht, schicke den Link.' : '');
+      const btns = document.getElementById('shareButtons');
+      btns.innerHTML = '';
+      btns.appendChild(button('Schliessen', '', closeShare));
+      btns.appendChild(button('🔗 Link senden', 'primary', () => sendLage(editable)));
+      document.getElementById('shareView').classList.add('open');
     }
     function sendLage(editable) {
       const url = encodeLage(editable);
