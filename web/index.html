@@ -191,12 +191,10 @@
   (function () {
     // ---------- Einstellungen ----------
     const BASE_MAPS = {
-      karte: { label: 'Karte', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg' },
-      // graue Landeskarte: farbige Symbole und Zonen fallen darauf am stärksten auf
-      grau: { label: 'Grau', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-grau/default/current/3857/{z}/{x}/{y}.jpeg' },
-      luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg' },
       // Vektorkarte: aus Linien statt Bildern, darum bei jeder Zoomstufe scharf (auch im geteilten Bild)
       vektor: { label: 'Vektor', style: 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.basemap.vt/style.json' },
+      // SWISSIMAGE gibt es bis Zoomstufe 20 (ca. 15 cm pro Bildpunkt); bisher wurde ab 18 nur vergrössert
+      luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg', nativeMax: 20 },
     };
     // Die 6 Absprachepunkte nach FKS (Feuerwehr Koordination Schweiz)
     const FKS_BLUE = '#2F6DB5';
@@ -295,7 +293,7 @@
     // ---------- Zustand ----------
     let drawing = load();
     let mode = { kind: 'ansehen' };
-    let baseKey = 'karte';
+    let baseKey = 'vektor';
     let menuOpen = false;
     let viewOnly = false; // geteilte Lage «Nur ansehen»: nichts ändern, nichts speichern
 
@@ -369,6 +367,7 @@
     let tileLayer = null;
     // Kacheln mit CORS laden, damit sie ins geteilte Bild dürfen. Klappt das nicht, ohne CORS weiter.
     let useCors = true;
+    let detailFailed = false;
     const BASE_KEY = 'einsatzkarte.basiskarte';
     function setBase(key) {
       baseKey = key;
@@ -377,11 +376,18 @@
       if (BASE_MAPS[key].style) { showVector(BASE_MAPS[key].style); return; }
       hideVector();
       let loadedAny = false;
-      const opts = { maxNativeZoom: 18, maxZoom: 20 };
+      const opts = { maxNativeZoom: (!detailFailed && BASE_MAPS[key].nativeMax) || 18, maxZoom: 20 };
       if (useCors) opts.crossOrigin = 'anonymous';
-      tileLayer = L.tileLayer(BASE_MAPS[key].url, opts).addTo(map);
-      tileLayer.on('tileload', () => { loadedAny = true; });
-      tileLayer.on('tileerror', () => {
+      const layer = tileLayer = L.tileLayer(BASE_MAPS[key].url, opts).addTo(map);
+      layer.on('tileload', () => { loadedAny = true; });
+      layer.on('tileerror', (e) => {
+        // gibt es die feinste Stufe doch nicht: wieder ab 18 vergrössern
+        if (e.coords && e.coords.z > 18 && layer.options.maxNativeZoom > 18) {
+          detailFailed = true;
+          layer.options.maxNativeZoom = 18;
+          layer.redraw();
+          return;
+        }
         if (useCors && !loadedAny) { useCors = false; setBase(baseKey); }
       });
     }
@@ -410,8 +416,8 @@
     function vectorFailed() {
       if (baseKey !== 'vektor') return;
       clearTimeout(glTimer);
-      setBase('karte');
-      dialog('Vektorkarte geht nicht', 'Die Vektorkarte konnte nicht geladen werden. Es wird wieder die normale Karte gezeigt.', [{ label: 'OK', primary: true }]);
+      setBase('luftbild');
+      dialog('Vektorkarte geht nicht', 'Die Vektorkarte konnte nicht geladen werden. Es wird das Luftbild gezeigt.', [{ label: 'OK', primary: true }]);
     }
     function showVector(styleUrl) {
       loadMapLibre().then(() => {
@@ -1745,7 +1751,7 @@
     }, { passive: false });
 
     // ---------- Start ----------
-    setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'karte'; } catch (e) { return 'karte'; } })());
+    setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'vektor'; } catch (e) { return 'vektor'; } })());
     openLageLink();
     renderDrawing();
     renderUI();
