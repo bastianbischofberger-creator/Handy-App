@@ -1,4 +1,4 @@
-# Einsatzkarte
+# Lagekarte
 
 Eine iPhone-App mit der swisstopo-Landeskarte. Die Karte springt beim Öffnen auf deinen Standort.
 Du kannst Symbole (z. B. Absprachepunkte) setzen und Linien zeichnen: Rettungsachse, Sperrzone und Verkehrsumleitzone.
