@@ -581,9 +581,11 @@
       for (let i = 1; i < pts.length; i++) {
         const a = pts[i - 1], b = pts[i];
         const len = Math.hypot(b.x - a.x, b.y - a.y);
-        while (next <= walked + len - 20 * k) {
-          const f = (next - walked) / len;
-          marks.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+        while (next <= walked + len - 30 * k) {
+          const f = (next - walked) / len, g = f + (22 * k) / len;
+          // hinter jedem «R» ein kleiner Richtungspfeil
+          marks.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f,
+            ax: a.x + (b.x - a.x) * g, ay: a.y + (b.y - a.y) * g, angle: Math.atan2(b.y - a.y, b.x - a.x) });
           next += step;
         }
         walked += len;
@@ -603,6 +605,11 @@
         L.marker(map.containerPointToLatLng([m.x, m.y]), {
           icon: L.divIcon({ className: 'symbolIcon', html: '<div class="rLabel" style="width:' + rw + 'px;height:' + rh + 'px;font-size:' + Math.round(15 * k) + 'px">R</div>', iconSize: [rw, rh], iconAnchor: [rw / 2, rh / 2] }),
           interactive: false, keyboard: false,
+        }).addTo(layer);
+        const ss = Math.round(20 * k);
+        L.marker(map.containerPointToLatLng([m.ax, m.ay]), {
+          icon: L.divIcon({ className: 'symbolIcon', html: '<div style="transform:rotate(' + (m.angle - (bearingDeg() * Math.PI) / 180) + 'rad)">' + arrowSvg(t.color, ss) + '</div>', iconSize: [ss, ss], iconAnchor: [ss / 2, ss / 2] }),
+          interactive: false, keyboard: false, rotateWithView: true,
         }).addTo(layer);
       });
       L.marker(map.containerPointToLatLng([arrow.x, arrow.y]), {
@@ -1388,6 +1395,18 @@
             ctx.fillRect(m.x - 7 * k, m.y - 9 * k, 14 * k, 18 * k);
             ctx.fillStyle = t.color;
             ctx.fillText('R', m.x, m.y + k);
+            ctx.save();
+            ctx.translate(m.ax, m.ay);
+            ctx.rotate(m.angle);
+            ctx.scale(k * 0.9, k * 0.9);
+            ctx.beginPath();
+            ctx.moveTo(9, 0); ctx.lineTo(-9, -8); ctx.lineTo(-9, 8); ctx.closePath();
+            ctx.fillStyle = t.color;
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+            ctx.restore();
           });
           ctx.save();
           ctx.translate(arrow.x, arrow.y);
@@ -1507,11 +1526,13 @@
       const stamp = pad(now.getDate()) + '.' + pad(now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
       if (label) {
         // gelber Ring um den Absprachepunkt in der Bildmitte
-        ctx.save();
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = 'rgba(255,214,0,.9)';
-        ctx.beginPath(); ctx.arc(w / 2, h / 2, label.ring || 46, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
+        if (label.ring) {
+          ctx.save();
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = 'rgba(255,214,0,.9)';
+          ctx.beginPath(); ctx.arc(w / 2, h / 2, label.ring, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+        }
         ctx.fillStyle = '#D32F2F';
         ctx.fillRect(0, h, 6, footer);
         ctx.fillStyle = '#111';
@@ -1905,33 +1926,50 @@
 
     // Übersicht plus ein Nahbild pro gesetztem Absprachepunkt (mit Adresse), alles auf einmal teilen
     function sharePoints() {
-      const points = drawing.symbols
+      // gesetzte Absprachepunkte und Rettungsachsen (Nr. 3, eine Linie), nach Nummer
+      const axisNr = SYMBOL_TYPES.find((t) => t.zone === 'rettungsachse');
+      const items = drawing.symbols
         .filter((s) => PLACEABLE.some((t) => t.id === s.typeId))
-        .sort((a, b) => findSymbol(a.typeId).nr - findSymbol(b.typeId).nr);
-      if (!points.length) {
+        .map((s) => ({ t: findSymbol(s.typeId), s, at: s.coordinate }))
+        .concat(drawing.lines.filter((l) => findLine(l.typeId).axis && l.points.length >= 2)
+          .map((l) => ({ t: axisNr, line: l, at: l.points[0], end: l.points[l.points.length - 1] })))
+        .sort((a, b) => a.t.nr - b.t.nr);
+      if (!items.length) {
         dialog('Keine Absprachepunkte', 'Setze zuerst Absprachepunkte (＋ › Absprachepunkte), dann kannst du sie hier einzeln verschicken.', [{ label: 'OK', primary: true }]);
         return;
       }
       dialog('Bilder werden erstellt …', 'Einen Moment, die Karte springt kurz zu jedem Absprachepunkt.', []);
       const keep = { center: map.getCenter(), zoom: map.getZoom() };
       const shots = [];
-      const addresses = Promise.all(points.map((s) => addressAt(s.coordinate.latitude, s.coordinate.longitude)));
+      const near = (c) => addressAt(c.latitude, c.longitude);
+      // Rettungsachse: Adresse am Anfang und am Ende
+      const addresses = Promise.all(items.map((it) => (it.line ? Promise.all([near(it.at), near(it.end)]) : near(it.at))));
       const finish = (addr) => {
         map.setView(keep.center, keep.zoom, { animate: false });
         document.getElementById('dialog').classList.remove('open');
-        showShots(shots, points, addr);
+        showShots(shots, items, addr);
       };
       addresses.then((addr) => {
         moveAndWait(() => fitAll(allPoints()), () => {
           shots.push(snapshotCanvas());
           let i = 0;
           const next = () => {
-            if (i >= points.length) { finish(addr); return; }
-            const s = points[i], t = findSymbol(s.typeId), n = i;
+            if (i >= items.length) { finish(addr); return; }
+            const it = items[i], a = addr[i];
             i++;
-            moveAndWait(() => map.setView([s.coordinate.latitude, s.coordinate.longitude], 18, { animate: false }), () => {
-              const lines = [addr[n] || 'Keine Adresse gefunden', s.coordinate.latitude.toFixed(5) + ', ' + s.coordinate.longitude.toFixed(5)];
-              shots.push(snapshotCanvas({ title: t.nr + ' ' + t.name, lines, ring: 46 * viewK(t, s) * 0.72 + 8 }));
+            const title = it.t.nr + ' ' + it.t.name;
+            if (it.line) {
+              const pts = it.line.points.map((p) => [p.latitude, p.longitude]);
+              moveAndWait(() => map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 18, animate: false }), () => {
+                shots.push(snapshotCanvas({ title, lines: ['Von: ' + (a[0] || 'keine Adresse gefunden'), 'Bis: ' + (a[1] || 'keine Adresse gefunden')] }));
+                next();
+              });
+              return;
+            }
+            const c = it.at;
+            moveAndWait(() => map.setView([c.latitude, c.longitude], 18, { animate: false }), () => {
+              const lines = [a || 'Keine Adresse gefunden', c.latitude.toFixed(5) + ', ' + c.longitude.toFixed(5)];
+              shots.push(snapshotCanvas({ title, lines, ring: 46 * viewK(it.t, it.s) * 0.72 + 8 }));
               next();
             });
           };
@@ -1939,13 +1977,14 @@
         });
       });
     }
-    function showShots(shots, points, addr) {
+    function showShots(shots, items, addr) {
       let files = [], urls = [];
+      const titleOf = (i) => (i === 0 ? 'Übersicht' : items[i - 1].t.nr + ' ' + items[i - 1].t.name);
       try {
         shots.forEach((sh, i) => {
           const url = sh.canvas.toDataURL('image/png');
           urls.push(url);
-          const name = i === 0 ? 'Uebersicht' : findSymbol(points[i - 1].typeId).nr + '-' + findSymbol(points[i - 1].typeId).name.replace(/[^A-Za-z0-9äöüÄÖÜ]+/g, '-');
+          const name = i === 0 ? 'Uebersicht' : titleOf(i).replace(/[^A-Za-z0-9äöüÄÖÜ]+/g, '-');
           files.push(fileFromDataUrl(url, 'Einsatzkarte-' + name + '.png'));
         });
       } catch (e) {
@@ -1954,9 +1993,11 @@
       }
       files = files.filter(Boolean);
       const stamp = shots[0].stamp;
-      const text = 'Einsatzkarte ' + stamp + '\n' + points.map((s, i) => {
-        const t = findSymbol(s.typeId), c = s.coordinate;
-        return t.nr + ' ' + t.name + ': ' + (addr[i] ? addr[i] + ' ' : '') + 'https://maps.apple.com/?ll=' + c.latitude.toFixed(6) + ',' + c.longitude.toFixed(6) + '&q=' + encodeURIComponent(t.name);
+      const link = (c, q) => 'https://maps.apple.com/?ll=' + c.latitude.toFixed(6) + ',' + c.longitude.toFixed(6) + '&q=' + encodeURIComponent(q);
+      const text = 'Einsatzkarte ' + stamp + '\n' + items.map((it, i) => {
+        const a = addr[i], title = it.t.nr + ' ' + it.t.name;
+        if (it.line) return title + ': von ' + (a[0] || '?') + ' bis ' + (a[1] || '?') + ' ' + link(it.at, it.t.name);
+        return title + ': ' + (a ? a + ' ' : '') + link(it.at, it.t.name);
       }).join('\n');
       const canShare = files.length === shots.length && navigator.canShare && navigator.canShare({ files });
       // Vorschau: Bilder durchblättern
@@ -1965,8 +2006,7 @@
       const note = document.getElementById('shareNote');
       const show = () => {
         img.src = urls[at];
-        note.textContent = (at === 0 ? 'Übersicht' : findSymbol(points[at - 1].typeId).nr + ' ' + findSymbol(points[at - 1].typeId).name)
-          + ' · Bild ' + (at + 1) + ' von ' + urls.length
+        note.textContent = titleOf(at) + ' · Bild ' + (at + 1) + ' von ' + urls.length
           + (canShare ? '' : ' · Bild gedrückt halten zum Sichern');
       };
       const btns = document.getElementById('shareButtons');
