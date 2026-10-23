@@ -244,7 +244,9 @@
       { id: 'sig_ms', name: 'Motorspritze', sign: true, w: 36, h: 36,
         svg: '<rect x="1.5" y="1.5" width="33" height="33" fill="#fff" stroke="' + SIGN_BLUE + '" stroke-width="3"/><text x="18" y="23.5" font-size="15" ' + FONT + ' fill="' + SIGN_TEXT + '">MS</text>' },
     ];
-    const ITEM_TYPES = PLACEABLE.concat(SIGN_TYPES);
+    // Freier Text: Grösse und Bild hängen vom Text ab (siehe typeOf)
+    const TEXT_TYPE = { id: 'text', name: 'Text', sign: true, text: true, w: 40, h: 28, svg: '' };
+    const ITEM_TYPES = PLACEABLE.concat(SIGN_TYPES, [TEXT_TYPE]);
     // Zonen wie im FKS-Schema: Gefahrenzone rot, Sperrzone gelb (beide mit rot-weisser Absperrung),
     // Verkehrsumleitzone nur als Umriss. «order» bestimmt, was oben liegt.
     const LINE_TYPES = [
@@ -264,6 +266,9 @@
       { c: '#F57C00', n: 'Orange' }, { c: '#FFD600', n: 'Gelb' }, { c: '#7B1FA2', n: 'Violett' }, { c: '#FFFFFF', n: 'Weiss' },
     ];
     const PEN_KEY = 'einsatzkarte.stiftfarbe';
+    const TEXT_COLOR_KEY = 'einsatzkarte.textfarbe';
+    let textColor = (() => { try { return localStorage.getItem(TEXT_COLOR_KEY) || '#000000'; } catch (e) { return '#000000'; } })();
+    const isPenColor = (c) => PEN_COLORS.some((pc) => pc.c === c);
     let penColor = (() => { try { return localStorage.getItem(PEN_KEY) || PEN_COLORS[0].c; } catch (e) { return PEN_COLORS[0].c; } })();
     // helle Farben bekommen einen dunklen Rand, damit man sie sieht
     const needsCasing = (c) => c === '#FFFFFF' || c === '#FFD600';
@@ -276,17 +281,33 @@
       { id: 'fahrzeug', name: 'Fahrzeuge', mode: () => ({ kind: 'signatur', group: 'fahrzeug', typeId: null, selId: null }) },
       { id: 'zone', name: 'Zonen', mode: () => ({ kind: 'linie', typeId: null, points: [] }) },
       { id: 'fassade', name: 'Fassaden', mode: () => ({ kind: 'linie', typeId: 'fassade', points: [] }) },
+      { id: 'text', name: '🔤 Text', mode: () => ({ kind: 'text', armed: true, selId: null }) },
       { id: 'stift', name: '✏️ Frei zeichnen', mode: () => ({ kind: 'stift' }) },
     ];
     const rubricOf = (m) => (m.kind === 'linie'
       ? (m.typeId === 'fassade' ? 'fassade' : m.typeId === 'rettungsachse' ? 'symbol' : 'zone')
       : m.kind === 'signatur' ? m.group : m.kind);
     // Signaturen und Fahrzeuge teilen sich die gleiche Technik (drehbar), aber getrennte Auswahl
-    const groupOf = (t) => (t.vehicle ? 'fahrzeug' : 'signatur');
+    const groupOf = (t) => (t.text ? 'text' : t.vehicle ? 'fahrzeug' : 'signatur');
     const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
 
     const findSymbol = (id) => ITEM_TYPES.find((s) => s.id === id) || PLACEABLE[0];
     const findLine = (id) => LINE_TYPES.find((l) => l.id === id) || LINE_TYPES[0];
+    // Text ohne Hintergrund; ein feiner Rand (weiss, bei hellen Farben schwarz) macht ihn auf jeder Karte lesbar
+    const TEXT_FONT = 'Arial, Helvetica, sans-serif';
+    let measureCtx = null;
+    function textType(s) {
+      const text = s.text || '', color = s.color || '#000000';
+      if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
+      measureCtx.font = '800 20px ' + TEXT_FONT;
+      const w = Math.max(20, Math.ceil(measureCtx.measureText(text).width) + 10), h = 28;
+      const halo = needsCasing(color) ? '#000' : '#fff';
+      const t = '<text x="' + w / 2 + '" y="21" font-size="20" font-family="' + TEXT_FONT + '" font-weight="800" text-anchor="middle"';
+      return Object.assign({}, TEXT_TYPE, { w, h, color,
+        svg: t + ' fill="none" stroke="' + halo + '" stroke-width="4" stroke-linejoin="round">' + esc(text) + '</text>'
+          + t + ' fill="' + color + '">' + esc(text) + '</text>' });
+    }
+    const typeOf = (s) => (s.typeId === 'text' ? textType(s) : findSymbol(s.typeId));
     const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -507,7 +528,8 @@
     // Symbole wachsen und schrumpfen mit der Karte: Grösse gilt für die Zoomstufe beim Setzen (z)
     const REF_ZOOM = 17;
     function viewK(t, s) {
-      const base = t.sign ? Math.max(t.w, t.h) : 46;
+      // Text: die Schrifthöhe zählt, nicht die Länge
+      const base = t.text ? t.h * 2 : t.sign ? Math.max(t.w, t.h) : 46;
       let k = scaleOf(s) * Math.pow(2, map.getZoom() - (s.z != null ? s.z : REF_ZOOM));
       // nie ganz verschwinden und nicht riesig werden
       k = Math.max(16 / base, Math.min(240 / base, k));
@@ -530,6 +552,18 @@
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t.sign ? svgDoc(t, t.w * 4, t.h * 4) : svgDoc(t, 160));
       symbolImg[t.id] = img;
     });
+    // Bilder für Texte, nach Inhalt zwischengespeichert
+    const textImg = {};
+    function imgFor(t) {
+      if (!t.text) return symbolImg[t.id];
+      const src = svgDoc(t, t.w * 4, t.h * 4);
+      if (!textImg[src]) {
+        const img = new Image();
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+        textImg[src] = img;
+      }
+      return textImg[src];
+    }
 
     // Rettungsachse: Positionen für die «R» entlang der Linie und den Pfeil am Ende (in Bildschirmpunkten)
     function axisMarks(pts, k) {
@@ -620,12 +654,13 @@
 
     // Gesetzte Einträge, damit Drehen und Grösse ohne Neuzeichnen der ganzen Karte gehen
     let markers = {};
-    const selectedId = () => (mode.kind === 'edit' || mode.kind === 'signatur' ? mode.selId : null);
+    const selectedId = () => (mode.kind === 'edit' || mode.kind === 'signatur' || mode.kind === 'text' ? mode.selId : null);
     const findItem = (id) => drawing.symbols.find((x) => x.id === id);
     const findZone = (id) => drawing.lines.find((x) => x.id === id);
 
     function iconFor(s) {
-      const t = findSymbol(s.typeId), box = itemBox(t, s);
+      const t = typeOf(s), box = itemBox(t, s);
+      if (t.text) imgFor(t);
       return L.divIcon({ className: 'symbolIcon', html: itemHtml(t, s, selectedId() === s.id), iconSize: [box, box], iconAnchor: [box / 2, box / 2] });
     }
     function refreshItem(s) {
@@ -683,7 +718,7 @@
         if (t.axis) addAxisDecor(drawLayer, line.points.map((p) => L.latLng(p.latitude, p.longitude)), t, k);
       });
       drawing.symbols.forEach((s) => {
-        const t = findSymbol(s.typeId);
+        const t = typeOf(s);
         const m = L.marker([s.coordinate.latitude, s.coordinate.longitude], { icon: iconFor(s), draggable: mode.kind !== 'stift' && !viewOnly, autoPan: true, zIndexOffset: t.sign ? 0 : 100, rotateWithView: !!t.sign });
         m.on('dragend', () => {
           const ll = m.getLatLng();
@@ -692,9 +727,10 @@
         });
         m.on('click', () => {
           if (mode.kind === 'signatur' && t.sign && groupOf(t) === mode.group) { mode.selId = s.id; renderDrawing(); renderUI(); }
+          else if (mode.kind === 'text' && t.text) { mode.selId = s.id; mode.armed = false; renderDrawing(); renderUI(); }
           else if (mode.kind === 'ansehen' || mode.kind === 'edit') setMode({ kind: 'edit', ref: 'symbol', selId: s.id });
           // beim Zeichnen zählt ein Tipp auf einen Eintrag wie ein Tipp auf die Karte
-          else if (mode.kind === 'linie' || mode.kind === 'symbol') onMapClick({ latlng: m.getLatLng() });
+          else if (mode.kind === 'linie' || mode.kind === 'symbol' || mode.kind === 'text') onMapClick({ latlng: m.getLatLng() });
         });
         m.addTo(drawLayer);
         markers[s.id] = m;
@@ -753,6 +789,23 @@
         mode.selId = s.id;
         mode.typeId = null;
         save();
+        renderDrawing();
+        renderUI();
+      } else if (mode.kind === 'text' && mode.armed) {
+        const ll0 = ll;
+        askText('', (text) => {
+          const last = findItem(mode.selId);
+          const s = { id: newId(), typeId: 'text', text, color: textColor, coordinate: { latitude: ll0.lat, longitude: ll0.lng }, rotation: 0, scale: last ? scaleOf(last) : 1, z: map.getZoom() };
+          drawing.symbols.push(s);
+          // nur einmal setzen; für einen weiteren Text «Neuer Text» tippen
+          mode.selId = s.id;
+          mode.armed = false;
+          save();
+          renderDrawing();
+          renderUI();
+        });
+      } else if (mode.kind === 'text' && mode.selId) {
+        mode.selId = null;
         renderDrawing();
         renderUI();
       } else if (mode.kind === 'linie' && mode.typeId) {
@@ -855,6 +908,10 @@
 
     // Grauer Hinweis nur beim Einfügen (Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden, Stift)
     function hintText() {
+      if (mode.kind === 'text') {
+        if (mode.armed) return 'Tippe auf die Karte, wo der Text hin soll.';
+        return mode.selId && findItem(mode.selId) ? 'Unten Farbe, Drehen und Grösse anpassen.' : 'Text antippen zum Ändern, oder «Neuer Text».';
+      }
       if (mode.kind === 'stift') return 'Mit dem Finger zeichnen. Die Karte ist fest; zum Verschieben «Fertig» tippen.';
       if (mode.kind === 'symbol') {
         return mode.typeId ? 'Tippe auf die Karte, um «' + findSymbol(mode.typeId).name + '» zu setzen.' : 'Wähle unten einen Absprachepunkt aus.';
@@ -903,11 +960,64 @@
       return r;
     }
 
+    // Fenster zum Eingeben (oder Ändern) eines Textes
+    function askText(old, done) {
+      const ok = () => {
+        const text = input.value.replace(/\s+/g, ' ').trim().slice(0, 80);
+        if (text) done(text);
+      };
+      dialog('🔤 Text', '', [{ label: 'OK', primary: true, onClick: ok }], true);
+      const extra = document.getElementById('dialogExtra');
+      const input = document.createElement('input');
+      input.className = 'searchInput';
+      input.type = 'text';
+      input.maxLength = 80;
+      input.placeholder = 'z. B. Hydrant, Eingang Nord';
+      input.setAttribute('enterkeyhint', 'done');
+      input.autocomplete = 'off';
+      input.value = old;
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dialog').classList.remove('open'); ok(); }
+      };
+      extra.appendChild(input);
+      input.focus();
+    }
+    // Farbe und «Text ändern» für einen gesetzten Text
+    function textControls(item) {
+      const out = [];
+      const colors = document.createElement('div');
+      colors.className = 'colors';
+      const cur = item ? item.color || '#000000' : textColor;
+      PEN_COLORS.forEach((pc) => {
+        const b = document.createElement('button');
+        b.style.background = pc.c;
+        b.setAttribute('aria-label', pc.n);
+        if (pc.c === cur) b.className = 'active';
+        b.onclick = () => {
+          textColor = pc.c;
+          try { localStorage.setItem(TEXT_COLOR_KEY, textColor); } catch (e) {}
+          if (item) { item.color = pc.c; save(); refreshItem(item); }
+          renderUI();
+        };
+        colors.appendChild(b);
+      });
+      out.push(colors);
+      if (item) out.push(row([button('✏️ Text ändern', '', () => askText(item.text, (text) => { item.text = text; save(); renderDrawing(); renderUI(); }))]));
+      return out;
+    }
+
     // Regler zum Drehen (nur Signaturen) und Knöpfe für die Grösse
     function adjustControls(item, isLine) {
       const t = isLine ? findLine(item.typeId) : findSymbol(item.typeId);
       const redraw = () => (isLine ? renderDrawing() : refreshItem(item));
       const out = [];
+      // Grösse von jetzt aus rechnen: weit weg gesetzte Symbole sind beim Hineinzoomen am Rand
+      // der Grenze gross, dort hätte Verkleinern sonst kaum gewirkt
+      if (!isLine && item.z !== map.getZoom()) {
+        item.scale = Math.max(0.2, Math.min(4, Math.round(viewK(typeOf(item), item) * 20) / 20));
+        item.z = map.getZoom();
+        save();
+      }
       if (!isLine && t.sign) {
         // Regler startet in der Mitte (0°); von dort bis 360° nach links oder rechts
         const r = document.createElement('div');
@@ -934,12 +1044,12 @@
       }
       const r = document.createElement('div');
       r.className = 'adjRow';
-      r.innerHTML = '<span class="adjLabel">Grösse</span><button class="mini">−</button><input type="range" min="50" max="300" step="5" /><button class="mini">+</button><span class="adjVal"></span>';
+      r.innerHTML = '<span class="adjLabel">Grösse</span><button class="mini">−</button><input type="range" min="20" max="400" step="5" /><button class="mini">+</button><span class="adjVal"></span>';
       const [minus, plus] = r.querySelectorAll('button');
       const slider = r.querySelector('input');
       const val = r.querySelector('.adjVal');
       const setPct = (pct) => {
-        pct = Math.max(50, Math.min(300, Math.round(pct / 5) * 5));
+        pct = Math.max(20, Math.min(400, Math.round(pct / 5) * 5));
         item.scale = pct / 100;
         slider.value = pct;
         val.textContent = pct + ' %';
@@ -962,7 +1072,8 @@
           if (isLine) drawing.lines = drawing.lines.filter((l) => l.id !== item.id);
           else drawing.symbols = drawing.symbols.filter((x) => x.id !== item.id);
           save();
-          setMode(mode.kind === 'signatur' ? { kind: 'signatur', group: mode.group, typeId: mode.typeId, selId: null } : { kind: 'ansehen' });
+          setMode(mode.kind === 'signatur' ? { kind: 'signatur', group: mode.group, typeId: mode.typeId, selId: null }
+            : mode.kind === 'text' ? { kind: 'text', armed: false, selId: null } : { kind: 'ansehen' });
         } },
       ]);
     }
@@ -973,7 +1084,7 @@
       panel.innerHTML = '';
 
       // Auswahlfeld oben: zwischen den Rubriken wechseln
-      if (mode.kind === 'symbol' || mode.kind === 'signatur' || mode.kind === 'linie' || mode.kind === 'stift') {
+      if (mode.kind === 'symbol' || mode.kind === 'signatur' || mode.kind === 'linie' || mode.kind === 'stift' || mode.kind === 'text') {
         const sel = document.createElement('select');
         sel.className = 'rubric';
         sel.innerHTML = RUBRICS.map((r) => '<option value="' + r.id + '">' + esc(r.name) + ' ▾</option>').join('');
@@ -1009,7 +1120,7 @@
         plusBtn.setAttribute('aria-label', 'Einfügen');
         const clearBtn = button('', 'danger icon', () => {
           if (!drawing.symbols.length && !drawing.lines.length && !drawing.pin) return;
-          dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden, Zeichnungen und die Adress-Nadel werden entfernt.', [
+          dialog('Alles löschen?', 'Alle Absprachepunkte, Signaturen, Fahrzeuge, Zonen, Fassaden, Texte, Zeichnungen und die Adress-Nadel werden entfernt.', [
             { label: 'Abbrechen' },
             { label: 'Alles löschen', danger: true, onClick: () => { drawing = { symbols: [], lines: [] }; save(); renderDrawing(); } },
           ]);
@@ -1058,6 +1169,15 @@
         if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
       }
 
+      if (mode.kind === 'text') {
+        const sel = findItem(mode.selId);
+        textControls(sel).forEach((el) => panel.appendChild(el));
+        if (sel) adjustControls(sel, false).forEach((el) => panel.appendChild(el));
+        const done = button('Fertig', 'primary', () => setMode({ kind: 'ansehen' }));
+        const more = button('➕ Neuer Text', mode.armed ? 'primary' : '', () => { mode.armed = true; mode.selId = null; renderDrawing(); renderUI(); });
+        panel.appendChild(row(sel ? [button('Löschen', 'danger', () => askDelete(sel, false)), more, done] : mode.armed ? [done] : [more, done]));
+      }
+
       if (mode.kind === 'stift') {
         const colors = document.createElement('div');
         colors.className = 'colors';
@@ -1089,8 +1209,9 @@
         const t = isLine ? findLine(item.typeId) : findSymbol(item.typeId);
         const title = document.createElement('div');
         title.className = 'editTitle';
-        title.textContent = t.name;
+        title.textContent = t.text ? '🔤 ' + item.text : t.name;
         panel.appendChild(title);
+        if (t.text) textControls(item).forEach((el) => panel.appendChild(el));
         adjustControls(item, isLine).forEach((el) => panel.appendChild(el));
         panel.appendChild(row([
           button('Löschen', 'danger', () => askDelete(item, isLine)),
@@ -1278,17 +1399,19 @@
         .slice()
         .sort((a, b) => (findSymbol(a.typeId).sign ? 0 : 1) - (findSymbol(b.typeId).sign ? 0 : 1))
         .forEach((s) => {
-          const t = findSymbol(s.typeId);
+          const t = typeOf(s);
           const p = pt(s.coordinate.latitude, s.coordinate.longitude);
           const k = viewK(t, s);
-          const img = symbolImg[t.id];
+          const img = imgFor(t);
           ctx.save();
           ctx.translate(p.x, p.y);
           if (t.sign) {
             ctx.rotate((((s.rotation || 0) + bearingDeg()) * Math.PI) / 180);
-            ctx.shadowColor = 'rgba(0,0,0,.5)';
-            ctx.shadowBlur = 2;
-            ctx.shadowOffsetY = 1;
+            if (!t.text) {
+              ctx.shadowColor = 'rgba(0,0,0,.5)';
+              ctx.shadowBlur = 2;
+              ctx.shadowOffsetY = 1;
+            }
             const w = t.w * k, hh = t.h * k;
             if (img && img.complete) ctx.drawImage(img, -w / 2, -hh / 2, w, hh);
             ctx.restore();
@@ -1415,7 +1538,11 @@
       const c = map.getCenter();
       const data = {
         v: 1, e: editable ? 1 : 0, c: [toInt(c.lat), toInt(c.lng), map.getZoom()],
-        s: drawing.symbols.map((x) => [x.typeId, toInt(x.coordinate.latitude), toInt(x.coordinate.longitude), Math.round(x.rotation || 0), x.scale || 1, x.z || 17]),
+        s: drawing.symbols.map((x) => {
+          const a = [x.typeId, toInt(x.coordinate.latitude), toInt(x.coordinate.longitude), Math.round(x.rotation || 0), x.scale || 1, x.z || 17];
+          if (x.typeId === 'text') a.push(x.text || '', x.color || '#000000');
+          return a;
+        }),
         l: drawing.lines.map((x) => {
           const flat = [];
           let pa = 0, po = 0;
@@ -1439,8 +1566,12 @@
         const it = { id: newId(), typeId: x[0], coordinate: { latitude: x[1] / 1e5, longitude: x[2] / 1e5 }, z: x[5] };
         if (x[3]) it.rotation = x[3];
         if (x[4] !== 1) it.scale = x[4];
+        if (x[0] === 'text') {
+          it.text = String(x[6] || '').slice(0, 80);
+          it.color = isPenColor(x[7]) ? x[7] : '#000000';
+        }
         return it;
-      });
+      }).filter((it) => it.typeId !== 'text' || it.text);
       const lines = data.l.filter((x) => LINE_TYPES.some((t) => t.id === x[0])).map((x) => {
         const points = [];
         let a = 0, o = 0;
