@@ -28,6 +28,11 @@
     /* Hinweis erscheint nur beim Einfügen */
     #hint { background: rgba(0,0,0,.7); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
     #hint:empty { display: none; }
+    #addrToast { margin-top: 8px; background: #fff; color: #111; border-left: 6px solid #D32F2F; border-radius: 10px; padding: 9px 12px;
+      font-size: 15px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.3); transition: opacity .4s; }
+    #addrToast small { display: block; font-weight: 400; color: #555; font-size: 12px; }
+    #addrToast:empty { display: none; }
+    #addrToast.fade { opacity: 0; }
 
     #locate { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px;
       border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 28px; color: #1565C0; line-height: 50px; padding: 0; }
@@ -162,6 +167,7 @@
       <img id="logo" src="logo.png" alt="Logo" />
     </div>
     <div id="hint"></div>
+    <div id="addrToast"></div>
   </div>
 
   <button id="northBtn">↑ Nach Norden</button>
@@ -725,6 +731,7 @@
           const ll = m.getLatLng();
           s.coordinate = { latitude: ll.lat, longitude: ll.lng };
           save();
+          if (!t.sign) showAddress(t, ll.lat, ll.lng);
         });
         m.on('click', () => {
           if (mode.kind === 'signatur' && t.sign && groupOf(t) === mode.group) { mode.selId = s.id; renderDrawing(); renderUI(); }
@@ -777,6 +784,7 @@
       const ll = e.latlng;
       if (mode.kind === 'symbol' && mode.typeId) {
         drawing.symbols.push({ id: newId(), typeId: mode.typeId, coordinate: { latitude: ll.lat, longitude: ll.lng }, z: map.getZoom() });
+        showAddress(findSymbol(mode.typeId), ll.lat, ll.lng);
         // nur einmal setzen; für ein weiteres muss man es unten wieder antippen
         mode.typeId = null;
         save();
@@ -1871,6 +1879,28 @@
       }).catch(() => null);
       // nicht ewig warten, wenn das Netz schlecht ist
       return Promise.race([ask, new Promise((res) => setTimeout(() => res(null), 5000))]);
+    }
+
+    // Nach dem Setzen oder Verschieben eines Absprachepunkts kurz seine Adresse zeigen
+    let toastTimer = null, toastAsk = 0;
+    function showAddress(t, lat, lng) {
+      const el = document.getElementById('addrToast');
+      const my = ++toastAsk;
+      const show = (main, sub, ms) => {
+        clearTimeout(toastTimer);
+        el.classList.remove('fade');
+        el.innerHTML = esc(main) + '<small>' + esc(sub) + '</small>';
+        toastTimer = setTimeout(() => {
+          el.classList.add('fade');
+          toastTimer = setTimeout(() => { el.innerHTML = ''; el.classList.remove('fade'); }, 400);
+        }, ms);
+      };
+      const title = t.nr + ' ' + t.name;
+      show('📍 Adresse wird gesucht …', title, 6000);
+      addressAt(lat, lng).then((a) => {
+        if (my !== toastAsk) return;
+        show('📍 ' + (a || 'Keine Adresse in der Nähe'), title + ' · ' + lat.toFixed(5) + ', ' + lng.toFixed(5), 4000);
+      });
     }
 
     // Übersicht plus ein Nahbild pro gesetztem Absprachepunkt (mit Adresse), alles auf einmal teilen
