@@ -191,10 +191,10 @@
   (function () {
     // ---------- Einstellungen ----------
     const BASE_MAPS = {
-      // Vektorkarte: aus Linien statt Bildern, darum bei jeder Zoomstufe scharf (auch im geteilten Bild)
-      vektor: { label: 'Vektor', style: 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.basemap.vt/style.json' },
       // SWISSIMAGE gibt es bis Zoomstufe 20 (ca. 15 cm pro Bildpunkt); bisher wurde ab 18 nur vergrössert
       luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg', nativeMax: 20 },
+      // Vektorkarte: aus Linien statt Bildern, darum bei jeder Zoomstufe scharf (auch im geteilten Bild)
+      vektor: { label: 'Vektor', style: 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.basemap.vt/style.json' },
     };
     // Die 6 Absprachepunkte nach FKS (Feuerwehr Koordination Schweiz)
     const FKS_BLUE = '#2F6DB5';
@@ -293,7 +293,7 @@
     // ---------- Zustand ----------
     let drawing = load();
     let mode = { kind: 'ansehen' };
-    let baseKey = 'vektor';
+    let baseKey = 'luftbild';
     let menuOpen = false;
     let viewOnly = false; // geteilte Lage «Nur ansehen»: nichts ändern, nichts speichern
 
@@ -368,7 +368,8 @@
     // Kacheln mit CORS laden, damit sie ins geteilte Bild dürfen. Klappt das nicht, ohne CORS weiter.
     let useCors = true;
     let detailFailed = false;
-    const BASE_KEY = 'einsatzkarte.basiskarte';
+    // v2: Standard ist neu das Luftbild (frühere Wahl Karte/Grau/Vektor wird nicht übernommen)
+    const BASE_KEY = 'einsatzkarte.basiskarte.v2';
     function setBase(key) {
       baseKey = key;
       try { localStorage.setItem(BASE_KEY, key); } catch (e) {}
@@ -1751,7 +1752,7 @@
     }, { passive: false });
 
     // ---------- Start ----------
-    setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'vektor'; } catch (e) { return 'vektor'; } })());
+    setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'luftbild'; } catch (e) { return 'luftbild'; } })());
     openLageLink();
     renderDrawing();
     renderUI();
