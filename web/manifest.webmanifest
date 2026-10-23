@@ -1,6 +1,6 @@
 {
-  "name": "Einsatzkarte",
-  "short_name": "Einsatzkarte",
+  "name": "Lagekarte",
+  "short_name": "Lagekarte",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
