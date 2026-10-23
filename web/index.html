@@ -28,11 +28,13 @@
     /* Hinweis erscheint nur beim Einfügen */
     #hint { background: rgba(0,0,0,.7); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
     #hint:empty { display: none; }
-    #addrToast { margin-top: 8px; background: #fff; color: #111; border-left: 6px solid #D32F2F; border-radius: 10px; padding: 9px 12px;
+    #addrToast { flex: 1; min-width: 0; margin-right: 8px; background: #fff; color: #111; border-left: 6px solid #D32F2F; border-radius: 10px; padding: 9px 12px;
       font-size: 15px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.3); transition: opacity .4s; }
     #addrToast small { display: block; font-weight: 400; color: #555; font-size: 12px; }
     #addrToast:empty { display: none; }
     #addrToast.fade { opacity: 0; }
+    /* solange die Adresse zu sehen ist, Platz sparen: Hinweis ausblenden */
+    #top.toasting #hint { display: none; }
 
     #locate { position: absolute; z-index: 1000; right: 14px; width: 50px; height: 50px; border-radius: 25px;
       border: 0; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 28px; color: #1565C0; line-height: 50px; padding: 0; }
@@ -164,10 +166,10 @@
 
   <div id="top">
     <div id="topRow">
+      <div id="addrToast"></div>
       <img id="logo" src="logo.png" alt="Logo" />
     </div>
     <div id="hint"></div>
-    <div id="addrToast"></div>
   </div>
 
   <button id="northBtn">↑ Nach Norden</button>
@@ -1911,9 +1913,10 @@
         clearTimeout(toastTimer);
         el.classList.remove('fade');
         el.innerHTML = esc(main) + '<small>' + esc(sub) + '</small>';
+        document.getElementById('top').classList.add('toasting');
         toastTimer = setTimeout(() => {
           el.classList.add('fade');
-          toastTimer = setTimeout(() => { el.innerHTML = ''; el.classList.remove('fade'); }, 400);
+          toastTimer = setTimeout(() => { el.innerHTML = ''; el.classList.remove('fade'); document.getElementById('top').classList.remove('toasting'); }, 400);
         }, ms);
       };
       const title = t.nr + ' ' + t.name;
