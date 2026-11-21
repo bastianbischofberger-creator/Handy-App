@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.6';
+const VERSION = '1.0.7';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -474,10 +474,7 @@ function layout(R, W, pageH) {
     const lines = wrap(R, l.text + (l.dev ? ' (' + l.dev + ')' : ''), CW - 62, 9.5, 0); need(lines.length * 13 + 4);
     R.t(M, y, hms(l.t), 9.5, 1, MUTE); lines.forEach((ln, i) => R.t(M + 62, y + i * 13, ln, 9.5, 0, INK)); y += lines.length * 13 + 4;
   }
-  y += 24; need(50);
-  R.rect(M, y + 26, 200, .8, INK); R.t(M, y + 30, 'Visum Atemschutzüberwacher', 8, 0, MUTE);
-  R.rect(M + CW - 200, y + 26, 200, .8, INK); R.t(M + CW - 200, y + 30, 'Visum Einsatzleiter', 8, 0, MUTE);
-  return y + 50 + M;
+  return y + 10 + M;
 }
 function logoData() {
   const img = $('#logo'); const c = document.createElement('canvas'); c.width = img.naturalWidth || 220; c.height = img.naturalHeight || 229;
