@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -349,7 +349,8 @@ $('#grid').addEventListener('click', e => {
   }
   else if (a === 'druck') openP(id, 'check');
   else if (a === 'arr') openP(id, 'arr');
-  else if (a === 'out') openP(id, 'out');
+  else if (a === 'out') confirmBox('Trupp ' + T.nr + ' draussen?', 'Die Überwachung für diesen Trupp wird beendet.', () => {
+    const t = Date.now(); T.status = 'draussen'; T.tOut = t; saveTeam(T); log(`Trupp ${T.nr} draussen nach ${dur(t - T.tIn)} Min.`); });
   else if (a === 'rz') { T.status = 'rueckzug'; saveTeam(T); log(`Trupp ${T.nr} Rückzug angetreten`); }
   else if (a === 'edit') openTeam(id);
   else if (a === 'hide') { T.hidden = true; saveTeam(T); }
