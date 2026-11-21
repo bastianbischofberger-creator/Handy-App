@@ -98,6 +98,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .elist div{flex:1}.elist b{display:block}.elist span{font-size:14px;color:var(--mute)}
 .tag{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--field);border:1px solid var(--line);white-space:nowrap}
 .btnlbl{display:inline-flex;align-items:center;font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;margin:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:-2px 0 12px}.chips button{min-width:64px}.chips button.on{background:var(--red);border-color:var(--red);color:#fff}
 .tag.on{background:var(--red);color:#fff;border-color:var(--red)}
 #login{position:fixed;inset:0;z-index:20;background:var(--red);display:none;place-items:center;padding:20px}
 #login.show{display:grid}
@@ -156,6 +157,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
     <label>Trupp-Nr.<input name="nr" required></label>
     <label>Funkkanal<input name="kanal" list="kanaele" placeholder="z. B. K 12"></label>
   </div>
+  <div class="chips" id="kChips"></div>
   <label>Auftrag<input name="auftrag" placeholder="z. B. Menschenrettung 2. OG"></label>
   <div class="g3"><label>Name 1 (Truppführer)<input name="n0"></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 2<input name="n1"></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
@@ -177,6 +179,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <h3>Einstellungen</h3>
   <p class="hint">Gilt für alle Geräte (bei Synchronisation).</p>
   <label>Feuerwehr (erscheint auf Protokoll)<input name="org"></label>
+  <label>Funkkanäle zur Auswahl (mit Komma getrennt)<input name="kanaele" placeholder="3, 4, 6, 8, 12"></label>
   <div class="g2">
     <label>Druckkontrolle alle (Min.)<input name="interval" type="number" min="1"></label>
     <label>Standard-Anfangsdruck (bar)<input name="defP0" type="number"></label>
@@ -215,8 +218,8 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.0.3"></script>
+<script src="config.js?v=1.0.4"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
-<script src="app.js?v=1.0.3"></script>
+<script src="app.js?v=1.0.4"></script>
 </body>
 </html>

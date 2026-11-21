@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -25,7 +25,7 @@ const LP = (() => {
   return { get: k => o[k], set: (k, v) => { o[k] = v; try { localStorage.setItem('asue-prefs', JSON.stringify(o)); } catch (e) {} } };
 })();
 
-const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
+const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
 const S = { settings: { ...DEF }, eid: null, meta: {}, teams: [], log: [], list: [] };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
@@ -147,6 +147,11 @@ function tCalc(T, now) {
 const active = T => (T.status === 'innen' || T.status === 'rueckzug') && T.members.every(m => m.readings && m.readings.length);
 
 /* ---------- Darstellung ---------- */
+const presets = () => String(S.settings.kanaele || '').split(/[,;]+/).map(k => k.trim()).filter(Boolean).map(k => /^\d+$/.test(k) ? 'K ' + k : k);
+function renderChips() { const v = $('#fTeam').elements.kanal.value.trim();
+  $('#kChips').innerHTML = presets().map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join(''); }
+$('#kChips').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; $('#fTeam').elements.kanal.value = b.dataset.k; renderChips(); });
+$('#fTeam').elements.kanal.addEventListener('input', renderChips);
 const STL = { bereit: 'Bereit', innen: 'Im Einsatz', rueckzug: 'Rückzug', draussen: 'Draussen' };
 function card(T) {
   const mem = T.members.map((m, i) => `<tr id="m-${T.id}-${i}"><td>${esc(m.name)}</td><td class="n">${m.p0}</td><td class="n"><b id="p-${T.id}-${i}">${m.p0}</b></td><td class="n" id="r-${T.id}-${i}">–</td><td class="n" id="z-${T.id}-${i}">${rzOf(m)}</td></tr>`).join('');
@@ -172,7 +177,7 @@ function render() {
   if (!vis.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch kein Trupp auf der Tafel</h2><p>Erfasse Trupp-Nummer, Funkkanal, Auftrag und die Namen mit Anfangsdruck. Beim Eingang startet die Überwachung.</p><div class="row"><button class="pri" data-g="add">+ Trupp erfassen</button></div></div>`;
   else { const o = { innen: 0, rueckzug: 1, bereit: 2, draussen: 3 };
     g.innerHTML = [...vis].sort((a, b) => o[a.status] - o[b.status] || String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true })).map(card).join(''); }
-  $('#kanaele').innerHTML = [...new Set(S.teams.map(t => t.kanal).filter(Boolean))].map(k => `<option value="${esc(k)}">`).join('');
+  $('#kanaele').innerHTML = [...new Set([...presets(), ...S.teams.map(t => t.kanal).filter(Boolean)])].map(k => `<option value="${esc(k)}">`).join('');
   const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
   $('#bMute').innerHTML = LP.get('mute')
     ? SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'
@@ -271,9 +276,9 @@ function openTeam(id) {
   const T = id && team(id);
   $('#tTitle').textContent = T ? 'Trupp ' + T.nr + ' bearbeiten' : 'Neuer Trupp';
   if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
-  else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; if (last) f.elements.kanal.value = last.kanal || ''; }
+  else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = (last && last.kanal) || presets()[0] || ''; }
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); }
-  $('#dTeam').showModal();
+  renderChips(); $('#dTeam').showModal();
 }
 $('#fTeam').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
@@ -318,7 +323,7 @@ $('#fP').addEventListener('submit', e => {
 
 function openSettings() {
   const f = $('#fS'), st = S.settings;
-  for (const k of ['org', 'interval', 'defP0', 'rzMode', 'rzFixed', 'reserve', 'pfeife', 'defRate']) f.elements[k].value = st[k];
+  for (const k of ['org', 'kanaele', 'interval', 'defP0', 'rzMode', 'rzFixed', 'reserve', 'pfeife', 'defRate']) f.elements[k].value = st[k];
   f.elements.dev.value = LP.get('dev') || '';
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
@@ -330,7 +335,7 @@ $('#fS').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
   const s = { ...S.settings };
   for (const k of ['interval', 'defP0', 'rzFixed', 'reserve', 'pfeife', 'defRate']) { const v = parseFloat(f.elements[k].value); if (v > 0 || (k === 'reserve' && v >= 0)) s[k] = v; }
-  s.rzMode = f.elements.rzMode.value; s.org = f.elements.org.value.trim();
+  s.rzMode = f.elements.rzMode.value; s.org = f.elements.org.value.trim(); s.kanaele = f.elements.kanaele.value.trim();
   LP.set('dev', f.elements.dev.value.trim());
   BE.putSettings(s);
 });
