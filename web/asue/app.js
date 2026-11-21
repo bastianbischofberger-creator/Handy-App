@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -173,7 +173,11 @@ function render() {
   else { const o = { innen: 0, rueckzug: 1, bereit: 2, draussen: 3 };
     g.innerHTML = [...vis].sort((a, b) => o[a.status] - o[b.status] || String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true })).map(card).join(''); }
   $('#kanaele').innerHTML = [...new Set(S.teams.map(t => t.kanal).filter(Boolean))].map(k => `<option value="${esc(k)}">`).join('');
-  $('#bMute').textContent = LP.get('mute') ? 'Ton aus' : 'Ton an';
+  const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
+  $('#bMute').innerHTML = LP.get('mute')
+    ? SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'
+    : SPK + '<path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/></svg>Ton an';
+  $('#bMute').title = LP.get('mute') ? 'Ton ist aus – tippen zum Einschalten' : 'Ton ist an – tippen zum Ausschalten';
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
   $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
