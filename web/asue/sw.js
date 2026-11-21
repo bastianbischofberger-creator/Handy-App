@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'asue-1.0.1';
+const CACHE = 'asue-1.0.2';
 const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './vendor/jspdf.umd.min.js'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];
@@ -26,7 +26,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(r.url); if (!handled(u)) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(r, { ignoreSearch: u.origin === location.origin });
-    const net = fetch(r).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()); return res; }).catch(() => null);
+    const net = fetch(r, u.origin === location.origin ? { cache: 'no-cache' } : {}).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()); return res; }).catch(() => null);
     if (hit) { e.waitUntil(net); return hit; }
     const res = await net;
     if (res) return res;
