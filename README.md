@@ -31,3 +31,14 @@ Kartendaten: © swisstopo (geo.admin.ch).
 - Expo (React Native) mit TypeScript, Karte mit `react-native-maps` und swisstopo-Kacheln (WMTS, EPSG:3857).
 - Symbole und Linienarten anpassen: `src/config.ts`.
 - Prüfen: `npx tsc --noEmit`
+
+## Atemschutzüberwachung (Web-App)
+
+Im Ordner `web/asue` liegt eine zweite Web-App: die **Atemschutzüberwachung** der Feuerwehr RTL.
+Adresse: https://bastianbischofberger-creator.github.io/Handy-App/asue/
+
+- Einmal mit Internet öffnen, dann auf dem iPad in Safari «Teilen» → «Zum Home-Bildschirm».
+  Danach läuft sie auch ohne Internet. Die Daten bleiben auf dem jeweiligen Gerät.
+- Unter «Einsätze» lassen sich alle Daten als Datei sichern und auf einem anderen Gerät wieder laden.
+- Nach einer Änderung an den Dateien in `web/asue/sw.js` die Versionsnummer (`CACHE`) erhöhen,
+  damit die Geräte die neue Version laden.

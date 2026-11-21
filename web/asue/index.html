@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atemschutzüberwachung</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ASÜ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--field:light-dark(#f7f6f4,#24282c)}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.nr,#clock,.kpis b,.mt .n{font-family:"Barlow Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:5;background:var(--red);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top h1{font:600 20px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1 1 180px}
+.top h1 small{display:block;font:500 13.5px Barlow,sans-serif;opacity:.9;margin-top:2px}
+.logo{flex:none;width:58px;height:58px;border-radius:12px;background:#fff;display:grid;place-items:center;padding:4px}
+.logo img{width:100%;height:100%;object-fit:contain}
+#clock{font-size:clamp(34px,6vw,52px);font-weight:700;line-height:1}
+.ez{font-size:14px;line-height:1.2}.ez b{display:block;font:700 24px/1 "Barlow Condensed",sans-serif}
+.sync{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#bbb;vertical-align:1px}
+.sync.ok::before{background:#5ee08f}.sync.warn::before{background:var(--warn)}.sync.err::before{background:#fff;outline:2px solid #000}
+.tb{display:flex;gap:8px;flex-wrap:wrap}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.top button{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff}
+.top button.add{background:#fff;color:var(--red);border-color:#fff}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.warnb{background:var(--warn);border-color:var(--warn);color:#1a1a1a}
+button.ghost{background:transparent}
+main{padding:18px max(3vw,14px) 30px;max-width:1500px;margin:0 auto}
+.banner{background:var(--warn);color:#1a1a1a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:16px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card header{display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.nr{font-size:46px;font-weight:700;line-height:.9;min-width:52px;text-align:center;padding-top:4px}
+.hd{flex:1}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kanal{font-weight:600;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:2px 8px;white-space:nowrap}
+.st{font-size:14px;font-weight:600;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.st-bereit{background:var(--field);color:var(--mute)}.st-innen{background:var(--red);color:#fff}.st-rueckzug{background:var(--warn);color:#1a1a1a}.st-draussen{background:var(--ok);color:#fff}
+.auftrag{margin-top:6px;font-size:17px;font-weight:500}
+.lbl{display:none;margin-left:auto;font-weight:700;font-size:14px;padding:2px 8px;border-radius:6px}
+.mt{width:100%;border-collapse:collapse;font-size:15px}
+.mt th{font-size:12.5px;font-weight:500;color:var(--mute);text-align:right;padding:6px 10px 2px}
+.mt th:first-child,.mt td:first-child{text-align:left}
+.mt td{padding:4px 10px;border-top:1px solid var(--line)}
+.mt .n{text-align:right;font-size:19px;white-space:nowrap}.mt .n b{font-size:23px}
+.mt tr.low td:first-child::after{content:" ◂ tiefster";color:var(--red);font-size:12.5px;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line)}
+.kpis div{padding:8px 10px;border-right:1px solid var(--line)}.kpis div:last-child{border:0}
+.kpis span{display:block;font-size:12.5px;color:var(--mute)}.kpis b{font-size:clamp(22px,3vw,28px);white-space:nowrap}
+.btns{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;margin-top:auto;border-top:1px solid var(--line)}
+.btns button{flex:1 1 auto}
+.card.due,.card.soon{border-color:var(--warn)}.card.due .lbl.d{display:inline-block;background:var(--warn);color:#1a1a1a}
+.card.alarm{border-color:var(--red);box-shadow:0 0 0 3px var(--red)}.card.alarm .lbl.a{display:inline-block;background:var(--red);color:#fff}
+.card.alarm header{animation:pulse 1s steps(2) infinite}
+@keyframes pulse{50%{background:color-mix(in srgb,var(--red) 22%,transparent)}}
+@media (prefers-reduced-motion:reduce){.card.alarm header{animation:none;background:color-mix(in srgb,var(--red) 18%,transparent)}}
+.empty{border:2px dashed var(--line);border-radius:12px;padding:40px 20px;text-align:center;color:var(--mute)}
+.empty h2{color:var(--ink);font:600 28px/1.1 "Barlow Condensed",sans-serif;margin:0 0 8px}
+.empty .row{justify-content:center;margin-top:16px}
+.logp{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.logp>.row{padding:10px 14px;border-bottom:1px solid var(--line)}
+.logp h2{font:600 22px "Barlow Condensed",sans-serif;margin:0;flex:1}
+.meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:0 12px;padding:12px 14px 0}
+.meta label{margin-bottom:8px}
+.exp{display:flex;flex-wrap:wrap;gap:8px;padding:0 14px 12px}.exp button{flex:1 1 140px}
+#log{list-style:none;margin:0;padding:6px 14px 12px;max-height:340px;overflow:auto;font-size:15px}
+#log li{padding:4px 0;border-bottom:1px solid var(--line);display:flex;gap:12px}
+#log time{font-family:"Barlow Condensed",sans-serif;font-size:17px;color:var(--mute);white-space:nowrap}
+#log em{margin-left:auto;color:var(--mute);font-style:normal;font-size:13px;white-space:nowrap}
+.foot{color:var(--mute);font-size:13.5px;margin-top:16px;max-width:75ch}
+dialog{border:0;border-radius:14px;padding:0;width:min(560px,94vw);background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog form,.dpad{padding:18px}
+dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 14px}
+label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
+input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height:46px;padding:8px 10px;margin-top:4px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink)}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
+.g3{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:0 10px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:10px;align-items:center;margin-bottom:8px;font-size:17px;color:var(--ink)}
+.prow input{margin:0;font-size:22px;text-align:right}
+.dbtn{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.hint{font-size:13.5px;color:var(--mute);margin:-4px 0 10px}
+.err{color:var(--red);font-weight:600;min-height:1.2em;margin:0}
+.elist{list-style:none;margin:0 0 6px;padding:0;max-height:55vh;overflow:auto}
+.elist li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.elist div{flex:1}.elist b{display:block}.elist span{font-size:14px;color:var(--mute)}
+.tag{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--field);border:1px solid var(--line);white-space:nowrap}
+.btnlbl{display:inline-flex;align-items:center;font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;margin:0}
+.tag.on{background:var(--red);color:#fff;border-color:var(--red)}
+#login{position:fixed;inset:0;z-index:20;background:var(--red);display:none;place-items:center;padding:20px}
+#login.show{display:grid}
+#login form{background:var(--card);border-radius:16px;padding:24px;width:min(400px,100%);text-align:center}
+#login img{width:110px;height:auto}
+#login h2{font:600 28px "Barlow Condensed",sans-serif;margin:8px 0 16px}
+#login label{text-align:left}
+@media(max-width:600px){.top h1{flex-basis:100%}.nr{font-size:38px}.kpis b{font-size:21px}.mt .n{font-size:17px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <span class="logo"><img id="logo" src="logo.png" alt="Logo Feuerwehr"></span>
+  <h1>Atemschutzüberwachung<small id="sub"></small></h1>
+  <div id="clock">--:--:--</div>
+  <div class="ez">Einsatzzeit<b id="einsatz">00:00:00</b></div>
+  <span class="sync" id="sync">Startet …</span>
+  <div class="tb">
+    <button class="add" id="bAdd">+ Trupp</button>
+    <button id="bList">Einsätze</button>
+    <button id="bMute">Ton an</button>
+    <button id="bSet">Einstellungen</button>
+  </div>
+</div>
+<main>
+  <div class="banner" id="banner" hidden></div>
+  <div class="grid" id="grid"></div>
+  <section class="logp">
+    <div class="row"><h2>Protokoll</h2><span class="tag" id="eState"></span><button id="bClose" class="ghost">Einsatz abschliessen</button></div>
+    <div class="meta" id="meta">
+      <label>Ereignis<input data-m="ereignis" placeholder="z. B. Brand Mehrfamilienhaus"></label>
+      <label>Einsatzort<input data-m="ort" placeholder="Strasse, Ort"></label>
+      <label>Atemschutzüberwacher<input data-m="asue" placeholder="Name"></label>
+      <label>Einsatzleiter<input data-m="el" placeholder="Name"></label>
+    </div>
+    <div class="exp"><button class="pri" id="bPdf">Protokoll als PDF</button><button id="bPng">Protokoll als Foto</button><button id="bCopy">Text kopieren</button></div>
+    <p class="err" id="msg" style="padding:0 14px"></p>
+    <ul id="log"></ul>
+  </section>
+  <p class="foot">Hilfsmittel für den Atemschutzüberwacher – ersetzt weder dessen Verantwortung noch die regelmässige Druckabfrage per Funk. Die berechneten Zeiten sind Schätzungen aus dem gemessenen Verbrauch. Halte eine analoge Tafel als Rückfallebene bereit.</p>
+</main>
+
+<div id="login"><form id="fLogin">
+  <img src="logo.png" alt="">
+  <h2>Atemschutzüberwachung</h2>
+  <label>E-Mail<input name="email" type="email" autocomplete="username" required></label>
+  <label>Passwort<input name="pw" type="password" autocomplete="current-password" required></label>
+  <p class="err" id="lErr"></p>
+  <button class="pri" style="width:100%;margin-top:8px">Anmelden</button>
+  <p class="hint" style="margin-top:14px">Einmal mit Internet anmelden – danach funktioniert die App auf diesem Gerät auch offline.</p>
+</form></div>
+
+<dialog id="dTeam"><form method="dialog" id="fTeam">
+  <h3 id="tTitle">Neuer Trupp</h3>
+  <div class="g2">
+    <label>Trupp-Nr.<input name="nr" required></label>
+    <label>Funkkanal<input name="kanal" list="kanaele" placeholder="z. B. K 12"></label>
+  </div>
+  <label>Auftrag<input name="auftrag" placeholder="z. B. Menschenrettung 2. OG"></label>
+  <div class="g3"><label>Name 1 (Truppführer)<input name="n0"></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 2<input name="n1"></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 3 (optional)<input name="n2"></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
+  <p class="err" id="tErr"></p>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
+</form></dialog>
+<datalist id="kanaele"></datalist>
+
+<dialog id="dP"><form method="dialog" id="fP">
+  <h3 id="pTitle">Druck erfassen</h3>
+  <p class="hint" id="pHint"></p>
+  <div id="pRows"></div>
+  <p class="err" id="pErr"></p>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
+</form></dialog>
+
+<dialog id="dS"><form method="dialog" id="fS">
+  <h3>Einstellungen</h3>
+  <p class="hint">Gilt für alle Geräte (bei Synchronisation).</p>
+  <label>Feuerwehr (erscheint auf Protokoll)<input name="org"></label>
+  <div class="g2">
+    <label>Druckkontrolle alle (Min.)<input name="interval" type="number" min="1"></label>
+    <label>Standard-Anfangsdruck (bar)<input name="defP0" type="number"></label>
+  </div>
+  <label>Rückzugsdruck berechnen
+    <select name="rzMode">
+      <option value="half">Hälfte des Anfangsdrucks</option>
+      <option value="fixed">Fester Wert</option>
+      <option value="double">Doppelter Verbrauch bis Arbeitsort + Reserve</option>
+    </select></label>
+  <p class="hint">Bei «Doppelter Verbrauch» gilt die Hälfte des Anfangsdrucks, bis der Trupp «Am Arbeitsort» meldet.</p>
+  <div class="g2">
+    <label>Fester Rückzugsdruck (bar)<input name="rzFixed" type="number"></label>
+    <label>Reserve (bar)<input name="reserve" type="number"></label>
+    <label>Warnsignal (bar, Untergrenze)<input name="pfeife" type="number"></label>
+    <label>Verbrauch ohne Messung (bar/Min.)<input name="defRate" type="number" step="0.5"></label>
+  </div>
+  <p class="hint" style="margin-top:6px">Nur dieses Gerät:</p>
+  <label>Gerätename (erscheint im Protokoll)<input name="dev" placeholder="z. B. iPad 1"></label>
+  <p class="hint" id="sInfo"></p>
+  <div class="dbtn"><button value="logout" id="bLogout" class="ghost" formnovalidate>Abmelden</button><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
+</form></dialog>
+
+<dialog id="dE"><div class="dpad">
+  <h3>Einsätze</h3>
+  <ul class="elist" id="elist"></ul>
+  <p class="hint" style="margin-top:12px">Die Daten liegen nur auf diesem Gerät. Sichere sie regelmässig als Datei – damit kannst du sie auch auf ein anderes Gerät übertragen.</p>
+  <div class="row"><button id="bBackup">Daten sichern</button><label id="lImport" class="btnlbl">Daten laden<input type="file" id="fImport" accept=".json,application/json" hidden></label></div>
+  <p class="err" id="eMsg" style="color:var(--ok)"></p>
+  <div class="dbtn"><button id="bDemo" class="ghost">Demo-Einsatz</button><button id="bNew">+ Neuer Einsatz</button><button id="bEClose" class="pri">Schliessen</button></div>
+</div></dialog>
+
+<dialog id="dC"><form method="dialog">
+  <h3 id="cTitle">Sicher?</h3>
+  <p id="cText"></p>
+  <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
+</form></dialog>
+
+<script src="config.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
