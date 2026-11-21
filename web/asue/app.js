@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -126,7 +126,6 @@ document.addEventListener('pointerdown', initAudio);
 function rzOf(m) {
   const st = S.settings; let r;
   if (st.rzMode === 'fixed') r = st.rzFixed;
-  else if (st.rzMode === 'double' && m.pArr != null) r = (m.p0 - m.pArr) * 2 + st.reserve;
   else r = m.p0 / 2;
   return Math.max(Math.round(r), st.pfeife);
 }
@@ -157,7 +156,7 @@ function card(T) {
   const mem = T.members.map((m, i) => `<tr id="m-${T.id}-${i}"><td>${esc(m.name)}</td><td class="n">${m.p0}</td><td class="n"><b id="p-${T.id}-${i}">${m.p0}</b></td><td class="n" id="r-${T.id}-${i}">–</td><td class="n" id="z-${T.id}-${i}">${rzOf(m)}</td></tr>`).join('');
   const B = {
     bereit: `<button data-a="in" class="pri">Eingang – Trupp geht rein</button><button data-a="edit">Bearbeiten</button><button data-a="del" class="ghost">Entfernen</button>`,
-    innen: `<button data-a="druck" class="pri">Druck erfassen</button><button data-a="arr">Am Arbeitsort</button><button data-a="rz" class="warnb">Rückzug</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
+    innen: `<button data-a="druck" class="pri">Druck erfassen</button><button data-a="rz" class="warnb">Rückzug</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
     rueckzug: `<button data-a="druck" class="pri">Druck erfassen</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
     draussen: `<button data-a="hide" class="ghost">Von der Tafel nehmen</button>`
   }[T.status];
@@ -323,7 +322,7 @@ $('#fP').addEventListener('submit', e => {
 
 function openSettings() {
   const f = $('#fS'), st = S.settings;
-  for (const k of ['org', 'kanaele', 'interval', 'defP0', 'rzMode', 'rzFixed', 'reserve', 'pfeife', 'defRate']) f.elements[k].value = st[k];
+  for (const k of ['org', 'kanaele', 'interval', 'defP0', 'rzMode', 'rzFixed', 'pfeife', 'defRate']) f.elements[k].value = st[k];
   f.elements.dev.value = LP.get('dev') || '';
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
@@ -334,7 +333,7 @@ $('#fS').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value === 'logout') { confirmBox('Abmelden?', 'Danach braucht dieses Gerät Internet, um sich wieder anzumelden.', () => BE.logout()); return; }
   if (e.submitter && e.submitter.value !== 'ok') return;
   const s = { ...S.settings };
-  for (const k of ['interval', 'defP0', 'rzFixed', 'reserve', 'pfeife', 'defRate']) { const v = parseFloat(f.elements[k].value); if (v > 0 || (k === 'reserve' && v >= 0)) s[k] = v; }
+  for (const k of ['interval', 'defP0', 'rzFixed', 'pfeife', 'defRate']) { const v = parseFloat(f.elements[k].value); if (v > 0 || (k === 'reserve' && v >= 0)) s[k] = v; }
   s.rzMode = f.elements.rzMode.value; s.org = f.elements.org.value.trim(); s.kanaele = f.elements.kanaele.value.trim();
   LP.set('dev', f.elements.dev.value.trim());
   BE.putSettings(s);

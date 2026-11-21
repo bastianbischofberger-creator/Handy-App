@@ -58,7 +58,7 @@ main{padding:18px max(3vw,14px) 30px;max-width:1500px;margin:0 auto}
 .mt tr.low td:first-child::after{content:" ◂ tiefster";color:var(--red);font-size:12.5px;font-weight:600}
 .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line)}
 .kpis div{padding:8px 10px;border-right:1px solid var(--line)}.kpis div:last-child{border:0}
-.kpis span{display:block;font-size:12.5px;color:var(--mute)}.kpis b{font-size:clamp(22px,3vw,28px);white-space:nowrap}
+.kpis span{display:block;font-size:12.5px;color:var(--mute)}.kpis b{display:block;font-size:clamp(21px,2.6vw,28px);line-height:1.15}
 .btns{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;margin-top:auto;border-top:1px solid var(--line)}
 .btns button{flex:1 1 auto}
 .card.due,.card.soon{border-color:var(--warn)}.card.due .lbl.d{display:inline-block;background:var(--warn);color:#1a1a1a}
@@ -193,12 +193,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
     <select name="rzMode">
       <option value="half">Hälfte des Anfangsdrucks</option>
       <option value="fixed">Fester Wert</option>
-      <option value="double">Doppelter Verbrauch bis Arbeitsort + Reserve</option>
     </select></label>
-  <p class="hint">Bei «Doppelter Verbrauch» gilt die Hälfte des Anfangsdrucks, bis der Trupp «Am Arbeitsort» meldet.</p>
   <div class="g2">
     <label>Fester Rückzugsdruck (bar)<input name="rzFixed" type="number"></label>
-    <label>Reserve (bar)<input name="reserve" type="number"></label>
     <label>Warnsignal (bar, Untergrenze)<input name="pfeife" type="number"></label>
     <label>Verbrauch ohne Messung (bar/Min.)<input name="defRate" type="number" step="0.5"></label>
   </div>
@@ -230,9 +227,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.0.5"></script>
+<script src="config.js?v=1.0.6"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.0.5"></script>
+<script src="app.js?v=1.0.6"></script>
 </body>
 </html>
