@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.4';
+const VERSION = '1.0.5';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -277,7 +277,7 @@ function openTeam(id) {
   $('#tTitle').textContent = T ? 'Trupp ' + T.nr + ' bearbeiten' : 'Neuer Trupp';
   if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
   else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = (last && last.kanal) || presets()[0] || ''; }
-  for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); }
+  for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
   renderChips(); $('#dTeam').showModal();
 }
 $('#fTeam').addEventListener('submit', e => {
@@ -339,6 +339,45 @@ $('#fS').addEventListener('submit', e => {
   LP.set('dev', f.elements.dev.value.trim());
   BE.putSettings(s);
 });
+
+
+/* ---------- QR-Code scannen (Kamera) ---------- */
+let qr = null;
+function stopScan() { if (!qr) return; qr.stop = true; if (qr.stream) qr.stream.getTracks().forEach(t => t.stop()); $('#qrVideo').srcObject = null; qr = null; }
+function qrText(raw) { let t = String(raw || '').trim(); t = t.replace(/^(ASUE|ASÜ|AdA)\s*[:;]\s*/i, ''); return t.split(/[|;\n]/)[0].trim().slice(0, 60); }
+async function startScan(field) {
+  const hint = $('#qrHint');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { hint.textContent = 'Kamera ist hier nicht verfügbar. Die App muss über https geöffnet sein.'; $('#dQR').showModal(); return; }
+  hint.textContent = 'Kamera startet …'; $('#dQR').showModal();
+  qr = { field, stop: false };
+  try {
+    qr.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+  } catch (e) { hint.textContent = 'Kein Zugriff auf die Kamera. Bitte in den Einstellungen des Geräts erlauben.'; return; }
+  if (!qr || qr.stop) { stopScan(); return; }
+  const v = $('#qrVideo'); v.srcObject = qr.stream; try { await v.play(); } catch (e) {}
+  hint.textContent = 'QR-Code in den Rahmen halten.';
+  const det = ('BarcodeDetector' in window) ? new window.BarcodeDetector({ formats: ['qr_code'] }) : null;
+  const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  const me = qr;
+  const loop = async () => {
+    if (me.stop) return;
+    let txt = null;
+    if (v.readyState >= 2 && v.videoWidth) {
+      try {
+        if (det) { const r = await det.detect(v); if (r[0]) txt = r[0].rawValue; }
+        else if (window.jsQR) { const sc = Math.min(1, 640 / v.videoWidth); cv.width = v.videoWidth * sc; cv.height = v.videoHeight * sc;
+          cx.drawImage(v, 0, 0, cv.width, cv.height); const r = window.jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'attemptBoth' }); if (r) txt = r.data; }
+      } catch (e) {}
+    }
+    const name = txt && qrText(txt);
+    if (name) { const inp = $('#fTeam').elements[me.field]; inp.value = name; inp.dispatchEvent(new Event('input')); initAudio(); beep(1); stopScan(); $('#dQR').close(); return; }
+    setTimeout(loop, 150);
+  };
+  loop();
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-qr]'); if (b) { e.preventDefault(); startScan(b.dataset.qr); } });
+$('#bQrCancel').onclick = () => $('#dQR').close();
+$('#dQR').addEventListener('close', stopScan);
 
 /* ---------- Aktionen auf der Tafel ---------- */
 $('#grid').addEventListener('click', e => {
