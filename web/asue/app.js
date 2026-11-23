@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.2.2';
+const VERSION = '2.2.3';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -183,6 +183,7 @@ for (const id of ['kChips', 'sChips']) document.getElementById(id).addEventListe
 });
 $('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
 const RT_AUF = 'Rettungstrupp / Sicherheitstrupp';
+const p0t = m => m.full !== false && m.p0 >= (S.settings.defP0 || 300) ? m.p0 + '+' : String(m.p0);
 const personal = () => Array.isArray(S.settings.personal) ? S.settings.personal : [];
 const pName = p => `${p.name} ${p.vorname}`;
 function persByCode(raw) { const t = String(raw || '').trim().replace(/^(ASUE|ASÜ|AdA)\s*[:;]\s*/i, ''); const p = personal().find(p => p.nr && p.nr === t); return p ? pName(p) : null; }
@@ -199,7 +200,7 @@ function renderChips() {}
 const AXE = '<i class="axe" aria-hidden="true"></i>';
 const STL = { bereit: 'Bereit', innen: 'Im Einsatz', rueckzug: 'Rückzug', draussen: 'Draussen' };
 function card(T) {
-  const mem = T.members.map((m, i) => `<tr id="m-${T.id}-${i}"><td>${esc(m.name)}</td><td class="n">${m.p0}</td><td class="n"><b id="p-${T.id}-${i}">${m.p0}</b></td><td class="n" id="r-${T.id}-${i}">–</td><td class="n" id="z-${T.id}-${i}">${rzOf(m)}</td></tr>`).join('');
+  const mem = T.members.map((m, i) => `<tr id="m-${T.id}-${i}"><td>${esc(m.name)}</td><td class="n">${p0t(m)}</td><td class="n"><b id="p-${T.id}-${i}">${p0t(m)}</b></td><td class="n" id="r-${T.id}-${i}">–</td><td class="n" id="z-${T.id}-${i}">${rzOf(m)}</td></tr>`).join('');
   const B = {
     bereit: `<button data-a="in" class="pri" data-s="Eingang">Eingang – Trupp geht rein</button><button data-a="edit">Bearbeiten</button><button data-a="del" class="ghost">Entfernen</button>`,
     innen: `<button data-a="druck" class="pri" data-s="Druck">Druck erfassen</button><button data-a="rz" class="warnb">Rückzug</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
@@ -271,7 +272,7 @@ function tick() {
       if (cls === 'alarm' && a.rz !== nRead) { a.rz = nRead; beep(3); log(`Trupp ${T.nr}: berechneter Rückzugsdruck erreicht`, `rz-${T.id}-${nRead}`); }
       if (cls === 'due' && a.check !== k.nextCheck) { a.check = k.nextCheck; beep(1); }
     } else if (T.status === 'draussen' && T.tIn) {
-      T.members.forEach((m, i) => set(`p-${T.id}-${i}`, m.readings.length ? m.readings[m.readings.length - 1].p : m.p0));
+      T.members.forEach((m, i) => set(`p-${T.id}-${i}`, m.readings.length > 1 ? m.readings[m.readings.length - 1].p : p0t(m)));
       set('k1-' + T.id, dur(T.tOut - T.tIn)); set('k2-' + T.id, '–'); set('k3-' + T.id, hm(T.tOut));
     }
     const nc = 'card' + (T.rett ? ' rett' : '') + (cls ? ' ' + cls : ''); if (c.className !== nc) c.className = nc;
@@ -334,9 +335,9 @@ function openTeam(id) {
   const T = id && team(id);
   $('#tTitle').textContent = T ? 'Trupp ' + T.nr + ' bearbeiten' : 'Neuer Trupp';
   f.elements.stock.value = (T && T.stock) || ''; f.elements.rett.checked = !!(T && T.rett);
-  if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; f.elements.zusatz.value = T.zusatz || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
+  if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; f.elements.zusatz.value = T.zusatz || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.full === false ? m.p0 : ''; }); }
   else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = kanalStd() || presets()[0] || ''; f.elements.auftrag.value = ''; }
-  for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
+  for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0 + '+'; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
   f.elements.kanal.hidden = true; renderPick('kChips', 'kanal', presets(), 'Anderer …');
   fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –'); syncZusatz();
   f.elements.stock.hidden = true; renderPick('sChips', 'stock', [...floors()].reverse(), 'Anderer Ort …', 'Bereit');
@@ -346,7 +347,7 @@ $('#fTeam').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
   const f = e.target, mem = [];
   for (let i = 0; i < 3; i++) { const inp = f.elements['n' + i], byNr = personal().find(p => p.nr && p.nr === inp.value.trim()); if (byNr) inp.value = pName(byNr); }
-  for (let i = 0; i < 3; i++) { const n = f.elements['n' + i].value.trim(); if (n) mem.push({ name: n, p0: parseInt(f.elements['p' + i].value) || S.settings.defP0, readings: [], pArr: null }); }
+  for (let i = 0; i < 3; i++) { const n = f.elements['n' + i].value.trim(); if (n) { const v = parseInt(f.elements['p' + i].value), full = isNaN(v) || v >= S.settings.defP0; mem.push({ name: n, p0: full ? S.settings.defP0 : v, full, readings: [], pArr: null }); } }
   if (!mem.length) { e.preventDefault(); $('#tErr').textContent = 'Mindestens einen Namen erfassen.'; return; }
   { const nr = f.elements.nr.value.trim(), act = S.teams.filter(t => t.id !== editId && !t.hidden && t.status !== 'draussen');
     const norm = x => String(x || '').trim().toLowerCase();
@@ -364,7 +365,7 @@ $('#fTeam').addEventListener('submit', e => {
     saveTeam(T); if (ch.length && (T.status !== 'bereit' || !!T.rett !== !!rett || ch.some(c => c.includes('Rettungstrupp')))) log(`Trupp ${T.nr}: ${ch.join(', ')}`);
   } else {
     const N = { id: uid(), nr: f.elements.nr.value.trim(), kanal, auftrag, zusatz, stock, rett, status: 'bereit', members: mem, tIn: null, tOut: null, hidden: false };
-    saveTeam(N); log(`${rett ? 'Rettungstrupp' : 'Trupp'} ${N.nr} erfasst (Funk ${kanal || '–'}): ${mem.map(m => m.name + ' ' + m.p0 + ' bar').join(', ')}`);
+    saveTeam(N); log(`${rett ? 'Rettungstrupp' : 'Trupp'} ${N.nr} erfasst (Funk ${kanal || '–'}): ${mem.map(m => m.name + ' ' + p0t(m) + ' bar').join(', ')}`);
   }
 });
 
@@ -382,7 +383,7 @@ $('#fP').addEventListener('submit', e => {
   const T = team(pCtx.id); if (!T) return;
   const now = Date.now(), vals = T.members.map((m, i) => parseInt(e.target.elements['q' + i].value));
   if (pCtx.mode !== 'out' && vals.every(v => isNaN(v))) { e.preventDefault(); $('#pErr').textContent = 'Mindestens einen Druck eingeben.'; return; }
-  const bad = vals.find((v, i) => !isNaN(v) && (v < 0 || v > T.members[i].p0 + 20));
+  const bad = vals.find((v, i) => !isNaN(v) && (v < 0 || v > T.members[i].p0 + (T.members[i].full !== false ? 40 : 20)));
   if (bad !== undefined) { e.preventDefault(); $('#pErr').textContent = 'Druck ' + bad + ' bar ist nicht plausibel.'; return; }
   const parts = [];
   T.members.forEach((m, i) => { const v = vals[i]; if (isNaN(v)) return; m.readings.push({ t: now, p: v }); if (pCtx.mode === 'arr') m.pArr = v; parts.push(m.name + ' ' + v); });
@@ -504,7 +505,7 @@ function enter(T, stock) {
   T.status = 'innen'; T.tIn = now; T.stock = stock || ''; T.members.forEach(m => { m.readings = [{ t: now, p: m.p0 }]; m.pArr = null; });
   if (!S.meta.start) { S.meta.start = now; saveMeta(); }
   saveTeam(T);
-  log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.stock ? ', ' + T.stock : ''}${aufText(T) ? ', ' + aufText(T) : ''}): ${T.members.map(m => m.name + ' ' + m.p0).join(', ')} bar`);
+  log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.stock ? ', ' + T.stock : ''}${aufText(T) ? ', ' + aufText(T) : ''}): ${T.members.map(m => m.name + ' ' + p0t(m)).join(', ')} bar`);
 }
 let stCtx = null;
 function openStock(id, mode) {
@@ -728,7 +729,7 @@ function layout(R, W, pageH) {
     cols.forEach((c, ci) => {
       if (ci === 2) auf.forEach((l, li) => R.t(x + 4, y + 4 + li * rh, l, 9, 0, INK));
       else if (ci === 4) T.members.forEach((m, mi) => R.t(x + 4, y + 4 + mi * rh, clean(m.name), 9, 0, INK));
-      else if (ci === 5 || ci === 6) T.members.forEach((m, mi) => { const s = String(ci === 5 ? m.p0 : last[mi]); R.t(x + c[1] - 4 - R.w(s, 9, ci === 6), y + 4 + mi * rh, s, 9, ci === 6, INK); });
+      else if (ci === 5 || ci === 6) T.members.forEach((m, mi) => { const s = String(ci === 5 ? p0t(m) : (m.readings.length > 1 ? last[mi] : p0t(m))); R.t(x + c[1] - 4 - R.w(s, 9, ci === 6), y + 4 + mi * rh, s, 9, ci === 6, INK); });
       else { const s = v[ci]; R.t(c[2] ? x + c[1] - 4 - R.w(s, 9, ci === 0) : x + 4, y + 4, s, 9, ci === 0, INK); }
       x += c[1];
     });

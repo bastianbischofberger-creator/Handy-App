@@ -274,9 +274,9 @@ label select+input{margin-top:6px}
   <label class="chk"><input type="checkbox" name="rett"> <i class="axe rt" aria-hidden="true"></i> Rettungstrupp (Sicherheitstrupp)</label>
   <label>Auftrag<select name="aufSel"></select><input name="auftrag" placeholder="Auftrag eingeben" hidden><input name="zusatz" placeholder="Zusatzinfo (optional), z. B. Wohnung links, Person vermisst" hidden></label>
   <div class="fld"><span class="lab">Stockwerk</span><div class="pick" id="sChips"></div><input name="stock" placeholder="Ort eingeben, z. B. Treppenhaus" hidden></div>
-  <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
-  <div class="g3"><label>Name 2<span class="inq"><input name="n1" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
-  <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck (leer = 300+)<input name="p0" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 2<span class="inq"><input name="n1" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck (leer = 300+)<input name="p1" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck (leer = 300+)<input name="p2" type="number" inputmode="numeric"></label></div>
   <p class="err" id="tErr"></p>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
 </form></dialog>
@@ -395,9 +395,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.2.2"></script>
+<script src="config.js?v=2.2.3"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.2.2"></script>
+<script src="app.js?v=2.2.3"></script>
 </body>
 </html>
