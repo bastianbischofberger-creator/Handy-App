@@ -103,7 +103,12 @@ function renderAuftrag() {
   const files = Array.isArray(a.anh) ? a.anh : [], unseen = files.filter(f => !seenSet(a.aid).has(f.id)).length;
   const vor = a.vorOrt || localVor[a.aid];
   let btns = '';
-  if (a.fuehrung) btns += !vor ? `<button class="blue" data-rm="vorort">Vor Ort</button>` : reko ? `<button class="reko" data-rm="rekoEnd">Reko abschliessen</button>` : `<button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
+  if (a.fuehrung) {
+    if (!vor) btns += `<button class="blue" data-rm="vorort">Vor Ort</button>`;
+    else if (reko) btns += !a.lageT ? `<button class="reko" data-rm="lage">Lagebeurteilung</button>`
+      : `<button class="reko" data-rm="rekoEnd">Reko abgeschlossen</button><button type="button" data-rm="lage">Lagebeurteilung ändern</button>`;
+    else btns += `<button class="blue" data-rm="zw">Zwischenmeldung</button><button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
+  }
   btns += files.length ? `<button type="button" class="anhb" data-anh="1">📎 Anhänge (${files.length})${unseen ? `<span class="dot">${unseen} neu</span>` : ''}</button>` : `<button type="button" class="anhb" disabled>Keine Anhänge</button>`;
   if (a.fuehrung && vor) btns += `<button type="button" data-cam="1">📷 Foto machen</button>`;
   btns += `<a class="abtn" href="${navUrl(a)}" target="_blank" rel="noopener">Navigation öffnen</a>`;
@@ -111,7 +116,8 @@ function renderAuftrag() {
   box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${vor ? ' <span class="mute">· vor Ort</span>' : ''}
     <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
     ${a.anhLokal ? `<p class="mute">${a.anhLokal} weitere Anhänge nur im KP</p>` : ''}
-    ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht der Teamchef (fett).</p>' : ''}${last && last.typ !== 'vorort' && last.typ !== 'foto' ? '<p class="mute" style="color:var(--ok);font-weight:600">✓ Rückmeldung gesendet</p>' : ''}
+    ${reko && a.lageT ? `<p class="mute" style="color:var(--ok);font-weight:600">✓ Lage gemeldet ${hm(a.lageT)}</p>` : ''}${!reko && a.zwN ? `<p class="mute">${a.zwN} Zwischenmeldung${a.zwN > 1 ? 'en' : ''} gesendet</p>` : ''}
+    ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht der Teamchef (fett).</p>' : ''}
     <div class="btns">${btns}</div></div>`;
   if (!$('#fl').hidden) renderFiles();
   if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} }
@@ -155,18 +161,35 @@ async function reply(extra) {
   const rm = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), aid: inbox.aid, t: Date.now(), ...extra };
   try { await write('an', P.code, true, rm); renderAuftrag(); return true; } catch (e) { alert(errText(e)); return false; }
 }
+const TIT = { lage: 'Lagebeurteilung', zw: 'Zwischenmeldung', erledigt: 'Auftrag erledigt', rekoEnd: 'Reko abschliessen' };
 function openRm(typ) {
-  RM = { typ, adf: 0, mittel: {}, dauer: '', fotos: [] };
+  RM = { typ, adf: 0, mittel: {}, dauer: '', fotos: [], bel: new Set(), nach: false };
   $('#sMain').hidden = true; $('#sRm').hidden = false; window.scrollTo(0, 0);
-  $('#rmTitle').textContent = `Auftrag ${inbox.nr}: ${typ === 'rekoEnd' ? 'Reko abschliessen' : 'Auftrag erledigt'}`;
-  $('#rmReko').hidden = typ !== 'rekoEnd'; $('#rmErl').hidden = typ === 'rekoEnd'; $('#rmNone').hidden = typ !== 'rekoEnd';
-  $('#rmLage').value = ''; $('#rmText').value = ''; $('#rmErr').textContent = ''; renderRm(); renderThumbs();
+  $('#rmTitle').textContent = `Auftrag ${inbox.nr}: ${TIT[typ]}`;
+  $('#rmReko').hidden = !(typ === 'lage' || typ === 'zw'); $('#rmErl').hidden = typ !== 'erledigt'; $('#rmConf').hidden = typ !== 'rekoEnd'; $('#rmFotos').hidden = typ === 'rekoEnd';
+  $('#rmNone').hidden = typ !== 'rekoEnd';
+  const zw = typ === 'zw';
+  $('#rmLageL').textContent = zw ? 'Meldung' : 'Lagebeurteilung'; $('#rmAdfL').textContent = zw ? 'Nachforderung AdF' : 'Benötigte AdF';
+  $('#rmMitL').textContent = zw ? 'Nachforderung Mittel' : 'Benötigte Mittel'; $('#rmDauL').textContent = zw ? 'Voraussichtliche Restdauer' : 'Geschätzte Dauer';
+  $('#rmLage').value = ''; $('#rmText').value = ''; $('#rmBelFrei').value = ''; $('#rmNachT').value = ''; $('#rmErr').textContent = '';
+  if (typ === 'lage' && inbox.lage) { const l = inbox.lage; $('#rmLage').value = l.text || ''; RM.adf = l.adf || 0; RM.mittel = { ...(l.m || {}) }; RM.dauer = l.dauer || ''; }
+  $('#rmConfT').textContent = `Lage gemeldet um ${inbox.lageT ? hm(inbox.lageT) : '–'}. Ist die Reko fertig? Der Auftrag geht danach im KP nach «Pendent».`;
+  $('#rmSend').textContent = typ === 'rekoEnd' ? 'Reko abgeschlossen' : typ === 'erledigt' ? 'Auftrag erledigt' : 'Senden';
+  renderRm(); renderThumbs();
 }
 function renderRm() {
   $('#rmAdf').textContent = RM.adf;
   $('#rmMittel').innerHTML = (inbox.gattungen || []).map(g => `<button type="button" data-g="${esc(g)}" class="${RM.mittel[g] ? 'on' : ''}">${RM.mittel[g] > 1 ? RM.mittel[g] + '× ' : ''}${esc(g)}</button>`).join('');
   $('#rmDauer').innerHTML = DAUER.map(d => `<button type="button" data-d="${d}" class="${RM.dauer === d ? 'on' : ''}">${d}</button>`).join('');
+  const ml = inbox.mittelList || [];
+  $('#rmBel').innerHTML = ml.length ? ml.map(m => `<button type="button" data-b="${esc(m.id)}" class="${RM.bel.has(m.id) ? 'on' : ''}">${esc(m.name)}</button>`).join('') : '<span class="mute">Keine Mittel zugewiesen.</span>';
+  document.querySelectorAll('#rmNach button').forEach(b => b.classList.toggle('on', (b.dataset.n === '1') === RM.nach));
+  $('#rmNachL').hidden = !RM.nach;
+  $('#rmFolgeHint').hidden = !(RM.nach || RM.bel.size || $('#rmBelFrei').value.trim());
 }
+$('#rmBel').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; RM.bel.has(b.dataset.b) ? RM.bel.delete(b.dataset.b) : RM.bel.add(b.dataset.b); renderRm(); });
+$('#rmNach').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (!b) return; RM.nach = b.dataset.n === '1'; renderRm(); if (RM.nach) $('#rmNachT').focus(); });
+$('#rmBelFrei').addEventListener('input', () => renderRm());
 $('#rmMinus').onclick = () => { RM.adf = Math.max(0, RM.adf - 1); renderRm(); };
 $('#rmPlus').onclick = () => { RM.adf++; renderRm(); };
 $('#rmMittel').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; const g = b.dataset.g, n = RM.mittel[g] || 0; RM.mittel[g] = n >= 3 ? 0 : n + 1; if (!RM.mittel[g]) delete RM.mittel[g]; renderRm(); });
@@ -202,9 +225,15 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = fals
 const closeRm = () => { $('#sRm').hidden = true; showMain(); };
 $('#rmCancel').onclick = closeRm;
 async function sendRm(keinEinsatz) {
-  const x = RM.typ === 'rekoEnd' ? { typ: 'rekoEnd', lage: $('#rmLage').value.trim(), adf: RM.adf, mittel: RM.mittel, dauer: RM.dauer, keinEinsatz: !!keinEinsatz } : { typ: 'erledigt', text: $('#rmText').value.trim() };
-  if (RM.fotos.length) x.fotos = RM.fotos;
-  $('#rmSend').disabled = true; if (await reply(x)) closeRm(); $('#rmSend').disabled = false;
+  let x;
+  if (RM.typ === 'lage') x = { typ: 'lage', lage: $('#rmLage').value.trim(), adf: RM.adf, mittel: RM.mittel, dauer: RM.dauer };
+  else if (RM.typ === 'zw') { x = { typ: 'zw', text: $('#rmLage').value.trim(), adf: RM.adf, mittel: RM.mittel, dauer: RM.dauer };
+    if (!x.text && !x.adf && !Object.keys(x.mittel).length && !x.dauer) { $('#rmErr').textContent = 'Bitte eine Meldung, Nachforderung oder Restdauer angeben.'; return; } }
+  else if (RM.typ === 'rekoEnd') x = { typ: 'rekoEnd', keinEinsatz: !!keinEinsatz };
+  else { x = { typ: 'erledigt', text: $('#rmText').value.trim(), belassen: [...RM.bel], belassenFrei: $('#rmBelFrei').value.trim(), nach: RM.nach, nachText: $('#rmNachT').value.trim() };
+    if (RM.nach && !x.nachText) { $('#rmErr').textContent = 'Bitte kurz beschreiben, was noch zu tun ist.'; return; } }
+  if (RM.fotos.length && RM.typ !== 'rekoEnd') x.fotos = RM.fotos;
+  $('#rmSend').disabled = true; if (await reply(x)) { if (RM.typ === 'lage') inbox.lageT = inbox.lageT || Date.now(); closeRm(); toast('✓ An das KP gesendet'); } $('#rmSend').disabled = false;
 }
 $('#rmSend').onclick = () => sendRm(false);
 $('#rmNone').onclick = () => { if (confirm('Kein Einsatz nötig – Auftrag abschliessen?')) sendRm(true); };

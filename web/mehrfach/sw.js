@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'mf-0.7.0';
+const CACHE = 'mf-0.8.0';
 const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './vendor/jspdf.umd.min.js', '../vendor/leaflet/leaflet.js', '../vendor/leaflet/leaflet.css',
   '../vendor/qrcode-generator/qrcode.js', './checkin.html', './checkin.js'];

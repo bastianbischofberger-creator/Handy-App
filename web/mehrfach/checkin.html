@@ -30,6 +30,7 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .done{text-align:center;padding:10px 0}.done .big{font:700 30px/1.1 "Barlow Condensed",sans-serif;color:var(--ok)}
 .done svg{width:72px;height:72px}
 .stack{display:flex;flex-direction:column;gap:10px}
+.ta{display:block;width:100%;font:500 17px Barlow,sans-serif;padding:10px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field)}
 .err:empty{display:none}
 .auf{border:3px solid var(--red);border-radius:14px;padding:12px 14px;margin:4px 0 6px}
 .auf.reko{border-color:#7a3db8}.auf .rol{display:inline-block;font:700 15px Barlow,sans-serif;color:#fff;background:var(--red);padding:3px 10px;border-radius:6px}.auf.reko .rol{background:#7a3db8}
@@ -107,15 +108,26 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
   <section id="sRm" hidden>
     <h2 id="rmTitle"></h2>
     <div id="rmReko">
-      <label>Lagebeurteilung<textarea id="rmLage" rows="3" style="display:block;width:100%;font:500 17px Barlow,sans-serif;padding:10px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field)"></textarea></label>
-      <span class="mute">Benötigte AdF</span>
+      <label><span id="rmLageL">Lagebeurteilung</span><textarea id="rmLage" rows="3" class="ta"></textarea></label>
+      <span class="mute" id="rmAdfL">Benötigte AdF</span>
       <div class="step"><button type="button" id="rmMinus" aria-label="weniger">−</button><b id="rmAdf">0</b><button type="button" id="rmPlus" aria-label="mehr">+</button></div>
-      <span class="mute">Benötigte Mittel</span><div class="chips" id="rmMittel"></div>
-      <span class="mute">Geschätzte Dauer</span><div class="chips" id="rmDauer"></div>
+      <span class="mute" id="rmMitL">Benötigte Mittel</span><div class="chips" id="rmMittel"></div>
+      <span class="mute" id="rmDauL">Geschätzte Dauer</span><div class="chips" id="rmDauer"></div>
     </div>
-    <div id="rmErl"><label>Bemerkung (optional)<input id="rmText" placeholder="z. B. Baum entfernt, Strasse frei"></label></div>
+    <div id="rmErl">
+      <label>Bemerkung (optional)<input id="rmText" placeholder="z. B. Baum entfernt, Strasse frei"></label>
+      <span class="mute">Material vor Ort belassen</span><div class="chips" id="rmBel"></div>
+      <label style="margin-top:-4px">Anderes Material vor Ort (optional)<input id="rmBelFrei" placeholder="z. B. Absperrung, 2 Blachen"></label>
+      <span class="mute">Nacharbeiten nötig?</span>
+      <div class="chips" id="rmNach"><button type="button" data-n="0" class="on">Nein</button><button type="button" data-n="1">Ja</button></div>
+      <label id="rmNachL" hidden>Was ist noch zu tun?<input id="rmNachT" placeholder="z. B. Baum zerkleinern, Wurzelstock entfernen"></label>
+      <p class="mute" id="rmFolgeHint" hidden style="margin:-4px 0 12px">→ Es entsteht automatisch ein Folgeauftrag im KP.</p>
+    </div>
+    <div id="rmConf"><p id="rmConfT" style="margin:0 0 12px"></p></div>
+    <div id="rmFotos">
     <span class="mute">Fotos (bis 3) – werden beim Auftrag gespeichert</span>
     <div class="stack" style="margin:6px 0 12px"><div id="rmThumbs" class="thumbs"></div><button type="button" id="rmFotoB">📷 Foto aufnehmen</button></div>
+    </div>
     <input type="file" id="rmFoto" accept="image/*" capture="environment" hidden>
     <input type="file" id="qFoto" accept="image/*" capture="environment" hidden>
     <p class="err" id="rmErr"></p>
@@ -128,6 +140,6 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 </main>
 <div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.7.0"></script>
+<script type="module" src="checkin.js?v=0.8.0"></script>
 </body>
 </html>

@@ -50,6 +50,7 @@ textarea{resize:vertical;min-height:70px}
 .p1{background:var(--red);color:#fff;border-color:var(--red)}.p2{background:var(--warn);color:#1a1a1a;border-color:var(--warn)}.p3{background:#e6e2dc;color:var(--ink);border-color:#e6e2dc}
 .s-offen{background:var(--red);color:#fff;border-color:var(--red)}.s-reko{background:var(--reko);color:#fff;border-color:var(--reko)}.s-pendent{background:var(--warn);color:#1a1a1a;border-color:var(--warn)}
 .s-bew,.s-vorort{background:var(--blue);color:#fff;border-color:var(--blue)}.s-disp{background:var(--ink);color:#fff;border-color:var(--ink)}.s-abg{background:#e6e2dc;color:#3d4247;border-color:#e6e2dc}
+.s-nach{background:#0f766e;color:#fff;border-color:#0f766e}.st-belassen{background:#0f766e;color:#fff;border-color:#0f766e}
 .s-ohne{background:#e6e2dc;color:var(--ink);border-color:#e6e2dc}
 
 /* Kopf */
@@ -94,7 +95,7 @@ body.startmode{background:var(--red)}
 body.startmode .top{display:none}
 
 /* Dashboard */
-.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:5px solid var(--c,var(--ink))}
 .kpi span{display:block;font-size:13px;color:var(--mute)}.kpi b{font:700 34px/1.05 "Barlow Condensed",sans-serif}
 .dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px}
@@ -136,9 +137,9 @@ body.startmode .top{display:none}
 .recent b{font:700 19px/1 "Barlow Condensed",sans-serif;min-width:24px}
 
 /* Spalten */
-.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}
+.board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:start}
 .col{background:var(--col);border-radius:12px;border-top:5px solid var(--c);min-height:60vh}
-.col h3{display:flex;align-items:center;margin:0;padding:10px 12px;font:600 21px "Barlow Condensed",sans-serif}
+.col h3{display:flex;align-items:center;gap:6px;margin:0;padding:10px 10px;font:600 19px/1.1 "Barlow Condensed",sans-serif}
 .col h3 span{flex:1}.col h3 i{font:700 17px/1 "Barlow Condensed",sans-serif;font-style:normal;background:#fff;padding:3px 9px;border-radius:12px}
 .cards{display:flex;flex-direction:column;gap:8px;padding:0 8px 10px}
 .acard{background:#fff;border-radius:9px;border:2px solid #fff;padding:8px 10px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;min-height:0;gap:4px;box-shadow:0 1px 2px rgba(0,0,0,.08);cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
@@ -212,7 +213,7 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 .slist li span{flex:1}.slist button{min-height:34px;padding:2px 10px;font-size:14px}
 .sform{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:6px;margin-bottom:8px}.sform input{margin:0}
 .leaflet-container{font:inherit}
-@media(max-width:1000px){.dashgrid,.erfgrid{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.board{grid-template-columns:repeat(5,minmax(220px,1fr));overflow-x:auto}.mapwrap{grid-template-columns:minmax(0,1fr);height:auto}.maplist{max-height:260px}#lageMap{height:60vh}.pmgrid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:1000px){.dashgrid,.erfgrid{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.board{grid-template-columns:repeat(6,minmax(200px,1fr));overflow-x:auto}.mapwrap{grid-template-columns:minmax(0,1fr);height:auto}.maplist{max-height:260px}#lageMap{height:60vh}.pmgrid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.tiles{grid-template-columns:minmax(0,1fr)}.g2{grid-template-columns:minmax(0,1fr)}.sform{grid-template-columns:1fr 1fr}#clock{font-size:28px}.top .dur{display:none}}
 </style>
 </head>
@@ -371,6 +372,14 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
   <div class="dbtn"><span id="fvLinks" class="row"></span><button class="dark" onclick="this.closest('dialog').close()">Schliessen</button></div>
 </div></dialog>
 
+<dialog id="dZw"><form class="dp" id="fZw" method="dialog">
+  <h3 id="zwTitle"></h3>
+  <label>Meldung<textarea name="txt" placeholder="z. B. dauert länger, Keller tiefer als gemeldet"></textarea></label>
+  <label>Nachforderung (optional)<input name="nach" placeholder="z. B. 2 AdF, 1 Tauchpumpe"></label>
+  <span class="flab">Voraussichtliche Restdauer</span><div class="chips dk" id="zwD"></div>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="blue" value="ok">Speichern</button></div>
+</form></dialog>
+
 <dialog id="dZu"><div class="dp">
   <h3 id="zuTitle"></h3>
   <ul class="elist" id="zuList"></ul>
@@ -380,7 +389,14 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 <dialog id="dAbg"><form class="dp" id="fAbg" method="dialog">
   <h3 id="abgTitle"></h3>
   <label>Abschlussbemerkung (optional)<textarea name="txt" placeholder="z. B. Baum entfernt, Strasse frei"></textarea></label>
-  <p class="hint">Alle zugewiesenen Leute und Mittel werden wieder als verfügbar gemeldet.</p>
+  <div id="abgExtra">
+    <span class="flab">Material vor Ort belassen</span><div class="chips dk" id="abgBel"></div>
+    <label>Anderes Material vor Ort (optional)<input name="belFrei" placeholder="z. B. Absperrung, 2 Blachen"></label>
+    <span class="flab">Nacharbeiten nötig?</span><div class="chips dk" id="abgNach"><button type="button" data-n="0">Nein</button><button type="button" data-n="1">Ja</button></div>
+    <label id="abgNachL" hidden>Was ist noch zu tun?<input name="nachT" placeholder="z. B. Baum zerkleinern, Wurzelstock entfernen"></label>
+    <div class="note" id="abgHint" hidden>Es entsteht automatisch ein Folgeauftrag in der Spalte «Nacharbeiten».</div>
+  </div>
+  <p class="hint">Alle zugewiesenen Leute und Mittel werden wieder als verfügbar gemeldet (ausser belassenes Material).</p>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="okb" value="ok">Auftrag abschliessen</button></div>
 </form></dialog>
 
@@ -434,6 +450,6 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
-<script src="app.js?v=0.6.0"></script>
+<script src="app.js?v=0.8.0"></script>
 </body>
 </html>

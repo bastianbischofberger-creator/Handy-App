@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.6.0';
+const VERSION = '0.8.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -46,9 +46,9 @@ const DEF = {
 const QUELLEN = ['Anruf', 'E-Mail', 'Alarm', 'Andere'];
 const PRIOS = [['P1', 'P1 · sofort'], ['P2', 'P2 · dringend'], ['P3', 'P3 · später']];
 const DAUER = ['< 30 Min.', '1 h', '2 h', '> 2 h'];
-const COLS = [['offen', 'Offen', '#c8102e'], ['reko', 'Reko', '#7a3db8'], ['pendent', 'Pendent', '#f2b705'], ['bew', 'In Bewältigung', '#1557c0'], ['abg', 'Abgeschlossen', '#8f969c']];
-const STL = { offen: 'Offen', reko: 'Reko', pendent: 'Pendent', bew: 'In Bewältigung', abg: 'Abgeschlossen' };
-const PINC = { offen: '#c8102e', reko: '#7a3db8', pendent: '#f2b705', disp: '#16181a', vorort: '#1557c0', abg: '#8f969c' };
+const COLS = [['offen', 'Offen', '#c8102e'], ['reko', 'Reko', '#7a3db8'], ['pendent', 'Pendent', '#f2b705'], ['bew', 'In Bewältigung', '#1557c0'], ['nach', 'Nacharbeiten', '#0f766e'], ['abg', 'Abgeschlossen', '#8f969c']];
+const STL = { offen: 'Offen', reko: 'Reko', pendent: 'Pendent', bew: 'In Bewältigung', nach: 'Nacharbeiten', abg: 'Abgeschlossen' };
+const PINC = { offen: '#c8102e', reko: '#7a3db8', pendent: '#f2b705', disp: '#16181a', vorort: '#1557c0', nach: '#0f766e', abg: '#8f969c' };
 
 const S = { settings: { ...DEF }, eid: null, meta: {}, A: [], res: {}, ci: {}, log: [], list: [], view: 'start', sel: null, filt: 'alle' };
 const SY = { mode: 'local', pending: false, error: '', user: null };
@@ -227,18 +227,59 @@ function applyReply(c) {
   if (m.typ === 'vorort') {
     if (a.status === 'reko') { if (a.reko) a.reko.vorOrt = m.t; log(`Auftrag ${a.nr}: Reko vor Ort (${who}, Handy)`); }
     else if (a.status === 'bew' && a.sub !== 'vorort') { a.sub = 'vorort'; a.tVorOrt = m.t; log(`Auftrag ${a.nr}: vor Ort tätig (${who}, Handy)`); }
+  } else if (m.typ === 'lage' && a.status === 'reko') {
+    a.lageReko = m.lage || ''; a.bedarf = { adf: m.adf || 0, m: m.mittel || {} }; a.dauer = m.dauer || ''; a.lageT = m.t;
+    log(`Auftrag ${a.nr}: Lagebeurteilung (${who}, Handy): ${m.lage || '–'} · Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}`);
   } else if (m.typ === 'rekoEnd' && a.status === 'reko') {
-    release(a, a.reko ? a.reko.ids : []); if (a.reko) a.reko.tEnd = m.t;
-    a.rekoDone = true; a.lageReko = m.lage || ''; a.bedarf = { adf: m.adf || 0, m: m.mittel || {} }; a.dauer = m.dauer || '';
-    if (m.keinEinsatz) { a.status = 'abg'; a.tAbg = m.t; a.abschluss = 'Kein Einsatz nötig' + (m.lage ? ': ' + m.lage : ''); log(`Auftrag ${a.nr}: Reko (${who}, Handy) – kein Einsatz nötig, abgeschlossen`); }
-    else { a.status = 'pendent'; log(`Auftrag ${a.nr}: Reko abgeschlossen (${who}, Handy) → Pendent. Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}${m.lage ? ' – ' + m.lage : ''}`); }
+    if (m.lage != null) { a.lageReko = m.lage; a.bedarf = { adf: m.adf || 0, m: m.mittel || {} }; a.dauer = m.dauer || ''; }
+    rekoFertig(a, m.t, !!m.keinEinsatz, `${who}, Handy`);
+  } else if (m.typ === 'zw' && a.status === 'bew') {
+    zwischen(a, { t: m.t, text: m.text || '', adf: m.adf || 0, m: m.mittel || {}, rest: m.dauer || '', von: who });
   } else if (m.typ === 'erledigt' && a.status === 'bew') {
-    release(a); a.status = 'abg'; a.tAbg = m.t; a.abschluss = m.text || ''; log(`Auftrag ${a.nr} erledigt gemeldet (${who}, Handy)${m.text ? ': ' + m.text : ''}`);
+    finishA(a, { t: m.t, text: m.text || '', belassen: m.belassen || [], belassenFrei: m.belassenFrei || '', nach: !!m.nach, nachText: m.nachText || '', von: who + ', Handy', fid: 'fo_' + m.id });
   } else if (m.typ === 'text') { log(`Auftrag ${a.nr}: Meldung von ${who}: ${m.text}`); }
   else if (m.typ === 'foto') { log(`Auftrag ${a.nr}: ${fotos.length} Foto${fotos.length > 1 ? 's' : ''} von ${who}`); }
   else log(`Auftrag ${a.nr}: Meldung «${m.typ}» von ${who} nicht übernommen (Auftrag ist ${STL[a.status]})`);
   saveA(a);
 }
+/* Reko fertig → Pendent (oder kein Einsatz) */
+function rekoFertig(a, t, kein, von) {
+  release(a, a.reko ? a.reko.ids : []); if (a.reko) a.reko.tEnd = t; a.rekoDone = true;
+  if (kein) { a.status = 'abg'; a.tAbg = t; a.abschluss = 'Kein Einsatz nötig' + (a.lageReko ? ': ' + a.lageReko : ''); log(`Auftrag ${a.nr}: Reko (${von}) – kein Einsatz nötig, abgeschlossen`); }
+  else { a.status = 'pendent'; log(`Auftrag ${a.nr}: Reko abgeschlossen (${von}) → Pendent. Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}`); }
+}
+/* Zwischenmeldung mit Nachforderung / Restdauer */
+function zwischen(a, z) {
+  a.zw = [...(a.zw || []), z];
+  const nach = bedarfText({ adf: z.adf, m: z.m });
+  if (nach) a.nachf = { adf: z.adf, m: z.m, t: z.t };
+  log(`Auftrag ${a.nr}: Zwischenmeldung (${z.von})${z.text ? ': ' + z.text : ''}${nach ? ' · Nachforderung: ' + nach : ''}${z.rest ? ' · Restdauer ' + z.rest : ''}`);
+}
+/* Auftrag abschliessen – optional Material vor Ort belassen und/oder Nacharbeiten → Folgeauftrag */
+function finishA(a, o) {
+  const bel = (o.belassen || []).filter(id => mittel().some(m => m.id === id));
+  release(a, (a.assigned || []).filter(id => !bel.includes(id)));
+  /* Material, das bei einem Folgeauftrag draussen war, ist jetzt zurück */
+  (a.belassen || []).forEach(id => { const r = resOf(id, 'm'); if (r.status === 'belassen' && r.auftrag === a.id) setRes(id, 'm', { status: 'verfuegbar', auftrag: null }); });
+  if ((a.belassen || []).length) log(`Material zurück (Auftrag ${a.nr}): ${a.belassen.map(resName).join(', ')}`);
+  a.status = 'abg'; a.tAbg = o.t; a.abschluss = o.text; a.nachf = null;
+  let txt = `Auftrag ${a.nr} erledigt (${o.von})${o.text ? ': ' + o.text : ''}`;
+  if (bel.length || o.belassenFrei || o.nach) {
+    const fid = o.fid || 'fo_' + uid();
+    if (!S.A.some(x => x.id === fid)) {
+      const names = [...bel.map(resName), o.belassenFrei].filter(Boolean).join(', ');
+      const f = { id: fid, nr: nextNr(), tEin: o.t, quelle: 'Folgeauftrag', art: o.nach ? 'Nacharbeiten' : 'Material abholen', adresse: a.adresse, lat: a.lat ?? null, lng: a.lng ?? null, prio: 'P3',
+        melder: a.melder || '', tel: a.tel || '', text: [o.nach ? o.nachText : '', names ? 'Material vor Ort: ' + names : ''].filter(Boolean).join(' · '),
+        anh: clone(a.anh || []), status: 'nach', sub: null, assigned: [], parent: a.id, parentNr: a.nr, belassen: bel, belassenFrei: o.belassenFrei || '' };
+      saveA(f);
+      bel.forEach(id => setRes(id, 'm', { status: 'belassen', auftrag: f.id }));
+      a.folge = f.id; a.folgeNr = f.nr;
+      txt += ` → Folgeauftrag ${f.nr} (${f.art}${names ? ', Material vor Ort: ' + names : ''})`;
+    }
+  }
+  log(txt);
+}
+
 /* Auftrag aufs Handy der eingeteilten Person schicken */
 const inboxSent = {};
 function syncInbox() {
@@ -255,6 +296,8 @@ function syncInbox() {
         rolle, fuehrung: lead === pid, fuehrungName: leadP ? pName(leadP) : '', team: [...ids].sort((x, y) => (y === lead) - (x === lead)).map(i => { const p = personal().find(x => x.id === i); return { v: p ? p.vorname : '?', n: p ? p.name : '', lead: i === lead }; }),
         mittel: rolle === 'disp' ? (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(resName).concat(a.extra ? [a.extra] : []) : [],
         bedarf: a.bedarf ? bedarfText(a.bedarf) : '', lageReko: a.lageReko || '', vorOrt: rolle === 'reko' ? !!(a.reko && a.reko.vorOrt) : a.sub === 'vorort',
+        lageT: rolle === 'reko' ? a.lageT || null : null, lage: rolle === 'reko' && a.lageT ? { text: a.lageReko || '', adf: (a.bedarf || {}).adf || 0, m: (a.bedarf || {}).m || {}, dauer: a.dauer || '' } : null,
+        zwN: (a.zw || []).length, mittelList: (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(i => ({ id: i, name: resName(i) })),
         gattungen: gattungen(), anh: (a.anh || []).filter(f => f.cloud).map(f => ({ id: f.id, name: f.name, type: f.type || '', size: f.size || 0 })),
         anhLokal: (a.anh || []).filter(f => !f.cloud).length };
     }
@@ -384,7 +427,7 @@ $('#fStart').addEventListener('submit', e => {
 function renderDash() {
   const c = s => S.A.filter(a => a.status === s).length;
   const ein = personal().filter(p => ['verfuegbar', 'einsatz'].includes(resOf(p.id, 'p').status)).length;
-  const k = [['Offen', c('offen'), '#c8102e'], ['Reko', c('reko'), '#7a3db8'], ['Pendent', c('pendent'), '#f2b705'], ['In Bewältigung', c('bew'), '#1557c0'], ['Abgeschlossen', c('abg'), '#8f969c'], ['AdF verfügbar', freeP().length + ' / ' + ein, '#1d7a46']];
+  const k = [['Offen', c('offen'), '#c8102e'], ['Reko', c('reko'), '#7a3db8'], ['Pendent', c('pendent'), '#f2b705'], ['In Bewältigung', c('bew'), '#1557c0'], ['Nacharbeiten', c('nach'), '#0f766e'], ['Abgeschlossen', c('abg'), '#8f969c'], ['AdF verfügbar', freeP().length + ' / ' + ein, '#1d7a46']];
   $('#kpis').innerHTML = k.map(([l, v, col]) => `<div class="kpi" style="--c:${col}"><span>${l}</span><b>${v}</b></div>`).join('');
   const u = S.A.filter(a => a.status === 'offen' || a.status === 'pendent').sort(sortA).slice(0, 8);
   $('#urg').innerHTML = u.length ? u.map(a => `<li data-a="${a.id}"><span class="nr">${a.nr}</span><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><span><b>${esc(a.art)}</b> · ${esc(a.adresse)} <span class="tag s-${a.status}">${STL[a.status]}</span></span><span class="since" data-since="${a.tEin}"></span></li>`).join('')
@@ -530,7 +573,7 @@ function initLageMap() {
     baseK = mkTiles('karte').addTo(lageMap); baseL = mkTiles('luft');
     lageLayer = L.layerGroup().addTo(lageMap);
     const leg = L.control({ position: 'bottomleft' });
-    leg.onAdd = () => { const d = L.DomUtil.create('div', 'legend'); d.innerHTML = [['offen', 'Offen'], ['reko', 'Reko'], ['pendent', 'Pendent'], ['disp', 'Disponiert'], ['vorort', 'Vor Ort tätig'], ['abg', 'Abgeschlossen']].map(([k, l]) => `<div><i style="background:${PINC[k]}"></i>${l}</div>`).join(''); return d; };
+    leg.onAdd = () => { const d = L.DomUtil.create('div', 'legend'); d.innerHTML = [['offen', 'Offen'], ['reko', 'Reko'], ['pendent', 'Pendent'], ['disp', 'Disponiert'], ['vorort', 'Vor Ort tätig'], ['nach', 'Nacharbeiten'], ['abg', 'Abgeschlossen']].map(([k, l]) => `<div><i style="background:${PINC[k]}"></i>${l}</div>`).join(''); return d; };
     leg.addTo(lageMap);
     const sw = L.control({ position: 'topright' });
     sw.onAdd = () => { const d = L.DomUtil.create('div', 'mapsw'); d.innerHTML = '<button class="on" data-b="k">Karte</button><button data-b="l">Luftbild</button>'; L.DomEvent.disableClickPropagation(d);
@@ -560,12 +603,15 @@ function cardHtml(a) {
   const nA = (a.anh || []).length; if (nA) inf = [inf, '📎 ' + nA].filter(Boolean).join(' · ');
   if (a.status === 'pendent' && a.bedarf) inf = 'Benötigt: ' + (bedarfText(a.bedarf) || '–') + (a.dauer ? ' · ca. ' + a.dauer : '');
   if (a.status === 'bew') inf = assignedText(a);
+  if (a.status === 'nach') inf = (a.parentNr ? `aus Auftrag ${a.parentNr}` : '') + (a.text ? ' · ' + a.text : '');
+  if (a.status === 'reko' && a.lageT) extra += `<span class="tag s-ohne">Lage gemeldet ${hm(a.lageT)}</span>`;
+  if (a.status === 'abg' && a.folgeNr) extra += `<span class="tag s-nach">→ Folgeauftrag ${a.folgeNr}</span>`;
   if (a.status === 'abg' && a.abschluss) inf = a.abschluss;
   const ready = isReady(a);
   return `<button type="button" class="acard${ready ? ' ready' : ''}${a.id === S.sel ? ' sel' : ''}" data-a="${a.id}" id="c-${a.id}">
     <span class="h"><span class="nr">${a.nr}</span><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><time>${hm(a.tEin)}</time></span>
     <b>${esc(a.art)}</b><span class="ad">${esc(a.adresse)}</span>${extra ? `<span class="row" style="gap:4px">${extra}</span>` : ''}
-    ${inf ? `<span class="inf">${esc(inf)}</span>` : ''}${ready ? '<span class="go">Mittel verfügbar – disponieren</span>' : ''}</button>`;
+    ${inf ? `<span class="inf">${esc(inf)}</span>` : ''}${a.status === 'bew' && a.nachf ? `<span class="go" style="background:var(--warn);color:#1a1a1a">Nachforderung: ${esc(bedarfText(a.nachf))}</span>` : ''}${ready ? '<span class="go">Mittel verfügbar – disponieren</span>' : ''}</button>`;
 }
 function renderBoard() {
   $('#board').innerHTML = COLS.map(([k, t, c]) => {
@@ -591,7 +637,7 @@ $('#mlist').addEventListener('click', e => { const c = e.target.closest('[data-a
   if (a.lat != null && lageMap) lageMap.setView([a.lat, a.lng], Math.max(lageMap.getZoom(), 16)); openDetail(a.id); });
 
 /* ---------- 4 Personal & Mittel ---------- */
-const PST = { abwesend: 'Nicht eingerückt', verfuegbar: 'Verfügbar', einsatz: 'Im Einsatz', abgetreten: 'Abgetreten', ausser: 'Ausser Betrieb' };
+const PST = { abwesend: 'Nicht eingerückt', verfuegbar: 'Verfügbar', einsatz: 'Im Einsatz', abgetreten: 'Abgetreten', ausser: 'Ausser Betrieb', belassen: 'Vor Ort belassen' };
 function renderMittel() {
   const ps = personal(), cnt = s => ps.filter(p => resOf(p.id, 'p').status === s).length;
   $('#pSums').innerHTML = [['Eingerückt', cnt('verfuegbar') + cnt('einsatz'), ''], ['Verfügbar', cnt('verfuegbar'), 'var(--ok)'], ['Im Einsatz', cnt('einsatz'), 'var(--blue)'], ['Abgetreten', cnt('abgetreten'), 'var(--mute)']]
@@ -607,8 +653,9 @@ function renderMittel() {
   }).join('') : '<li class="empty">Noch kein Personal erfasst (Einstellungen → Stammdaten).</li>';
   $('#mGrid').innerHTML = mittel().map(m => {
     const r = resOf(m.id, 'm'), a = r.auftrag && A(r.auftrag);
-    const b = r.status === 'verfuegbar' ? '<button data-ma="aus" class="ghost">Ausser Betrieb</button>' : r.status === 'ausser' ? '<button data-ma="ok">Wieder verfügbar</button>' : (a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}</button>` : '<button data-ma="ok">Freigeben</button>');
-    const inf = r.status === 'einsatz' && a ? `Auftrag ${a.nr} · ${a.adresse}` : (m.info || m.gattung || '');
+    const b = r.status === 'verfuegbar' ? '<button data-ma="aus" class="ghost">Ausser Betrieb</button>' : r.status === 'ausser' ? '<button data-ma="ok">Wieder verfügbar</button>'
+      : (a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}</button>` : '') + (r.status === 'belassen' ? '<button data-ma="ok">Zurück</button>' : (a ? '' : '<button data-ma="ok">Freigeben</button>'));
+    const inf = (r.status === 'einsatz' || r.status === 'belassen') && a ? `${r.status === 'belassen' ? 'Vor Ort belassen – ' : ''}Auftrag ${a.nr} · ${a.adresse}` : (m.info || m.gattung || '');
     return `<div class="mcard${r.status === 'verfuegbar' ? ' av' : ''}" data-m="${m.id}"><div class="h"><b>${esc(m.name)}</b><span class="tag st-${r.status}">${PST[r.status]}</span></div><span class="inf">${esc(inf)}</span><div class="acts">${b}</div></div>`;
   }).join('') || '<p class="empty">Noch keine Fahrzeuge erfasst.</p>';
 }
@@ -638,18 +685,23 @@ function renderDetail() {
   const rows = [['Eingang', `${hm(a.tEin)} · ${a.quelle}`], ['Meldende Person', [a.melder, a.tel].filter(Boolean).join(' · ')], ['Beschreibung', a.text],
     ['Reko', a.reko ? `${a.reko.wer.join(', ')} · ${hm(a.reko.t)}${a.reko.vorOrt ? ' · vor Ort ' + hm(a.reko.vorOrt) : ''}${a.reko.tEnd ? ' · fertig ' + hm(a.reko.tEnd) : ''}` : ''], ['Lagebeurteilung', a.lageReko],
     ['Benötigt', a.bedarf ? bedarfText(a.bedarf) + (a.dauer ? ' · ca. ' + a.dauer : '') : ''], ['Zugewiesen', a.status === 'bew' ? assignedText(a) : ''],
+    ['Zwischenmeldungen', (a.zw || []).map(z => `${hm(z.t)} ${z.von || ''}: ${[z.text, bedarfText({ adf: z.adf, m: z.m }) ? 'Nachforderung ' + bedarfText({ adf: z.adf, m: z.m }) : '', z.rest ? 'Restdauer ' + z.rest : ''].filter(Boolean).join(' · ')}`).join('\n')],
+    ['Material vor Ort', (a.belassen || []).length || a.belassenFrei ? [...(a.belassen || []).map(resName), a.belassenFrei].filter(Boolean).join(', ') : ''],
     ['Disponiert', a.tDisp && a.status !== 'pendent' && a.status !== 'offen' ? hm(a.tDisp) : ''], ['Vor Ort', a.tVorOrt ? hm(a.tVorOrt) : ''], ['Abgeschlossen', a.tAbg && a.status === 'abg' ? hm(a.tAbg) + (a.abschluss ? ' · ' + a.abschluss : '') : '']]
     .filter(r => r[1]);
   const B = (act, label, cls) => `<button data-act="${act}" class="${cls || ''}">${label}</button>`;
   const acts = {
     offen: [B('reko', 'Reko schicken', 'rekob'), B('ohne', 'Ohne Reko → Pendent', 'warnb'), B('disp', 'Direkt disponieren', 'blue')],
-    reko: [B('rekoEnd', 'Reko abschliessen', 'rekob'), B('rekoCancel', 'Reko abbrechen', 'ghost')],
+    reko: [...(!(a.reko && a.reko.vorOrt) ? [B('rekoVor', 'Vor Ort', 'blue')] : []), B('lage', a.lageT ? 'Lagebeurteilung ändern' : 'Lagebeurteilung', a.lageT ? '' : 'rekob'),
+      ...(a.lageT ? [B('rekoEnd', 'Reko abgeschlossen', 'rekob')] : []), B('rekoCancel', 'Reko abbrechen', 'ghost')],
     pendent: [B('disp', 'Disponieren', isReady(a) ? 'okb' : 'blue'), B('bedarf', 'Benötigte Mittel ändern'), B('abg', 'Ohne Einsatz abschliessen', 'ghost')],
-    bew: [...(st === 'disp' ? [B('vorort', 'Vor Ort', 'blue')] : []), B('disp', 'Mittel ändern'), B('abg', 'Abschliessen', 'okb'), B('back', 'Zurück nach Pendent', 'ghost')],
+    bew: [...(st === 'disp' ? [B('vorort', 'Vor Ort', 'blue')] : [B('zw', 'Zwischenmeldung', 'blue')]), B('disp', 'Mittel ändern'), B('abg', 'Auftrag erledigt', 'okb'), B('back', 'Zurück nach Pendent', 'ghost')],
+    nach: [B('disp', 'Disponieren', 'blue'), B('abg', 'Ohne Einsatz abschliessen', 'ghost')],
     abg: [B('reopen', 'Wieder öffnen')]
   }[a.status];
   $('#dABody').innerHTML = `<div class="dh"><span class="nr">${a.nr}</span><div style="flex:1"><h3>${esc(a.art)}</h3><p>${esc(a.adresse)}</p></div><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><span class="tag s-${st}">${stTxt}</span></div>
-    <dl class="dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    <dl class="dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd style="white-space:pre-line">${esc(v)}</dd>`).join('')}</dl>
+    ${a.parent ? `<p>Folgeauftrag von <button class="ghost" data-act="goA" data-id="${a.parent}">Auftrag ${a.parentNr}</button></p>` : ''}${a.folge ? `<p>Folgeauftrag: <button class="ghost" data-act="goA" data-id="${a.folge}">Auftrag ${a.folgeNr}</button></p>` : ''}
     ${(a.anh || []).length ? `<span class="flab">Anhänge</span><div class="anh">${a.anh.map((f, i) => `<button class="file" data-file="${i}">${SVGF}${esc(f.name)} <small>${kb(f.size)}</small></button>`).join('')}</div>` : ''}
     ${(a.fotos || []).length ? `<span class="flab">Fotos vom Handy</span><div class="anh">${a.fotos.map((f, i) => `<button class="file" data-foto="${i}" style="padding:4px"><img src="${f.data}" alt="Foto ${i + 1}" style="height:70px;border-radius:6px"> <small>${hm(f.t)} ${esc(f.von || '')}</small></button>`).join('')}</div>` : ''}
     ${isReady(a) ? '<div class="note ok"><b>Die benötigten Mittel sind verfügbar.</b></div>' : ''}
@@ -666,6 +718,10 @@ $('#dABody').addEventListener('click', e => {
   if (act === 'reko') return openPick(a, 'reko');
   if (act === 'ohne') return openBed(a, 'ohne');
   if (act === 'rekoEnd') return openBed(a, 'reko');
+  if (act === 'lage') return openBed(a, 'lage');
+  if (act === 'rekoVor') { if (a.reko) a.reko.vorOrt = now; saveA(a); log(`Auftrag ${a.nr}: Reko vor Ort`); return; }
+  if (act === 'zw') return openZw(a);
+  if (act === 'goA') { S.sel = b.dataset.id; return renderDetail(); }
   if (act === 'bedarf') return openBed(a, 'edit');
   if (act === 'disp') return openPick(a, 'disp');
   if (act === 'abg') return openAbg(a);
@@ -682,7 +738,8 @@ let ZU = null;
 function openZu(pid) {
   const p = personal().find(x => x.id === pid); ZU = pid;
   $('#zuTitle').textContent = pName(p) + ' zuweisen';
-  const l = S.A.filter(a => a.status !== 'abg').sort((x, y) => ['offen', 'reko', 'pendent', 'bew'].indexOf(x.status) - ['offen', 'reko', 'pendent', 'bew'].indexOf(y.status) || sortA(x, y));
+  const ORD = ['offen', 'reko', 'pendent', 'bew', 'nach'];
+  const l = S.A.filter(a => a.status !== 'abg').sort((x, y) => ORD.indexOf(x.status) - ORD.indexOf(y.status) || sortA(x, y));
   $('#zuList').innerHTML = l.map(a => {
     const st = subOf(a), lab = a.status === 'bew' ? (st === 'vorort' ? 'Vor Ort tätig' : 'Disponiert') : STL[a.status];
     const btns = a.status === 'offen' ? `<button data-zu="reko" data-a="${a.id}" class="rekob">Als Reko</button><button data-zu="disp" data-a="${a.id}" class="blue">Disponieren</button>`
@@ -751,11 +808,11 @@ let BD = null;
 function openBed(a, mode) {
   const b = a.bedarf || { adf: 0, m: {} };
   BD = { id: a.id, mode, adf: b.adf || 0, m: { ...(b.m || {}) }, dauer: a.dauer || '', prio: a.prio };
-  $('#bdTitle').textContent = `Auftrag ${a.nr}: ${mode === 'reko' ? 'Reko abschliessen' : mode === 'ohne' ? 'Ohne Reko nach «Pendent»' : 'Benötigte Mittel'}`;
-  $('#bdLageL').firstChild.textContent = mode === 'reko' ? 'Lagebeurteilung' : 'Bemerkung';
+  $('#bdTitle').textContent = `Auftrag ${a.nr}: ${mode === 'reko' ? 'Reko abgeschlossen' : mode === 'lage' ? 'Lagebeurteilung' : mode === 'ohne' ? 'Ohne Reko nach «Pendent»' : 'Benötigte Mittel'}`;
+  $('#bdLageL').firstChild.textContent = mode === 'reko' || mode === 'lage' ? 'Lagebeurteilung' : 'Bemerkung';
   $('#fBed').elements.lage.value = a.lageReko || '';
-  $('#bdNone').hidden = mode !== 'reko'; $('#bdDisp').hidden = mode === 'edit';
-  $('#bdPend').textContent = mode === 'edit' ? 'Speichern' : 'In «Pendent» setzen';
+  $('#bdNone').hidden = mode !== 'reko'; $('#bdDisp').hidden = mode === 'edit' || mode === 'lage';
+  $('#bdPend').textContent = mode === 'edit' || mode === 'lage' ? 'Speichern' : 'In «Pendent» setzen';
   renderBed(); $('#dBed').showModal();
 }
 function renderBed() {
@@ -780,8 +837,9 @@ $('#fBed').addEventListener('submit', e => {
   const a = A(BD.id), now = Date.now(), lage = e.target.elements.lage.value.trim();
   Object.keys(BD.m).forEach(k => { if (!BD.m[k]) delete BD.m[k]; });
   a.bedarf = { adf: BD.adf, m: BD.m }; a.dauer = BD.dauer; if (a.prio !== BD.prio) log(`Auftrag ${a.nr}: Dringlichkeit ${a.prio} → ${BD.prio}`); a.prio = BD.prio; a.lageReko = lage;
-  if (BD.mode === 'reko') { release(a, a.reko ? a.reko.ids : []); a.rekoDone = true; if (a.reko) a.reko.tEnd = now; }
+  if (BD.mode === 'lage') { a.lageT = now; saveA(a); log(`Auftrag ${a.nr}: Lagebeurteilung: ${lage || '–'} · Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}`); return; }
   if (BD.mode === 'edit') { saveA(a); log(`Auftrag ${a.nr}: benötigte Mittel ${bedarfText(a.bedarf) || '–'}`); return; }
+  if (BD.mode === 'reko') { a.lageT = a.lageT || now; rekoFertig(a, now, v === 'none', 'KP'); saveA(a); if (v === 'disp') setTimeout(() => openPick(a, 'disp'), 50); return; }
   if (v === 'none') { a.status = 'abg'; a.tAbg = now; a.abschluss = 'Kein Einsatz nötig' + (lage ? ': ' + lage : ''); saveA(a); log(`Auftrag ${a.nr}: Reko – kein Einsatz nötig, abgeschlossen`); return; }
   a.status = 'pendent'; a.ohneReko = BD.mode === 'ohne'; saveA(a);
   log(`Auftrag ${a.nr}: ${BD.mode === 'reko' ? 'Reko abgeschlossen' : 'ohne Reko'} → Pendent. Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}${lage ? ' – ' + lage : ''}`);
@@ -790,11 +848,37 @@ $('#fBed').addEventListener('submit', e => {
 
 /* Abschliessen */
 let ABG = null;
-function openAbg(a) { ABG = a.id; $('#abgTitle').textContent = `Auftrag ${a.nr} abschliessen`; $('#fAbg').reset(); $('#dAbg').showModal(); }
+let ABEL = new Set(), ANACH = false;
+function openAbg(a) {
+  ABG = a.id; ABEL = new Set(); ANACH = false; $('#abgTitle').textContent = `Auftrag ${a.nr}: ${a.status === 'bew' ? 'Auftrag erledigt' : 'abschliessen'}`; $('#fAbg').reset();
+  $('#abgExtra').hidden = a.status !== 'bew'; renderAbg(); $('#dAbg').showModal();
+}
+function renderAbg() {
+  const a = A(ABG), ml = (a.assigned || []).filter(i => mittel().some(m => m.id === i));
+  $('#abgBel').innerHTML = ml.length ? ml.map(i => `<button type="button" data-b="${i}" class="${ABEL.has(i) ? 'on' : ''}">${esc(resName(i))}</button>`).join('') : '<span class="hint">Keine Mittel zugewiesen.</span>';
+  $$('#abgNach button').forEach(b => b.classList.toggle('on', (b.dataset.n === '1') === ANACH)); $('#abgNachL').hidden = !ANACH;
+  $('#abgHint').hidden = !(ANACH || ABEL.size || $('#fAbg').elements.belFrei.value.trim());
+}
+$('#abgBel').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; ABEL.has(b.dataset.b) ? ABEL.delete(b.dataset.b) : ABEL.add(b.dataset.b); renderAbg(); });
+$('#abgNach').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (!b) return; ANACH = b.dataset.n === '1'; renderAbg(); });
+$('#fAbg').elements.belFrei.addEventListener('input', renderAbg);
 $('#fAbg').addEventListener('submit', e => {
   if (!e.submitter || e.submitter.value !== 'ok') return;
-  const a = A(ABG), t = e.target.elements.txt.value.trim(); release(a);
-  a.status = 'abg'; a.tAbg = Date.now(); a.abschluss = t; saveA(a); log(`Auftrag ${a.nr} abgeschlossen${t ? ': ' + t : ''}`);
+  const a = A(ABG), f = e.target.elements;
+  if (ANACH && !f.nachT.value.trim()) { e.preventDefault(); f.nachT.focus(); return; }
+  finishA(a, { t: Date.now(), text: f.txt.value.trim(), belassen: [...ABEL], belassenFrei: f.belFrei.value.trim(), nach: ANACH, nachText: f.nachT.value.trim(), von: 'KP' });
+  saveA(a);
+});
+/* Zwischenmeldung im KP (z. B. per Funk) */
+let ZW = null;
+function openZw(a) { ZW = { id: a.id, dauer: '' }; $('#zwTitle').textContent = `Auftrag ${a.nr}: Zwischenmeldung`; $('#fZw').reset(); chipRow('#zwD', DAUER.map(d => [d, d]), ''); $('#dZw').showModal(); }
+$('#zwD').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { ZW.dauer = ZW.dauer === b.dataset.v ? '' : b.dataset.v; chipRow('#zwD', DAUER.map(d => [d, d]), ZW.dauer); } });
+$('#fZw').addEventListener('submit', e => {
+  if (!e.submitter || e.submitter.value !== 'ok') return;
+  const a = A(ZW.id), f = e.target.elements, nf = f.nach.value.trim();
+  zwischen(a, { t: Date.now(), text: [f.txt.value.trim(), nf ? 'Nachforderung: ' + nf : ''].filter(Boolean).join(' · '), adf: 0, m: {}, rest: ZW.dauer, von: 'KP' });
+  if (nf) a.nachf = { adf: 0, m: { [nf]: 1 }, t: Date.now() };
+  saveA(a);
 });
 
 function confirmBox(title, text, ok) { $('#cTitle').textContent = title; $('#cText').textContent = text; const d = $('#dC'); d.returnValue = ''; d.onclose = () => { if (d.returnValue === 'ok') ok(); }; d.showModal(); }
@@ -838,7 +922,8 @@ $('#fS').addEventListener('submit', e => {
 $('#bSwitch').onclick = () => { $('#dS').close(); go('start'); };
 $('#bCloseE').onclick = () => {
   const open = S.A.filter(a => a.status !== 'abg').length; $('#dS').close();
-  confirmBox('Ereignis abschliessen?', open ? `Achtung: ${open} Aufträge sind noch nicht abgeschlossen. Das Ereignis bleibt gespeichert und kann wieder geöffnet werden.` : 'Das Ereignis wird abgeschlossen und bleibt für den Rapport gespeichert.', () => {
+  const bel = mittel().filter(m => resOf(m.id, 'm').status === 'belassen').map(m => m.name);
+  confirmBox('Ereignis abschliessen?', (open ? `Achtung: ${open} Aufträge sind noch nicht abgeschlossen. ` : '') + (bel.length ? `Noch vor Ort belassen: ${bel.join(', ')}. ` : '') + 'Das Ereignis bleibt gespeichert und kann wieder geöffnet werden.', () => {
     S.meta.closed = true; S.meta.end = Date.now(); saveMeta(); log('Ereignis abgeschlossen'); publish(); });
 };
 
