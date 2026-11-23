@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.6.3';
+const VERSION = '1.7.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -25,7 +25,7 @@ const LP = (() => {
   return { get: k => o[k], set: (k, v) => { o[k] = v; try { localStorage.setItem('asue-prefs', JSON.stringify(o)); } catch (e) {} } };
 })();
 
-const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', kanalStd: '6', auftraege: 'Absuchen, Brandbekämpfung, Rettung', floors: 'UG -3, UG -2, UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
+const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', kanalStd: '6', auftraege: 'Absuchen, Brandbekämpfung, Rettung', floors: 'UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
 const S = { settings: { ...DEF }, eid: null, meta: {}, teams: [], log: [], list: [] };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
@@ -427,6 +427,8 @@ $('#dQR').addEventListener('close', stopScan);
 
 /* ---------- Stockwerke / Gebäude ---------- */
 const floors = () => String(S.meta.floors || S.settings.floors || '').split(',').map(f => f.trim()).filter(Boolean);
+const genFloors = (og, ug) => [...Array(ug)].map((_, i) => 'UG -' + (ug - i)).concat(['EG'], [...Array(og)].map((_, i) => (i + 1) + '. OG'), ['Dach']);
+const countOG = fl => fl.filter(f => /^\d+\. ?OG$/i.test(f)).length, countUG = fl => fl.filter(f => /^UG/i.test(f)).length;
 const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
 function badge(T, extra) { return `<button type="button" class="tbg ${T.status}${T.rett ? ' rett' : ''}" id="b-${T.id}" data-st="${esc(T.id)}" title="${T.rett ? 'Rettungstrupp' : 'Trupp'} ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}">${T.rett ? AXE : ''}${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
 function renderBau() {
@@ -434,7 +436,9 @@ function renderBau() {
   const fl = floors(), vis = S.teams.filter(t => !t.hidden), inside = vis.filter(t => t.status === 'innen' || t.status === 'rueckzug');
   const byNr = (a, b) => String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true });
   const egI = fl.findIndex(isEG);
-  let h = `<div class="bau-h"><b>Gebäude</b><button type="button" id="bFl">Stockwerke</button></div><div class="roof"></div>`;
+  const og = countOG(fl), ug = countUG(fl), opt = (n, sel, sign) => [...Array(n + 1)].map((_, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i ? sign + i : '0'}</option>`).join('');
+  let h = `<div class="bau-h"><b>Gebäude</b></div><div class="bau-sel"><label>OG<select id="selOG">${opt(20, og, '+')}</select></label><label>UG<select id="selUG">${opt(5, ug, '-')}</select></label></div><div class="roof"></div>`;
+  el.classList.toggle('many', fl.length > 10);
   for (let i = fl.length - 1; i >= 0; i--) {
     const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
     h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`;
@@ -449,6 +453,10 @@ function renderBau() {
   if (!inside.length && !ready.length && !rready.length) h += '<div class="zone">Noch kein Trupp im Gebäude.</div>';
   el.innerHTML = h;
 }
+$('#bau').addEventListener('change', e => {
+  if (e.target.id !== 'selOG' && e.target.id !== 'selUG') return;
+  S.meta.floors = genFloors(+$('#selOG').value, +$('#selUG').value).join(', '); saveMeta(); render();
+});
 $('#bau').addEventListener('click', e => {
   if (e.target.closest('#bFl')) return openFloors();
   const b = e.target.closest('[data-st]'); if (!b) return;
@@ -471,7 +479,8 @@ function openStock(id, mode) {
   const T = team(id); if (!T) return; stCtx = { id, mode };
   $('#stTitle').textContent = mode === 'in' ? `Trupp ${T.nr}: Wohin geht der Trupp?` : `Trupp ${T.nr}: Stockwerk wechseln`;
   const fl = floors(), egI = fl.findIndex(isEG);
-  $('#stPick').innerHTML = fl.map((f, i) => (i === egI ? '' : '') + `<button type="button" data-f="${esc(f)}" class="${f === T.stock ? 'on' : ''}">${esc(f)}</button>` + (i === egI - 1 ? '<div class="gl"></div>' : '')).join('');
+  const many = fl.length > 10; $('#stPick').classList.toggle('many', many);
+  $('#stPick').innerHTML = fl.map((f, i) => `<button type="button" data-f="${esc(f)}" class="${f === T.stock ? 'on' : ''}">${esc(f)}</button>` + (!many && i === egI - 1 ? '<div class="gl"></div>' : '')).reverse().join('');
   $('#stOther').value = T.stock && !fl.includes(T.stock) ? T.stock : '';
   $('#stSkip').textContent = mode === 'in' ? 'Ohne Angabe' : 'Kein Stockwerk';
   $('#dStock').showModal();
