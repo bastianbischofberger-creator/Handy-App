@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.1.1';
+const VERSION = '2.1.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -736,11 +736,8 @@ async function exportAs(kind) {
   } catch (e) { msg('Export fehlgeschlagen: ' + (e && e.message || e)); }
 }
 $('#bPdf').onclick = () => exportAs('pdf');
-$('#bPng').onclick = () => exportAs('png');
-$('#bCopy').onclick = () => {
-  const txt = 'Atemschutzüberwachung – Protokoll ' + (S.meta.ereignis || '') + ' ' + dt(S.meta.start || Date.now()) + '\n' + [...S.log].sort((a, b) => a.t - b.t).map(l => hms(l.t) + '  ' + l.text).join('\n');
-  try { navigator.clipboard.writeText(txt).then(() => msg('Protokoll kopiert.', true), () => msg('Kopieren nicht möglich.')); } catch (e) { msg('Kopieren nicht möglich.'); }
-};
+
+
 
 /* ================= Start ================= */
 let started = false;
