@@ -161,6 +161,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 
 /* Rettungstrupp */
 :root{--rt:#1557c0}
+[hidden]{display:none !important}
+select{appearance:auto}
+label select+input{margin-top:6px}
 .chk{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:16px;font-weight:600;margin:2px 0 12px}.chk input{width:24px;min-height:24px;margin:0;accent-color:var(--rt)}
 .axe{display:inline-block;width:21px;height:16px;vertical-align:-2px;background:currentColor;-webkit-mask:url(rettung.png) center/contain no-repeat;mask:url(rettung.png) center/contain no-repeat}.axe.rt{color:var(--rt);width:28px;height:21px}
 .rtag{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:700;padding:1px 7px;border-radius:6px;background:var(--rt);color:#fff;white-space:nowrap}
@@ -244,12 +247,10 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <h3 id="tTitle">Neuer Trupp</h3>
   <div class="g2">
     <label>Trupp-Nr.<input name="nr" required></label>
-    <label>Funkkanal<input name="kanal" list="kanaele" placeholder="z. B. K 12"></label>
+    <label>Funkkanal<select name="kanalSel"></select><input name="kanal" placeholder="Kanal eingeben" hidden></label>
   </div>
-  <div class="chips" id="kChips"></div>
-  <label>Auftrag<input name="auftrag" placeholder="z. B. Menschenrettung"></label>
-  <label>Stockwerk<input name="stock" placeholder="z. B. 2. OG"></label>
-  <div class="chips" id="sChips"></div>
+  <label>Auftrag<select name="aufSel"></select><input name="auftrag" placeholder="Auftrag eingeben" hidden></label>
+  <label>Stockwerk<select name="stockSel"></select><input name="stock" placeholder="Ort eingeben, z. B. Treppenhaus" hidden></label>
   <label class="chk"><input type="checkbox" name="rett"> <i class="axe rt" aria-hidden="true"></i> Rettungstrupp (Sicherheitstrupp)</label>
   <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0"><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 2<span class="inq"><input name="n1"><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
@@ -271,7 +272,8 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <h3>Einstellungen</h3>
   <p class="hint">Gilt für alle Geräte (bei Synchronisation).</p>
   <label>Feuerwehr (erscheint auf Protokoll)<input name="org"></label>
-  <label>Funkkanäle zur Auswahl (mit Komma getrennt)<input name="kanaele" placeholder="3, 4, 6, 8, 12"></label>
+  <div class="g2"><label>Funkkanäle zur Auswahl<input name="kanaele" placeholder="3, 4, 6, 8, 12"></label><label>Standard-Funkkanal<input name="kanalStd" placeholder="6"></label></div>
+  <label>Aufträge zur Auswahl (mit Komma getrennt)<input name="auftraege" placeholder="Absuchen, Brandbekämpfung, Rettung"></label>
   <div class="g2">
     <label>Druckkontrolle alle (Min.)<input name="interval" type="number" min="1"></label>
     <label>Standard-Anfangsdruck (bar)<input name="defP0" type="number"></label>
@@ -328,9 +330,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.5.2"></script>
+<script src="config.js?v=1.6.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.5.2"></script>
+<script src="app.js?v=1.6.0"></script>
 </body>
 </html>

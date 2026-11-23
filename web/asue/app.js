@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.5.2';
+const VERSION = '1.6.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -25,7 +25,7 @@ const LP = (() => {
   return { get: k => o[k], set: (k, v) => { o[k] = v; try { localStorage.setItem('asue-prefs', JSON.stringify(o)); } catch (e) {} } };
 })();
 
-const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', floors: 'UG -3, UG -2, UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
+const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', kanalStd: '6', auftraege: 'Absuchen, Brandbekämpfung, Rettung', floors: 'UG -3, UG -2, UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
 const S = { settings: { ...DEF }, eid: null, meta: {}, teams: [], log: [], list: [] };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
@@ -147,10 +147,24 @@ const active = T => (T.status === 'innen' || T.status === 'rueckzug') && T.membe
 
 /* ---------- Darstellung ---------- */
 const presets = () => String(S.settings.kanaele || '').split(/[,;]+/).map(k => k.trim()).filter(Boolean).map(k => /^\d+$/.test(k) ? 'K ' + k : k);
-function renderChips() { const v = $('#fTeam').elements.kanal.value.trim();
-  $('#kChips').innerHTML = presets().map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join(''); }
-$('#kChips').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; $('#fTeam').elements.kanal.value = b.dataset.k; renderChips(); });
-$('#fTeam').elements.kanal.addEventListener('input', renderChips);
+const auftraege = () => String(S.settings.auftraege || '').split(/[,;]+/).map(k => k.trim()).filter(Boolean);
+const kanalStd = () => { const k = String(S.settings.kanalStd || '').trim(); return /^\d+$/.test(k) ? 'K ' + k : k; };
+/* Auswahlliste mit «Andere…»/«Freitext…»: der Wert liegt im Textfeld daneben */
+function fillSel(selName, inpName, list, val, otherLabel, emptyLabel) {
+  const f = $('#fTeam'), sel = f.elements[selName], inp = f.elements[inpName];
+  const inList = list.includes(val);
+  sel.innerHTML = (emptyLabel != null ? `<option value="">${esc(emptyLabel)}</option>` : '') + list.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('') + `<option value="__other">${esc(otherLabel)}</option>`;
+  sel.value = inList ? val : (val ? '__other' : (emptyLabel != null ? '' : (list[0] || '__other')));
+  inp.value = val || (sel.value !== '__other' ? sel.value : '');
+  inp.hidden = sel.value !== '__other';
+}
+function selChanged(selName, inpName) {
+  const f = $('#fTeam'), sel = f.elements[selName], inp = f.elements[inpName];
+  if (sel.value === '__other') { inp.hidden = false; inp.value = ''; inp.focus(); } else { inp.hidden = true; inp.value = sel.value; }
+}
+$('#fTeam').elements.kanalSel.addEventListener('change', () => selChanged('kanalSel', 'kanal'));
+$('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
+function renderChips() {}
 const AXE = '<i class="axe" aria-hidden="true"></i>';
 const STL = { bereit: 'Bereit', innen: 'Im Einsatz', rueckzug: 'Rückzug', draussen: 'Draussen' };
 function card(T) {
@@ -281,9 +295,12 @@ function openTeam(id) {
   $('#tTitle').textContent = T ? 'Trupp ' + T.nr + ' bearbeiten' : 'Neuer Trupp';
   f.elements.stock.value = (T && T.stock) || ''; f.elements.rett.checked = !!(T && T.rett);
   if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
-  else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = (last && last.kanal) || presets()[0] || ''; }
+  else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = kanalStd() || presets()[0] || ''; f.elements.auftrag.value = ''; }
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
-  renderChips(); renderSChips(); $('#dTeam').showModal();
+  fillSel('kanalSel', 'kanal', presets(), f.elements.kanal.value.trim(), 'Anderer Kanal …');
+  fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –');
+  fillSel('stockSel', 'stock', [...floors()].reverse(), f.elements.stock.value.trim(), 'Anderer Ort …', '– kein Stockwerk –');
+  $('#dTeam').showModal();
 }
 $('#fTeam').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
@@ -328,7 +345,7 @@ $('#fP').addEventListener('submit', e => {
 
 function openSettings() {
   const f = $('#fS'), st = S.settings;
-  for (const k of ['org', 'kanaele', 'interval', 'defP0', 'rzMode', 'rzFixed', 'pfeife', 'defRate']) f.elements[k].value = st[k];
+  for (const k of ['org', 'kanaele', 'kanalStd', 'auftraege', 'interval', 'defP0', 'rzMode', 'rzFixed', 'pfeife', 'defRate']) f.elements[k].value = st[k];
   f.elements.dev.value = LP.get('dev') || '';
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
@@ -340,7 +357,7 @@ $('#fS').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
   const s = { ...S.settings };
   for (const k of ['interval', 'defP0', 'rzFixed', 'pfeife', 'defRate']) { const v = parseFloat(f.elements[k].value); if (v > 0 || (k === 'reserve' && v >= 0)) s[k] = v; }
-  s.rzMode = f.elements.rzMode.value; s.org = f.elements.org.value.trim(); s.kanaele = f.elements.kanaele.value.trim();
+  s.rzMode = f.elements.rzMode.value; s.org = f.elements.org.value.trim(); s.kanaele = f.elements.kanaele.value.trim(); s.kanalStd = f.elements.kanalStd.value.trim(); s.auftraege = f.elements.auftraege.value.trim();
   LP.set('dev', f.elements.dev.value.trim());
   BE.putSettings(s);
 });
@@ -417,10 +434,8 @@ $('#bau').addEventListener('click', e => {
   if (T.status === 'bereit') return;
   openStock(T.id, 'move');
 });
-function renderSChips() { const v = $('#fTeam').elements.stock.value.trim();
-  $('#sChips').innerHTML = floors().map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join(''); }
-$('#sChips').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; const i = $('#fTeam').elements.stock; i.value = i.value.trim() === b.dataset.k ? '' : b.dataset.k; renderSChips(); });
-$('#fTeam').elements.stock.addEventListener('input', renderSChips);
+function renderSChips() {}
+$('#fTeam').elements.stockSel.addEventListener('change', () => selChanged('stockSel', 'stock'));
 
 function enter(T, stock) {
   const now = Date.now();
