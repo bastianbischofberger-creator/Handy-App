@@ -224,8 +224,6 @@ label select+input{margin-top:6px}
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
     <button id="bList">Einsätze</button>
-    <button id="bBau"></button>
-    <button id="bView"></button>
     <button id="bMute" class="ico"></button>
     <button id="bSet">Einstellungen</button>
   </div>
@@ -289,6 +287,10 @@ label select+input{margin-top:6px}
   <label>Dieses Gerät wird benutzt von (erscheint im Protokoll)
     <select name="devSel"><option value="">– bitte wählen –</option><option>Atemschutzüberwacher</option><option>Atemschutzoffizier</option><option value="__other">Anderer Name …</option></select>
     <input name="dev" placeholder="z. B. iPad 1" hidden></label>
+  <div class="g2">
+    <label>Ansicht<select name="view"><option value="kompakt">Kompakt</option><option value="gross">Gross</option></select></label>
+    <label>Gebäude anzeigen<select name="bau"><option value="an">An</option><option value="aus">Aus</option></select></label>
+  </div>
   <p class="hint" id="sInfo"></p>
   <button type="button" id="bAdmin" class="admbtn">Adminbereich öffnen</button>
   <div id="sAdmin" hidden>
@@ -363,9 +365,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.0.2"></script>
+<script src="config.js?v=2.0.3"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.0.2"></script>
+<script src="app.js?v=2.0.3"></script>
 </body>
 </html>

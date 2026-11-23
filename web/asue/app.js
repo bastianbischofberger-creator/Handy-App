@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.0.2';
+const VERSION = '2.0.3';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -224,12 +224,12 @@ function render() {
   $('#bMute').innerHTML = LP.get('mute')
     ? SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'
     : SPK + '<path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/></svg>Ton an';
-  const cmp = LP.get('view') !== 'gross'; document.body.classList.toggle('compact', cmp); $('#bView').textContent = cmp ? 'Ansicht: Kompakt' : 'Ansicht: Gross';
+  const cmp = LP.get('view') !== 'gross'; document.body.classList.toggle('compact', cmp);
   $('#bMute').title = LP.get('mute') ? 'Ton ist aus – tippen zum Einschalten' : 'Ton ist an – tippen zum Ausschalten';
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
   $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
-  document.body.classList.toggle('nobau', LP.get('bau') === 'aus'); $('#bBau').textContent = LP.get('bau') === 'aus' ? 'Gebäude: aus' : 'Gebäude: an';
+  document.body.classList.toggle('nobau', LP.get('bau') === 'aus');
   renderBau(); renderList(); renderSync(); tick();
 }
 function renderSync() {
@@ -396,6 +396,7 @@ function openSettings() {
   { const dv = LP.get('dev') || '', opts = ['Atemschutzüberwacher', 'Atemschutzoffizier'];
     f.elements.dev.value = dv; f.elements.devSel.value = !dv ? '' : opts.includes(dv) ? dv : '__other'; f.elements.dev.hidden = f.elements.devSel.value !== '__other'; }
   $('#sAdmin').hidden = true; $('#bAdmin').hidden = false;
+  f.elements.view.value = LP.get('view') === 'gross' ? 'gross' : 'kompakt'; f.elements.bau.value = LP.get('bau') === 'aus' ? 'aus' : 'an';
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
   $('#dS').showModal();
@@ -591,8 +592,7 @@ $('#grid').addEventListener('click', e => {
   else if (a === 'del') confirmBox('Trupp ' + T.nr + ' entfernen?', 'Der Trupp wird gelöscht, er war noch nicht im Einsatz.', () => { BE.delTeam(S.eid, id); log(`Trupp ${T.nr} gelöscht`); });
 });
 $('#bAdd').onclick = () => openTeam();
-$('#bBau').onclick = () => { LP.set('bau', LP.get('bau') === 'aus' ? 'an' : 'aus'); render(); };
-$('#bView').onclick = () => { LP.set('view', LP.get('view') === 'gross' ? 'kompakt' : 'gross'); render(); };
+for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
 $('#bMute').onclick = () => { LP.set('mute', !LP.get('mute')); render(); if (!LP.get('mute')) { initAudio(); beep(1); } };
 let metaT = null;
