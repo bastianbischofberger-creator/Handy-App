@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.0.3';
+const VERSION = '2.0.4';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -221,11 +221,8 @@ function render() {
     g.innerHTML = [...vis].sort((a, b) => o[a.status] - o[b.status] || String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true })).map(card).join(''); }
   $('#kanaele').innerHTML = [...new Set([...presets(), ...S.teams.map(t => t.kanal).filter(Boolean)])].map(k => `<option value="${esc(k)}">`).join('');
   const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
-  $('#bMute').innerHTML = LP.get('mute')
-    ? SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'
-    : SPK + '<path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/></svg>Ton an';
+  { const mi = $('#muteInd'); mi.hidden = !LP.get('mute'); mi.innerHTML = SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'; }
   const cmp = LP.get('view') !== 'gross'; document.body.classList.toggle('compact', cmp);
-  $('#bMute').title = LP.get('mute') ? 'Ton ist aus – tippen zum Einschalten' : 'Ton ist an – tippen zum Ausschalten';
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
   $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
@@ -396,7 +393,7 @@ function openSettings() {
   { const dv = LP.get('dev') || '', opts = ['Atemschutzüberwacher', 'Atemschutzoffizier'];
     f.elements.dev.value = dv; f.elements.devSel.value = !dv ? '' : opts.includes(dv) ? dv : '__other'; f.elements.dev.hidden = f.elements.devSel.value !== '__other'; }
   $('#sAdmin').hidden = true; $('#bAdmin').hidden = false;
-  f.elements.view.value = LP.get('view') === 'gross' ? 'gross' : 'kompakt'; f.elements.bau.value = LP.get('bau') === 'aus' ? 'aus' : 'an';
+  f.elements.ton.value = LP.get('mute') ? 'aus' : 'an'; f.elements.view.value = LP.get('view') === 'gross' ? 'gross' : 'kompakt'; f.elements.bau.value = LP.get('bau') === 'aus' ? 'aus' : 'an';
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
   $('#dS').showModal();
@@ -594,7 +591,12 @@ $('#grid').addEventListener('click', e => {
 $('#bAdd').onclick = () => openTeam();
 for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
-$('#bMute').onclick = () => { LP.set('mute', !LP.get('mute')); render(); if (!LP.get('mute')) { initAudio(); beep(1); } };
+$('#muteInd').onclick = () => confirmBox('Ton wieder einschalten?', 'Alarme für Druckkontrolle und Rückzug sind dann wieder hörbar.', () => { LP.set('mute', false); render(); initAudio(); beep(1); });
+$('#fS').elements.ton.addEventListener('change', e => {
+  if (e.target.value === 'an') { LP.set('mute', false); render(); initAudio(); beep(1); return; }
+  e.target.value = 'an';
+  confirmBox('Ton wirklich ausschalten?', 'Alarme für fällige Druckkontrollen und den Rückzug sind dann NICHT mehr hörbar – nur noch sichtbar. Oben erscheint der Hinweis «Ton aus».', () => { LP.set('mute', true); $('#fS').elements.ton.value = 'aus'; render(); });
+});
 let metaT = null;
 $('#meta').addEventListener('input', e => { const i = e.target.closest('[data-m]'); if (!i) return; S.meta[i.dataset.m] = i.value; clearTimeout(metaT); metaT = setTimeout(saveMeta, 700); });
 

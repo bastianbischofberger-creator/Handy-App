@@ -33,6 +33,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system
 button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .top button{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff}
+.muteind{display:inline-flex;align-items:center;gap:6px;background:var(--warn) !important;color:#1a1a1a !important;border:2px solid #1a1a1a !important;font-weight:700;animation:blink2 1.6s steps(2) infinite}.muteind svg{width:22px;height:22px}@keyframes blink2{50%{opacity:.6}}
 .tb .ico{display:inline-flex;align-items:center;gap:8px}.ico svg{width:22px;height:22px;flex:none}
 .top button.add{background:#fff;color:var(--red);border-color:#fff}
 button.pri{background:var(--red);border-color:var(--red);color:#fff}
@@ -221,10 +222,10 @@ label select+input{margin-top:6px}
   <div id="clock">--:--:--</div>
   <div class="ez">Einsatzzeit<b id="einsatz">00:00:00</b></div>
   <span class="sync" id="sync">Startet …</span>
+  <button id="muteInd" class="muteind" hidden title="Ton ist aus – tippen zum Einschalten"></button>
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
     <button id="bList">Einsätze</button>
-    <button id="bMute" class="ico"></button>
     <button id="bSet">Einstellungen</button>
   </div>
 </div>
@@ -287,6 +288,7 @@ label select+input{margin-top:6px}
   <label>Dieses Gerät wird benutzt von (erscheint im Protokoll)
     <select name="devSel"><option value="">– bitte wählen –</option><option>Atemschutzüberwacher</option><option>Atemschutzoffizier</option><option value="__other">Anderer Name …</option></select>
     <input name="dev" placeholder="z. B. iPad 1" hidden></label>
+  <label>Ton (Alarme)<select name="ton"><option value="an">An</option><option value="aus">Aus</option></select></label>
   <div class="g2">
     <label>Ansicht<select name="view"><option value="kompakt">Kompakt</option><option value="gross">Gross</option></select></label>
     <label>Gebäude anzeigen<select name="bau"><option value="an">An</option><option value="aus">Aus</option></select></label>
@@ -365,9 +367,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.0.3"></script>
+<script src="config.js?v=2.0.4"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.0.3"></script>
+<script src="app.js?v=2.0.4"></script>
 </body>
 </html>
