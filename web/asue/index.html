@@ -281,7 +281,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 <dialog id="dFl"><form method="dialog" id="fFl">
   <h3>Stockwerke</h3>
   <p class="hint">Von unten nach oben, mit Komma getrennt. Unter «EG» wird der Boden gezeichnet.</p>
-  <label>Stockwerke<input name="floors" placeholder="UG, EG, 1. OG, 2. OG, Dach"></label>
+  <label>Stockwerke<input name="floors" placeholder="UG -2, UG -1, EG, 1. OG, 2. OG, Dach"></label>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button value="std">Als Standard für alle Einsätze</button><button class="pri" value="ok">Für diesen Einsatz</button></div>
 </form></dialog>
 
@@ -291,9 +291,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.3.0"></script>
+<script src="config.js?v=1.3.1"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.3.0"></script>
+<script src="app.js?v=1.3.1"></script>
 </body>
 </html>

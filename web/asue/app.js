@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -25,7 +25,7 @@ const LP = (() => {
   return { get: k => o[k], set: (k, v) => { o[k] = v; try { localStorage.setItem('asue-prefs', JSON.stringify(o)); } catch (e) {} } };
 })();
 
-const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', floors: 'UG, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
+const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', floors: 'UG -3, UG -2, UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
 const S = { settings: { ...DEF }, eid: null, meta: {}, teams: [], log: [], list: [] };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
