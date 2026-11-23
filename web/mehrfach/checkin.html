@@ -30,6 +30,7 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .done{text-align:center;padding:10px 0}.done .big{font:700 30px/1.1 "Barlow Condensed",sans-serif;color:var(--ok)}
 .done svg{width:72px;height:72px}
 .stack{display:flex;flex-direction:column;gap:10px}
+.err:empty{display:none}
 .auf{border:3px solid var(--red);border-radius:14px;padding:12px 14px;margin:4px 0 6px}
 .auf.reko{border-color:#7a3db8}.auf .rol{display:inline-block;font:700 15px Barlow,sans-serif;color:#fff;background:var(--red);padding:3px 10px;border-radius:6px}.auf.reko .rol{background:#7a3db8}
 .auf h3{font:700 26px/1.1 "Barlow Condensed",sans-serif;margin:8px 0 2px}.auf .adr{font-size:18px;font-weight:600;margin:0 0 8px}
@@ -37,6 +38,12 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .abtn{display:flex;align-items:center;justify-content:center;font:600 18px Barlow,sans-serif;min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);text-decoration:none}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap}.thumb{position:relative}.thumb img{width:96px;height:96px;object-fit:cover;border-radius:10px}
 .thumb button{position:absolute;top:-8px;right:-8px;width:32px;min-height:32px;padding:0;border-radius:50%;background:#16181a;color:#fff;font-size:18px;border:2px solid #fff}
+.flist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.flist button{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:8px;min-height:0;text-align:left;font-size:14px;font-weight:500}
+.flist .pv{height:120px;border-radius:8px;background:#f1efec center/cover no-repeat;display:grid;place-items:center;font-size:40px}
+.flist small{color:var(--mute)}
+.anhb{position:relative}.anhb:disabled{opacity:1;background:#ebe9e6;color:#8a8f94;border-color:#e0ddd8;cursor:default}
+.dot{position:absolute;top:-7px;right:-7px;background:var(--red);color:#fff;font:700 12px Barlow,sans-serif;padding:3px 8px;border-radius:12px;border:2px solid #fff}
 .files{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px}.files button{text-align:left;min-height:46px;font-size:16px;font-weight:500}.files small{color:var(--mute)}
 .auf .btns{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{background:#7a3db8;border-color:#7a3db8;color:#fff}
@@ -67,7 +74,7 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
   <!-- Anmelden -->
   <section id="sMain" hidden>
     <div class="ev"><span class="mute">Laufendes Ereignis</span><b id="evName"></b></div>
-    <p style="margin:4px 0 12px">Hallo <b id="who"></b></p>
+    <p style="margin:4px 0 12px;font:600 22px Barlow,sans-serif" id="greet"></p>
     <div id="inForm" class="stack">
       <label style="margin:0">Code vom Bildschirm im KP<input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off" pattern="[0-9]*"></label>
       <p class="err" id="mErr"></p>
@@ -84,10 +91,15 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
     <button class="link" id="bEdit" type="button">Angaben ändern</button>
   </section>
 
+  <!-- Anhänge-Fenster -->
+  <div id="fl" hidden style="position:fixed;inset:0;z-index:45;background:#fff;overflow:auto;padding:max(14px,env(safe-area-inset-top)) 14px 20px">
+    <div class="stack"><h2 id="flTitle" style="margin:0"></h2><div id="flList" class="flist"></div><button id="flClose" type="button" class="pri">Zurück zum Auftrag</button></div>
+  </div>
+
   <!-- Anhang anzeigen -->
   <div id="fv" hidden style="position:fixed;inset:0;z-index:50;background:#fff;overflow:auto;padding:max(14px,env(safe-area-inset-top)) 14px 20px">
     <div class="stack"><h2 id="fvName" style="margin:0;word-break:break-word"></h2><div id="fvBody"></div>
-      <a id="fvOpen" class="abtn" target="_blank" rel="noopener" hidden>In neuem Fenster öffnen</a><button id="fvClose" type="button" class="pri">Zurück zum Auftrag</button></div>
+      <a id="fvOpen" class="abtn" target="_blank" rel="noopener" hidden>In neuem Fenster öffnen</a><button id="fvClose" type="button" class="pri">Zurück</button></div>
   </div>
 
   <!-- Rückmeldung -->
@@ -115,6 +127,6 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 </main>
 <div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.5.0"></script>
+<script type="module" src="checkin.js?v=0.6.0"></script>
 </body>
 </html>

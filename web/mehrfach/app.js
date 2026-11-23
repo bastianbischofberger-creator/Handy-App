@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.5.0';
+const VERSION = '0.6.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -252,7 +252,7 @@ function syncInbox() {
       const lead = rolle === 'reko' ? (a.reko && a.reko.lead) || ids[0] : a.lead || ids[0];
       const leadP = personal().find(p => p.id === lead);
       doc = { aid: a.id, nr: a.nr, art: a.art, adresse: a.adresse, lat: a.lat ?? null, lng: a.lng ?? null, prio: a.prio, text: a.text || '', melder: a.melder || '', tel: a.tel || '',
-        rolle, fuehrung: lead === pid, fuehrungName: leadP ? pName(leadP) : '', team: ids.map(i => { const p = personal().find(x => x.id === i); return p ? pName(p) : '?'; }),
+        rolle, fuehrung: lead === pid, fuehrungName: leadP ? pName(leadP) : '', team: [...ids].sort((x, y) => (y === lead) - (x === lead)).map(i => { const p = personal().find(x => x.id === i); return { v: p ? p.vorname : '?', n: p ? p.name : '', lead: i === lead }; }),
         mittel: rolle === 'disp' ? (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(resName).concat(a.extra ? [a.extra] : []) : [],
         bedarf: a.bedarf ? bedarfText(a.bedarf) : '', lageReko: a.lageReko || '', vorOrt: rolle === 'reko' ? !!(a.reko && a.reko.vorOrt) : a.sub === 'vorort',
         gattungen: gattungen(), anh: (a.anh || []).filter(f => f.cloud).map(f => ({ id: f.id, name: f.name, type: f.type || '', size: f.size || 0 })),

@@ -61,14 +61,24 @@ $('#bEdit').onclick = showProfile;
 /* ---------- Anmelden / Abmelden ---------- */
 function showMain() {
   $('#sProfile').hidden = true; $('#sMain').hidden = false;
-  $('#evName').textContent = PUB.name || 'Ereignis'; $('#who').textContent = P.name;
+  $('#evName').textContent = PUB.name || 'Ereignis'; greet();
   const inn = MY && MY.status === 'an';
   $('#inForm').hidden = inn; $('#inDone').hidden = !inn; $('#mErr').textContent = ''; $('#dErr').textContent = '';
   if (inn) { $('#since').textContent = 'seit ' + hm(MY.tIn || MY.t) + ' Uhr'; watchInbox(); } else { stopInbox(); setTimeout(() => $('#code').focus(), 50); }
 }
 
+/* Begrüssung nach Uhrzeit */
+function greet() {
+  const h = new Date().getHours(), g = h >= 5 && h < 11 ? 'Guten Morgen' : h >= 11 && h < 17 ? 'Grüezi' : h >= 17 && h < 23 ? 'Guten Abend' : 'Hallo';
+  const el = $('#greet'); if (el) el.textContent = `${g} ${P.vorname || ''}`.trim();
+}
+setInterval(greet, 60000);
+
 /* ---------- Auftrag aufs Handy ---------- */
 let inbox = null, unsub = null, lastAid = null, RM = null;
+const localVor = {};
+const seenSet = aid => { try { return new Set(JSON.parse(localStorage.getItem('mf-seen-' + aid)) || []); } catch (e) { return new Set(); } };
+const markSeen = (aid, ids) => { try { localStorage.setItem('mf-seen-' + aid, JSON.stringify([...new Set([...seenSet(aid), ...ids])])); } catch (e) {} };
 const DAUER = ['< 30 Min.', '1 h', '2 h', '> 2 h'];
 function watchInbox() {
   if (unsub) return;
@@ -84,22 +94,25 @@ function renderAuftrag() {
   document.querySelector('#inDone .done').hidden = !!a;
   if (!a) { lastAid = null; return; }
   const reko = a.rolle === 'reko', last = sent();
-  const rows = [['Priorität', a.prio], ['Beschreibung', a.text], ['Meldung von', [a.melder, a.tel].filter(Boolean).join(' · ')], ['Führung', a.fuehrungName], ['Team', (a.team || []).join(', ')],
-    ['Mittel', (a.mittel || []).join(', ')], ['Lage (Reko)', !reko ? a.lageReko : ''], ['', a.anhLokal ? a.anhLokal + ' weitere Anhänge nur im KP' : '']].filter(r => r[1]);
-  const files = Array.isArray(a.anh) ? a.anh : [];
+  const team = (a.team || []).map(t => typeof t === 'string' ? { v: t, n: '', lead: false } : t);
+  const dup = v => team.filter(t => t.v === v).length > 1;
+  const teamHtml = team.map(t => { const nm = esc(t.v + (dup(t.v) && t.n ? ' ' + t.n[0] + '.' : '')); return t.lead ? `<b>${nm}</b>` : nm; }).join(', ');
+  const rows = [['Beschreibung', esc(a.text)], ['Meldung von', esc([a.melder, a.tel].filter(Boolean).join(' · '))], ['Team', teamHtml],
+    ['Mittel', esc((a.mittel || []).join(', '))], ['Lage (Reko)', !reko ? esc(a.lageReko) : '']].filter(r => r[1]);
+  const files = Array.isArray(a.anh) ? a.anh : [], unseen = files.filter(f => !seenSet(a.aid).has(f.id)).length;
+  const vor = a.vorOrt || localVor[a.aid];
   let btns = '';
-  if (a.fuehrung) {
-    if (!a.vorOrt) btns += `<button class="blue" data-rm="vorort">Vor Ort</button>`;
-    btns += reko ? `<button class="reko" data-rm="rekoEnd">Reko abschliessen</button>` : `<button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
-  }
+  if (a.fuehrung) btns += !vor ? `<button class="blue" data-rm="vorort">Vor Ort</button>` : reko ? `<button class="reko" data-rm="rekoEnd">Reko abschliessen</button>` : `<button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
+  btns += files.length ? `<button type="button" class="anhb" data-anh="1">📎 Anhänge (${files.length})${unseen ? `<span class="dot">${unseen} neu</span>` : ''}</button>` : `<button type="button" class="anhb" disabled>Keine Anhänge</button>`;
   btns += `<button type="button" data-cam="1">📷 Foto zum Auftrag</button>`;
   btns += `<a class="abtn" href="${navUrl(a)}" target="_blank" rel="noopener">Navigation öffnen</a>`;
   if (a.tel) btns += `<a class="abtn" href="tel:${esc(a.tel.replace(/\s/g, ''))}">Meldende Person anrufen</a>`;
-  box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${a.vorOrt ? ' <span class="mute">· vor Ort</span>' : ''}
-    <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    ${files.length ? `<div class="mute">Anhänge</div><div class="files">${files.map((f, i) => `<button type="button" data-f="${i}">${(f.type || '').startsWith('image/') ? '🖼️' : '📄'} ${esc(f.name)} <small>${kbs(f.size)}</small></button>`).join('')}</div>` : ''}
-    ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht die Führung (★).</p>' : ''}${last && last.typ !== 'vorort' ? '<p class="mute" style="color:var(--ok);font-weight:600">✓ Rückmeldung gesendet</p>' : ''}
+  box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${vor ? ' <span class="mute">· vor Ort</span>' : ''}
+    <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    ${a.anhLokal ? `<p class="mute">${a.anhLokal} weitere Anhänge nur im KP</p>` : ''}
+    ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht der Teamchef (fett).</p>' : ''}${last && last.typ !== 'vorort' && last.typ !== 'foto' ? '<p class="mute" style="color:var(--ok);font-weight:600">✓ Rückmeldung gesendet</p>' : ''}
     <div class="btns">${btns}</div></div>`;
+  if (!$('#fl').hidden) renderFiles();
   if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} }
 }
 const kbs = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
@@ -108,19 +121,34 @@ let fvUrl = null;
 async function openFile(f) {
   const v = $('#fv'); $('#fvName').textContent = f.name; $('#fvBody').innerHTML = '<p class="mute">Lädt …</p>'; $('#fvOpen').hidden = true; v.hidden = false; window.scrollTo(0, 0);
   try {
-    const m = await withTimeout(F.getDoc(F.doc(fs, 'mf_ereignisse', PUB.eid, 'files', f.id)), 20000); if (!m.exists()) throw new Error('fehlt');
-    const q = await withTimeout(F.getDocs(F.collection(fs, 'mf_ereignisse', PUB.eid, 'files', f.id, 'chunks')), 30000);
-    const parts = q.docs.sort((x, y) => x.id.localeCompare(y.id)).map(d => d.data().d); if (parts.length < m.data().n) throw new Error('unvollständig');
-    const b = b64ToBlob(parts.join(''), m.data().type || f.type); if (fvUrl) URL.revokeObjectURL(fvUrl); fvUrl = URL.createObjectURL(b);
+    const b = await loadBlob(f); if (fvUrl) URL.revokeObjectURL(fvUrl); fvUrl = URL.createObjectURL(b);
     $('#fvBody').innerHTML = (b.type || '').startsWith('image/') ? `<img src="${fvUrl}" alt="" style="max-width:100%;border-radius:10px">`
       : b.type === 'application/pdf' ? `<iframe src="${fvUrl}" title="${esc(f.name)}" style="width:100%;height:60vh;border:1px solid var(--line);border-radius:10px"></iframe>` : '<p class="mute">Keine Vorschau.</p>';
     $('#fvOpen').href = fvUrl; $('#fvOpen').hidden = false;
   } catch (e) { $('#fvBody').innerHTML = `<p class="err">${e && e.code === 'permission-denied' ? 'Kein Zugriff auf den Anhang.' : 'Anhang konnte nicht geladen werden. Bitte nochmals versuchen.'}</p>`; }
 }
 $('#fvClose').onclick = () => { $('#fv').hidden = true; };
-$('#auftrag').addEventListener('click', e => { const fb = e.target.closest('[data-f]'); if (fb) return openFile(inbox.anh[+fb.dataset.f]); if (e.target.closest('[data-cam]')) $('#qFoto').click(); });
+/* Fenster mit allen Anhängen */
+const thumbs = {};
+async function loadBlob(f) {
+  const m = await withTimeout(F.getDoc(F.doc(fs, 'mf_ereignisse', PUB.eid, 'files', f.id)), 20000); if (!m.exists()) throw new Error('fehlt');
+  const q = await withTimeout(F.getDocs(F.collection(fs, 'mf_ereignisse', PUB.eid, 'files', f.id, 'chunks')), 30000);
+  const parts = q.docs.sort((x, y) => x.id.localeCompare(y.id)).map(d => d.data().d); if (parts.length < m.data().n) throw new Error('unvollständig');
+  return b64ToBlob(parts.join(''), m.data().type || f.type);
+}
+function renderFiles() {
+  const files = (inbox && inbox.anh) || [];
+  $('#flTitle').textContent = `Anhänge Auftrag ${inbox ? inbox.nr : ''}`;
+  $('#flList').innerHTML = files.map((f, i) => { const img = (f.type || '').startsWith('image/');
+    return `<button type="button" data-f="${i}"><span class="pv" ${img && thumbs[f.id] ? `style="background-image:url('${thumbs[f.id]}')"` : ''}>${img ? (thumbs[f.id] ? '' : '🖼️') : '📄'}</span>${esc(f.name)}<small>${kbs(f.size)}</small></button>`; }).join('') || '<p class="mute">Keine Anhänge.</p>';
+  files.forEach(f => { if ((f.type || '').startsWith('image/') && !thumbs[f.id]) { thumbs[f.id] = 'lädt'; loadBlob(f).then(b => { thumbs[f.id] = URL.createObjectURL(b); renderFiles(); }).catch(() => { delete thumbs[f.id]; }); } });
+}
+function openFiles() { if (!inbox || !(inbox.anh || []).length) return; markSeen(inbox.aid, inbox.anh.map(f => f.id)); $('#fl').hidden = false; window.scrollTo(0, 0); renderFiles(); renderAuftrag(); }
+$('#flList').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) openFile(inbox.anh[+b.dataset.f]); });
+$('#flClose').onclick = () => { $('#fl').hidden = true; };
+$('#auftrag').addEventListener('click', e => { if (e.target.closest('[data-anh]')) return openFiles(); if (e.target.closest('[data-cam]')) $('#qFoto').click(); });
 $('#auftrag').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return;
-  if (b.dataset.rm === 'vorort') return reply({ typ: 'vorort' });
+  if (b.dataset.rm === 'vorort') { const aid = inbox.aid; return reply({ typ: 'vorort' }).then(ok => { if (ok) { localVor[aid] = true; renderAuftrag(); } }); }
   openRm(b.dataset.rm); });
 async function reply(extra) {
   const rm = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), aid: inbox.aid, t: Date.now(), ...extra };
