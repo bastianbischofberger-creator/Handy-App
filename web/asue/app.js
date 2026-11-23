@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -231,7 +231,7 @@ function tick() {
       T.members.forEach((m, i) => set(`p-${T.id}-${i}`, m.readings.length ? m.readings[m.readings.length - 1].p : m.p0));
       set('k1-' + T.id, dur(T.tOut - T.tIn)); set('k2-' + T.id, '–'); set('k3-' + T.id, hm(T.tOut));
     }
-    const nc = 'card ' + cls; if (c.className !== nc) c.className = nc;
+    const nc = 'card' + (T.rett ? ' rett' : '') + (cls ? ' ' + cls : ''); if (c.className !== nc) c.className = nc;
     const bd = document.getElementById('b-' + T.id); if (bd) { const bc = 'tbg ' + T.status + (T.rett ? ' rett' : '') + (cls ? ' ' + cls : ''); if (bd.className !== bc) bd.className = bc; }
   }
 }

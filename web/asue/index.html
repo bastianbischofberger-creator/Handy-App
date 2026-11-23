@@ -160,13 +160,14 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .compact .lbl.d{font-size:0}.compact .lbl.d::after{content:"Kontrolle!";font-size:12.5px}
 
 /* Rettungstrupp */
-:root{--rt:#e8740c}
+:root{--rt:#1557c0}
 .chk{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:16px;font-weight:600;margin:2px 0 12px}.chk input{width:24px;min-height:24px;margin:0;accent-color:var(--rt)}
 .axe{display:inline-block;width:21px;height:16px;vertical-align:-2px;background:currentColor;-webkit-mask:url(rettung.png) center/contain no-repeat;mask:url(rettung.png) center/contain no-repeat}.axe.rt{color:var(--rt);width:28px;height:21px}
 .rtag{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:700;padding:1px 7px;border-radius:6px;background:var(--rt);color:#fff;white-space:nowrap}
-.card.rett{border-left:8px solid var(--rt)}
+.card.rett{border-color:var(--rt);border-width:3px}.card.rett header{background:var(--rt);color:#fff}.card.rett header .auftrag{color:#fff}.card.rett header .kanal{background:#fff;color:var(--rt);border-color:#fff}.card.rett header .stk{background:#fff;color:var(--rt)}.card.rett .rtag{background:#fff;color:var(--rt)}
+.card.rett.due{border-color:var(--warn)}.card.rett.alarm{border-color:var(--red)}.card.rett.alarm header{background:var(--red)}
 .tbg.rett{background:var(--rt);color:#fff;display:inline-flex;align-items:center;gap:3px}.tbg.rett.bereit{background:var(--rt);color:#fff;border:0}
-.tbg .axe{width:25px;height:19px}.zone.rz .axe{color:var(--rt);width:28px;height:21px}.rtag .axe{width:22px;height:17px}
+.tbg .axe{width:25px;height:19px}.zone.rz>.axe{color:var(--rt);width:28px;height:21px}.rtag .axe{width:22px;height:17px}
 .zone.rz{background:color-mix(in srgb,var(--rt) 14%,transparent);border:2px solid var(--rt);border-radius:10px;padding:6px 8px;color:var(--ink);font-weight:600}
 .compact .rtag span{display:none}
 /* Kompakt v2: 9 Trupps + Gebäude auf einem iPad-Bildschirm */
@@ -327,9 +328,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.5.1"></script>
+<script src="config.js?v=1.5.2"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.5.1"></script>
+<script src="app.js?v=1.5.2"></script>
 </body>
 </html>
