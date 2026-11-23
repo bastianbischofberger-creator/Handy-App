@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.1.3';
+const VERSION = '2.1.4';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -600,7 +600,7 @@ $('#fS').elements.ton.addEventListener('change', e => {
   confirmBox('Ton wirklich ausschalten?', 'Alarme für fällige Druckkontrollen und den Rückzug sind dann NICHT mehr hörbar – nur noch sichtbar. Oben erscheint der Hinweis «Ton aus».', () => { LP.set('mute', true); $('#fS').elements.ton.value = 'aus'; render(); });
 });
 let metaT = null;
-$('#meta').addEventListener('input', e => { const i = e.target.closest('[data-m]'); if (!i) return; S.meta[i.dataset.m] = i.value; clearTimeout(metaT); metaT = setTimeout(saveMeta, 700); });
+$('#meta').addEventListener('input', e => { const i = e.target.closest('[data-m]'); if (!i) return; i.classList.remove('miss'); S.meta[i.dataset.m] = i.value; clearTimeout(metaT); metaT = setTimeout(saveMeta, 700); });
 
 function demo() {
   const now = Date.now(), m = 60000;
@@ -727,6 +727,11 @@ async function deliver(blob, name) {
 function msg(t, ok) { const m = $('#msg'); m.style.color = ok ? 'var(--ok)' : ''; m.textContent = t; clearTimeout(msg.t); msg.t = setTimeout(() => m.textContent = '', 5000); }
 async function exportAs(kind) {
   if (!S.log.length && !S.teams.some(t => t.tIn)) return msg('Noch nichts zu exportieren.');
+  { const req = [['ereignis', 'Ereignis'], ['ort', 'Einsatzort'], ['asue', 'Atemschutzüberwacher'], ['el', 'Einsatzleiter']];
+    const miss = req.filter(([k]) => !String(S.meta[k] || '').trim());
+    document.querySelectorAll('#meta [data-m]').forEach(i => i.classList.toggle('miss', miss.some(([k]) => k === i.dataset.m)));
+    if (miss.length) { const first = document.querySelector(`#meta [data-m="${miss[0][0]}"]`); if (first) first.focus();
+      const m = $('#msg'); m.style.color = ''; m.textContent = 'Bitte ausfüllen: ' + miss.map(x => x[1]).join(', '); return; } }
   try {
     let blob;
     if (kind === 'pdf') { if (!window.jspdf) return msg('PDF-Modul nicht geladen. App einmal mit Internet öffnen, dann klappt es auch offline.'); blob = makePdf(); }
