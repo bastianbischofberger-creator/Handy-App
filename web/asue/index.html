@@ -112,6 +112,34 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 #login h2{font:600 28px "Barlow Condensed",sans-serif;margin:8px 0 16px}
 #login label{text-align:left}
 
+
+/* Gebäude-Querschnitt */
+.board{display:grid;grid-template-columns:250px minmax(0,1fr);gap:14px;align-items:start}
+.nobau .board{grid-template-columns:minmax(0,1fr)}.nobau #bau{display:none}
+.bau{position:sticky;top:128px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 12px;max-height:calc(100vh - 140px);overflow:auto}
+.bau-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.bau-h b{font:600 19px "Barlow Condensed",sans-serif}
+.bau-h button{min-height:34px;padding:3px 10px;font-size:13.5px}
+.roof{height:30px;margin:0 4px;background:var(--mute);opacity:.55;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.fl{display:grid;grid-template-columns:54px minmax(0,1fr);border:2px solid var(--mute);border-top-width:0;min-height:50px;background:var(--field)}
+.roof+.fl{border-top-width:2px}
+.fl .fn{display:grid;place-items:center;text-align:center;font:600 14px/1.1 "Barlow Condensed",sans-serif;color:var(--mute);border-right:1px dashed var(--line);padding:2px}
+.fl .tm{display:flex;flex-wrap:wrap;gap:5px;padding:6px;align-content:center}
+.fl.ug{background:color-mix(in srgb,var(--mute) 22%,var(--field))}
+.ground{height:7px;margin:0 -8px;background:repeating-linear-gradient(45deg,#7a5c3a 0 5px,#4e3820 5px 10px)}
+.zone{margin-top:10px;font-size:12.5px;color:var(--mute)}.zone .tm{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.tbg{min-height:36px;min-width:40px;padding:2px 9px;font:700 19px "Barlow Condensed",sans-serif;border-radius:8px;background:var(--ink);color:var(--bg);border:0}
+.tbg small{font:500 11.5px Barlow,sans-serif;margin-left:5px}
+.tbg.rueckzug{background:var(--warn);color:#1a1a1a}.tbg.bereit{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.tbg.due{box-shadow:0 0 0 3px var(--warn)}.tbg.soon{box-shadow:0 0 0 2px var(--warn)}
+.tbg.alarm{background:var(--red);color:#fff;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{background:#6e0716}}
+@media (prefers-reduced-motion:reduce){.tbg.alarm{animation:none}}
+.stk{min-height:0;font-size:13.5px;font-weight:700;padding:1px 8px;border-radius:6px;border:0;background:var(--ink);color:var(--bg);white-space:nowrap}
+.stpick{display:flex;flex-direction:column-reverse;gap:6px;margin-bottom:12px}
+.stpick button{font-size:20px;min-height:50px}.stpick button.on{background:var(--red);border-color:var(--red);color:#fff}
+.stpick .gl{height:5px;background:repeating-linear-gradient(45deg,#7a5c3a 0 5px,#4e3820 5px 10px);border-radius:3px}
+.card.flash{outline:4px solid var(--warn);outline-offset:2px}
+@media(max-width:900px){.board{grid-template-columns:minmax(0,1fr)}.bau{position:static;max-height:none}}
 /* Kompaktansicht */
 .compact .grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,265px),1fr));gap:10px}
 .compact .card header{padding:7px 10px;gap:8px;cursor:pointer}
@@ -142,6 +170,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
     <button id="bList">Einsätze</button>
+    <button id="bBau"></button>
     <button id="bView"></button>
     <button id="bMute" class="ico"></button>
     <button id="bSet">Einstellungen</button>
@@ -149,7 +178,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 </div>
 <main>
   <div class="banner" id="banner" hidden></div>
-  <div class="grid" id="grid"></div>
+  <div class="board"><aside id="bau" class="bau"></aside><div class="grid" id="grid"></div></div>
   <section class="logp">
     <div class="row"><h2>Protokoll</h2><span class="tag" id="eState"></span><button id="bClose" class="ghost">Einsatz abschliessen</button></div>
     <div class="meta" id="meta">
@@ -182,7 +211,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
     <label>Funkkanal<input name="kanal" list="kanaele" placeholder="z. B. K 12"></label>
   </div>
   <div class="chips" id="kChips"></div>
-  <label>Auftrag<input name="auftrag" placeholder="z. B. Menschenrettung 2. OG"></label>
+  <label>Auftrag<input name="auftrag" placeholder="z. B. Menschenrettung"></label>
+  <label>Stockwerk<input name="stock" placeholder="z. B. 2. OG"></label>
+  <div class="chips" id="sChips"></div>
   <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0"><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 2<span class="inq"><input name="n1"><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2"><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
@@ -240,15 +271,29 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button id="bQrCancel">Abbrechen</button></div>
 </div></dialog>
 
+<dialog id="dStock"><div class="dpad">
+  <h3 id="stTitle">Wohin geht der Trupp?</h3>
+  <div class="stpick" id="stPick"></div>
+  <label>Anderer Ort<input id="stOther" placeholder="z. B. Treppenhaus Nord"></label>
+  <div class="dbtn"><button id="stSkip" class="ghost">Ohne Angabe</button><button id="stCancel">Abbrechen</button><button id="stOk" class="pri">Übernehmen</button></div>
+</div></dialog>
+
+<dialog id="dFl"><form method="dialog" id="fFl">
+  <h3>Stockwerke</h3>
+  <p class="hint">Von unten nach oben, mit Komma getrennt. Unter «EG» wird der Boden gezeichnet.</p>
+  <label>Stockwerke<input name="floors" placeholder="UG, EG, 1. OG, 2. OG, Dach"></label>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button value="std">Als Standard für alle Einsätze</button><button class="pri" value="ok">Für diesen Einsatz</button></div>
+</form></dialog>
+
 <dialog id="dC"><form method="dialog">
   <h3 id="cTitle">Sicher?</h3>
   <p id="cText"></p>
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.2.0"></script>
+<script src="config.js?v=1.3.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.2.0"></script>
+<script src="app.js?v=1.3.0"></script>
 </body>
 </html>

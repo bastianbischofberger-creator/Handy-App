@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -25,7 +25,7 @@ const LP = (() => {
   return { get: k => o[k], set: (k, v) => { o[k] = v; try { localStorage.setItem('asue-prefs', JSON.stringify(o)); } catch (e) {} } };
 })();
 
-const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
+const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', floors: 'UG, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
 const S = { settings: { ...DEF }, eid: null, meta: {}, teams: [], log: [], list: [] };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
@@ -162,7 +162,7 @@ function card(T) {
   }[T.status];
   return `<article class="card" id="c-${T.id}" data-id="${T.id}">
   <header><div class="nr">${esc(T.nr)}</div><div class="hd">
-    <div class="row"><span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span><span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
+    <div class="row"><span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
     <div class="auftrag">${esc(T.auftrag || 'Kein Auftrag erfasst')}</div></div></header>
   <table class="mt"><thead><tr><th>Name</th><th>Start</th><th>Druck</th><th>bar/Min.</th><th>RZ-Druck</th></tr></thead><tbody>${mem}</tbody></table>
   <div class="kpis"><div><span data-s="Einsatz">Im Einsatz</span><b id="k1-${T.id}">–</b></div><div><span data-s="Kontrolle">Nächste Kontrolle</span><b id="k2-${T.id}">–</b></div><div><span data-s="${T.status === 'draussen' ? 'Raus' : 'Rückzug'}">${T.status === 'draussen' ? 'Raus um' : 'Rückzug spätestens'}</span><b id="k3-${T.id}">–</b></div></div>
@@ -186,7 +186,8 @@ function render() {
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
   $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
-  renderList(); renderSync(); tick();
+  document.body.classList.toggle('nobau', LP.get('bau') === 'aus'); $('#bBau').textContent = LP.get('bau') === 'aus' ? 'Gebäude: aus' : 'Gebäude: an';
+  renderBau(); renderList(); renderSync(); tick();
 }
 function renderSync() {
   const el = $('#sync'); let t, c;
@@ -229,6 +230,7 @@ function tick() {
       set('k1-' + T.id, dur(T.tOut - T.tIn)); set('k2-' + T.id, '–'); set('k3-' + T.id, hm(T.tOut));
     }
     const nc = 'card ' + cls; if (c.className !== nc) c.className = nc;
+    const bd = document.getElementById('b-' + T.id); if (bd) { const bc = 'tbg ' + T.status + (cls ? ' ' + cls : ''); if (bd.className !== bc) bd.className = bc; }
   }
 }
 
@@ -275,24 +277,25 @@ function openTeam(id) {
   editId = id || null; const f = $('#fTeam'); f.reset(); $('#tErr').textContent = '';
   const T = id && team(id);
   $('#tTitle').textContent = T ? 'Trupp ' + T.nr + ' bearbeiten' : 'Neuer Trupp';
+  f.elements.stock.value = (T && T.stock) || '';
   if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
   else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = (last && last.kanal) || presets()[0] || ''; }
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
-  renderChips(); $('#dTeam').showModal();
+  renderChips(); renderSChips(); $('#dTeam').showModal();
 }
 $('#fTeam').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
   const f = e.target, mem = [];
   for (let i = 0; i < 3; i++) { const n = f.elements['n' + i].value.trim(); if (n) mem.push({ name: n, p0: parseInt(f.elements['p' + i].value) || S.settings.defP0, readings: [], pArr: null }); }
   if (!mem.length) { e.preventDefault(); $('#tErr').textContent = 'Mindestens einen Namen erfassen.'; return; }
-  const T = editId && team(editId), kanal = f.elements.kanal.value.trim(), auftrag = f.elements.auftrag.value.trim();
+  const T = editId && team(editId), kanal = f.elements.kanal.value.trim(), auftrag = f.elements.auftrag.value.trim(), stock = f.elements.stock.value.trim();
   if (T) {
-    const ch = []; if ((T.kanal || '') !== kanal) ch.push('Funk ' + (kanal || '–')); if ((T.auftrag || '') !== auftrag) ch.push('Auftrag: ' + (auftrag || '–'));
-    T.nr = f.elements.nr.value.trim(); T.kanal = kanal; T.auftrag = auftrag;
+    const ch = []; if ((T.kanal || '') !== kanal) ch.push('Funk ' + (kanal || '–')); if ((T.auftrag || '') !== auftrag) ch.push('Auftrag: ' + (auftrag || '–')); if ((T.stock || '') !== stock) ch.push('Stockwerk ' + (stock || '–'));
+    T.nr = f.elements.nr.value.trim(); T.kanal = kanal; T.auftrag = auftrag; T.stock = stock;
     if (T.status === 'bereit') T.members = mem; else T.members.forEach((m, i) => { const n = f.elements['n' + i].value.trim(); if (n) m.name = n; });
     saveTeam(T); if (ch.length && T.status !== 'bereit') log(`Trupp ${T.nr}: ${ch.join(', ')}`);
   } else {
-    const N = { id: uid(), nr: f.elements.nr.value.trim(), kanal, auftrag, status: 'bereit', members: mem, tIn: null, tOut: null, hidden: false };
+    const N = { id: uid(), nr: f.elements.nr.value.trim(), kanal, auftrag, stock, status: 'bereit', members: mem, tIn: null, tOut: null, hidden: false };
     saveTeam(N); log(`Trupp ${N.nr} erfasst (Funk ${kanal || '–'}): ${mem.map(m => m.name + ' ' + m.p0 + ' bar').join(', ')}`);
   }
 });
@@ -379,20 +382,88 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-qr]'
 $('#bQrCancel').onclick = () => $('#dQR').close();
 $('#dQR').addEventListener('close', stopScan);
 
+
+/* ---------- Stockwerke / Gebäude ---------- */
+const floors = () => String(S.meta.floors || S.settings.floors || '').split(',').map(f => f.trim()).filter(Boolean);
+const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
+function badge(T, extra) { return `<button type="button" class="tbg ${T.status}" id="b-${T.id}" data-st="${esc(T.id)}" title="Trupp ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}">${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
+function renderBau() {
+  const el = $('#bau'); if (!el) return;
+  const fl = floors(), vis = S.teams.filter(t => !t.hidden), inside = vis.filter(t => t.status === 'innen' || t.status === 'rueckzug');
+  const byNr = (a, b) => String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true });
+  const egI = fl.findIndex(isEG);
+  let h = `<div class="bau-h"><b>Gebäude</b><button type="button" id="bFl">Stockwerke</button></div><div class="roof"></div>`;
+  for (let i = fl.length - 1; i >= 0; i--) {
+    const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
+    h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`;
+    if (i === egI) h += '<div class="ground"></div>';
+  }
+  if (egI < 0) h += '<div class="ground"></div>';
+  const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = vis.filter(t => t.status === 'bereit').sort(byNr);
+  if (other.length) h += `<div class="zone">Anderer Ort<div class="tm">${other.map(t => badge(t, t.stock)).join('')}</div></div>`;
+  if (none.length) h += `<div class="zone">Ohne Stockwerk<div class="tm">${none.map(t => badge(t)).join('')}</div></div>`;
+  if (ready.length) h += `<div class="zone">Bereit<div class="tm">${ready.map(t => badge(t)).join('')}</div></div>`;
+  if (!inside.length && !ready.length) h += '<div class="zone">Noch kein Trupp im Gebäude.</div>';
+  el.innerHTML = h;
+}
+$('#bau').addEventListener('click', e => {
+  if (e.target.closest('#bFl')) return openFloors();
+  const b = e.target.closest('[data-st]'); if (!b) return;
+  const T = team(b.dataset.st); if (!T) return;
+  const c = document.getElementById('c-' + T.id); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1500); }
+  if (T.status === 'bereit') return;
+  openStock(T.id, 'move');
+});
+function renderSChips() { const v = $('#fTeam').elements.stock.value.trim();
+  $('#sChips').innerHTML = floors().map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join(''); }
+$('#sChips').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; const i = $('#fTeam').elements.stock; i.value = i.value.trim() === b.dataset.k ? '' : b.dataset.k; renderSChips(); });
+$('#fTeam').elements.stock.addEventListener('input', renderSChips);
+
+function enter(T, stock) {
+  const now = Date.now();
+  T.status = 'innen'; T.tIn = now; T.stock = stock || ''; T.members.forEach(m => { m.readings = [{ t: now, p: m.p0 }]; m.pArr = null; });
+  if (!S.meta.start) { S.meta.start = now; saveMeta(); }
+  saveTeam(T);
+  log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.stock ? ', ' + T.stock : ''}${T.auftrag ? ', ' + T.auftrag : ''}): ${T.members.map(m => m.name + ' ' + m.p0).join(', ')} bar`);
+}
+let stCtx = null;
+function openStock(id, mode) {
+  const T = team(id); if (!T) return; stCtx = { id, mode };
+  $('#stTitle').textContent = mode === 'in' ? `Trupp ${T.nr}: Wohin geht der Trupp?` : `Trupp ${T.nr}: Stockwerk wechseln`;
+  const fl = floors(), egI = fl.findIndex(isEG);
+  $('#stPick').innerHTML = fl.map((f, i) => (i === egI ? '' : '') + `<button type="button" data-f="${esc(f)}" class="${f === T.stock ? 'on' : ''}">${esc(f)}</button>` + (i === egI - 1 ? '<div class="gl"></div>' : '')).join('');
+  $('#stOther').value = T.stock && !fl.includes(T.stock) ? T.stock : '';
+  $('#stSkip').textContent = mode === 'in' ? 'Ohne Angabe' : 'Kein Stockwerk';
+  $('#dStock').showModal();
+}
+function applyStock(val) {
+  const ctx = stCtx; $('#dStock').close(); if (!ctx) return; const T = team(ctx.id); if (!T) return;
+  if (ctx.mode === 'in') return enter(T, val);
+  if ((T.stock || '') === val) return;
+  T.stock = val; saveTeam(T); log(`Trupp ${T.nr}: Stockwerk ${val || '–'}`);
+}
+$('#stPick').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) applyStock(b.dataset.f); });
+$('#stOk').onclick = () => applyStock($('#stOther').value.trim());
+$('#stSkip').onclick = () => applyStock('');
+$('#stCancel').onclick = () => { stCtx = null; $('#dStock').close(); };
+function openFloors() { $('#fFl').elements.floors.value = floors().join(', '); $('#dFl').showModal(); }
+$('#fFl').addEventListener('submit', e => {
+  const v = e.target.elements.floors.value.split(',').map(f => f.trim()).filter(Boolean).join(', ');
+  if (!e.submitter || e.submitter.value === 'cancel' || !v) return;
+  if (e.submitter.value === 'std') BE.putSettings({ ...S.settings, floors: v });
+  S.meta.floors = v; saveMeta();
+});
+
 /* ---------- Aktionen auf der Tafel ---------- */
 $('#grid').addEventListener('click', e => {
   if (e.target.closest('[data-g="add"]')) return openTeam();
+  const sk = e.target.closest('[data-a="stock"]'); if (sk) return openStock(sk.closest('.card').dataset.id, 'move');
   const hd = e.target.closest('.card header');
   if (hd && document.body.classList.contains('compact')) { const T0 = team(hd.closest('.card').dataset.id); if (T0 && T0.status !== 'draussen') openTeam(T0.id); return; }
   const b = e.target.closest('button[data-a]'); if (!b) return;
   const id = b.closest('.card').dataset.id, T = team(id), now = Date.now(), a = b.dataset.a;
   if (!T) return;
-  if (a === 'in') {
-    T.status = 'innen'; T.tIn = now; T.members.forEach(m => { m.readings = [{ t: now, p: m.p0 }]; m.pArr = null; });
-    if (!S.meta.start) { S.meta.start = now; saveMeta(); }
-    saveTeam(T);
-    log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.auftrag ? ', ' + T.auftrag : ''}): ${T.members.map(m => m.name + ' ' + m.p0).join(', ')} bar`);
-  }
+  if (a === 'in') { if (floors().length) openStock(id, 'in'); else enter(T, T.stock || ''); }
   else if (a === 'druck') openP(id, 'check');
   else if (a === 'arr') openP(id, 'arr');
   else if (a === 'out') confirmBox('Trupp ' + T.nr + ' draussen?', 'Die Überwachung für diesen Trupp wird beendet.', () => {
@@ -403,6 +474,7 @@ $('#grid').addEventListener('click', e => {
   else if (a === 'del') confirmBox('Trupp ' + T.nr + ' entfernen?', 'Der Trupp wird gelöscht, er war noch nicht im Einsatz.', () => { BE.delTeam(S.eid, id); log(`Trupp ${T.nr} gelöscht`); });
 });
 $('#bAdd').onclick = () => openTeam();
+$('#bBau').onclick = () => { LP.set('bau', LP.get('bau') === 'aus' ? 'an' : 'aus'); render(); };
 $('#bView').onclick = () => { LP.set('view', LP.get('view') === 'gross' ? 'kompakt' : 'gross'); render(); };
 $('#bSet').onclick = openSettings;
 $('#bMute').onclick = () => { LP.set('mute', !LP.get('mute')); render(); if (!LP.get('mute')) { initAudio(); beep(1); } };
@@ -414,10 +486,10 @@ function demo() {
   const id = BE.create({ ...newMeta(), ereignis: 'Demo / Übung', ort: 'Übungsplatz', start: now - 14 * m });
   openE(id);
   const teams = [
-    { id: uid(), nr: '1', kanal: 'K 12', auftrag: 'Menschenrettung 2. OG, Treppenhaus links', status: 'innen', tIn: now - 14 * m, tOut: null, hidden: false, members: [
+    { id: uid(), nr: '1', kanal: 'K 12', auftrag: 'Menschenrettung, Treppenhaus links', stock: '2. OG', status: 'innen', tIn: now - 14 * m, tOut: null, hidden: false, members: [
       { name: 'Meier', p0: 300, pArr: null, readings: [{ t: now - 14 * m, p: 300 }, { t: now - 4 * m, p: 215 }] },
       { name: 'Keller', p0: 300, pArr: null, readings: [{ t: now - 14 * m, p: 300 }, { t: now - 4 * m, p: 225 }] }] },
-    { id: uid(), nr: '2', kanal: 'K 12', auftrag: 'Brandbekämpfung Keller', status: 'innen', tIn: now - 6 * m, tOut: null, hidden: false, members: [
+    { id: uid(), nr: '2', kanal: 'K 12', auftrag: 'Brandbekämpfung Keller', stock: 'UG', status: 'innen', tIn: now - 6 * m, tOut: null, hidden: false, members: [
       { name: 'Huber', p0: 300, pArr: null, readings: [{ t: now - 6 * m, p: 300 }] },
       { name: 'Graf', p0: 290, pArr: null, readings: [{ t: now - 6 * m, p: 290 }] },
       { name: 'Brunner', p0: 300, pArr: null, readings: [{ t: now - 6 * m, p: 300 }] }] },
@@ -450,7 +522,7 @@ function layout(R, W, pageH) {
   meta.forEach((m, i) => { const x = M + (i % 2) * CW / 2, yy = y + Math.floor(i / 2) * 30; R.t(x, yy, m[0], 8, 0, MUTE); R.t(x, yy + 10, clean(m[1] || '-'), 10.5, 1, INK); });
   y += Math.ceil(meta.length / 2) * 30 + 10;
   R.t(M, y, 'Trupps', 13, 1, RED); y += 20;
-  const cols = [['Nr', 24], ['Funk', 40], ['Auftrag', 134], ['Name', 82], ['Start', 36, 1], ['Letzter', 40, 1], ['Eingang', 44, 1], ['Ausgang', 44, 1], ['Dauer', 40, 1]];
+  const cols = [['Nr', 24], ['Funk', 36], ['Auftrag', 112], ['Stock', 42], ['Name', 80], ['Start', 36, 1], ['Letzter', 40, 1], ['Eingang', 44, 1], ['Ausgang', 44, 1], ['Dauer', 40, 1]];
   const sc = CW / cols.reduce((a, c) => a + c[1], 0); cols.forEach(c => c[1] *= sc);
   const head = () => { let x = M; R.rect(M, y, CW, 16, '#f1efec'); cols.forEach(c => { R.t(c[2] ? x + c[1] - 4 - R.w(c[0], 8, 1) : x + 4, y + 4, c[0], 8, 1, MUTE); x += c[1]; }); y += 18; };
   head();
@@ -460,12 +532,12 @@ function layout(R, W, pageH) {
     const auf = wrap(R, T.auftrag || '-', cols[2][1] - 8, 9, 0);
     const rh = 13, h = Math.max(T.members.length, auf.length) * rh + 6;
     if (need(h)) head();
-    const v = [clean(T.nr), clean(T.kanal || '-'), 0, 0, 0, 0, hm(T.tIn), T.tOut ? hm(T.tOut) : 'drin', T.tOut ? dur(T.tOut - T.tIn) : '-'];
+    const v = [clean(T.nr), clean(T.kanal || '-'), 0, wrap(R, T.stock || '-', cols[3][1] - 8, 9, 0)[0], 0, 0, 0, hm(T.tIn), T.tOut ? hm(T.tOut) : 'drin', T.tOut ? dur(T.tOut - T.tIn) : '-'];
     let x = M;
     cols.forEach((c, ci) => {
       if (ci === 2) auf.forEach((l, li) => R.t(x + 4, y + 4 + li * rh, l, 9, 0, INK));
-      else if (ci === 3) T.members.forEach((m, mi) => R.t(x + 4, y + 4 + mi * rh, clean(m.name), 9, 0, INK));
-      else if (ci === 4 || ci === 5) T.members.forEach((m, mi) => { const s = String(ci === 4 ? m.p0 : last[mi]); R.t(x + c[1] - 4 - R.w(s, 9, ci === 5), y + 4 + mi * rh, s, 9, ci === 5, INK); });
+      else if (ci === 4) T.members.forEach((m, mi) => R.t(x + 4, y + 4 + mi * rh, clean(m.name), 9, 0, INK));
+      else if (ci === 5 || ci === 6) T.members.forEach((m, mi) => { const s = String(ci === 5 ? m.p0 : last[mi]); R.t(x + c[1] - 4 - R.w(s, 9, ci === 6), y + 4 + mi * rh, s, 9, ci === 6, INK); });
       else { const s = v[ci]; R.t(c[2] ? x + c[1] - 4 - R.w(s, 9, ci === 0) : x + 4, y + 4, s, 9, ci === 0, INK); }
       x += c[1];
     });
