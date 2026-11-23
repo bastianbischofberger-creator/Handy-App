@@ -31,18 +31,18 @@ async function boot() {
   if (PUB && PUB.org) $('#org').textContent = PUB.org;
   if (!PUB || !PUB.eid) { msg('Zurzeit ist kein Ereignis eröffnet. Bitte später nochmals scannen.'); return; }
   try { const m = await F.getDoc(F.doc(fs, 'mf_ereignisse', PUB.eid, 'checkin', uid)); MY = m.exists() ? m.data() : null; } catch (e) { MY = null; }
-  msg(''); (P.nachname && P.rang && P.tel ? showMain : showProfile)();
+  msg(''); (P.nachname && RAENGE.includes(P.rang) && P.tel ? showMain : showProfile)();
 }
 
 /* ---------- Angaben ---------- */
-const RAENGE = ['Sdt', 'Gfr', 'Kpl', 'Wm', 'Fw', 'Four', 'Adj', 'Lt', 'Oblt', 'Hptm', 'Maj'];
+const RAENGE = ['Soldat', 'Uof', 'Of'];
 function showProfile() {
   $('#sMain').hidden = true; $('#sProfile').hidden = false;
   $('#nn').value = P.nachname || ''; $('#vn').value = P.vorname || ''; $('#tel').value = P.tel || '';
   renderChips(); if (!P.nachname) setTimeout(() => $('#nn').focus(), 50);
 }
 function renderChips() {
-  $('#rang').innerHTML = RAENGE.map(r => `<button type="button" data-r="${r}" class="${P.rang === r ? 'on' : ''}">${r}</button>`).join('');
+  $('#rang').innerHTML = RAENGE.map(r => `<button type="button" data-r="${r}" class="${P.rang === r ? 'on' : ''}" style="min-width:90px">${r}</button>`).join('');
   document.querySelectorAll('#masch button').forEach(b => b.classList.toggle('on', P.masch != null && String(+P.masch) === b.dataset.m));
 }
 $('#rang').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (b) { P.rang = b.dataset.r; renderChips(); } });
