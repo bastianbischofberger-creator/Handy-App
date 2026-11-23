@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.8.1';
+const VERSION = '1.9.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -53,6 +53,7 @@ function LocalBackend() {
     putTeam(eid, T) { if (!db.einsaetze[eid]) return; db.einsaetze[eid].teams[T.id] = clone(T); ch(); },
     delTeam(eid, id) { if (!db.einsaetze[eid]) return; delete db.einsaetze[eid].teams[id]; ch(); },
     addLog(eid, id, e) { if (!db.einsaetze[eid]) return; db.einsaetze[eid].log[id] = clone(e); ch(); },
+    delEinsatz(eid) { delete db.einsaetze[eid]; persist(); emitList(); },
     exportAll() { return clone(db); },
     importAll(o) { let n = 0; for (const [id, e] of Object.entries(o.einsaetze || {})) { if (!e || !e.meta) continue; const cur = db.einsaetze[id];
       if (!cur) { db.einsaetze[id] = e; n++; } else { Object.assign(cur.teams, e.teams || {}); Object.assign(cur.log, e.log || {}); cur.meta = { ...e.meta, ...cur.meta }; n++; } }
@@ -95,7 +96,11 @@ async function CloudBackend(fbConfig) {
     putMeta(eid, meta) { w(F.setDoc(F.doc(E, eid), clone(meta))); },
     putTeam(eid, T) { w(F.setDoc(F.doc(E, eid, 'teams', T.id), clone(T))); },
     delTeam(eid, id) { w(F.deleteDoc(F.doc(E, eid, 'teams', id))); },
-    addLog(eid, id, e) { w(F.setDoc(F.doc(E, eid, 'log', id), clone(e))); }
+    addLog(eid, id, e) { w(F.setDoc(F.doc(E, eid, 'log', id), clone(e))); },
+    async delEinsatz(eid) {
+      for (const sub of ['teams', 'log']) { const q = await F.getDocs(F.collection(E, eid, sub)); await Promise.all(q.docs.map(d => F.deleteDoc(d.ref))); }
+      await F.deleteDoc(F.doc(E, eid));
+    }
   };
 }
 
@@ -278,9 +283,17 @@ function renderList() {
   const ul = $('#elist'); if (!ul) return;
   ul.innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
     <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span>
-    ${e.id === S.eid ? '' : `<button data-open="${esc(e.id)}">Öffnen</button>`}</li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
+    ${e.id === S.eid ? '' : `<button data-open="${esc(e.id)}">Öffnen</button><button class="ghost" data-del="${esc(e.id)}">Löschen</button>`}</li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
 }
-$('#elist').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (b) { openE(b.dataset.open); $('#dE').close(); } });
+$('#elist').addEventListener('click', e => {
+  const b = e.target.closest('[data-open]'); if (b) { openE(b.dataset.open); $('#dE').close(); return; }
+  const d = e.target.closest('[data-del]'); if (!d) return;
+  const ein = S.list.find(x => x.id === d.dataset.del); if (!ein) return;
+  $('#dE').close();
+  confirmBox('Einsatz löschen?', `«${ein.ereignis || 'Ohne Bezeichnung'}» vom ${dt(ein.start || ein.created)} wird mit allen Trupps und dem Protokoll endgültig gelöscht${SY.mode === 'cloud' ? ' – auf allen Geräten' : ''}. Exportiere das Protokoll vorher, falls du es brauchst.`, async () => {
+    try { await BE.delEinsatz(ein.id); } catch (err) { msg('Löschen fehlgeschlagen' + (navigator.onLine ? '.' : ' – dafür braucht es Internet.')); }
+  });
+});
 $('#bList').onclick = () => { renderList(); $('#eMsg').textContent = ''; $('#bBackup').hidden = !BE.exportAll; $('#lImport').hidden = !BE.importAll; $('#dE').showModal(); };
 $('#bEClose').onclick = () => $('#dE').close();
 $('#bNew').onclick = () => {
