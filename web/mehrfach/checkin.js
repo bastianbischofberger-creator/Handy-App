@@ -12,7 +12,7 @@ const msg = t => { $('#msg').hidden = !t; $('#msg').textContent = t || ''; };
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
 let F, fs, uid, PUB = null, MY = null;
-$('#org').textContent = CFG.feuerwehr || '';
+$('#org').textContent = CFG.feuerwehr || 'Feuerwehr';
 
 async function boot() {
   if (!CFG.firebase || !CFG.firebase.apiKey) { msg('Die Anmeldung per QR-Code ist noch nicht eingerichtet (Synchronisation fehlt).'); return; }
@@ -91,6 +91,7 @@ const sent = () => (MY && MY.rm && inbox && MY.rm.aid === inbox.aid) ? MY.rm : n
 function renderAuftrag() {
   const a = inbox && inbox.aid ? inbox : null, box = $('#auftrag');
   $('#noAuftrag').hidden = !!a || !(MY && MY.status === 'an'); box.hidden = !a;
+  $('#bOut').disabled = !!a; $('#bOut').textContent = a ? 'Abmelden erst nach Abschluss des Auftrags möglich' : 'Abmelden (ich gehe)';
   document.querySelector('#inDone .done').hidden = !!a;
   if (!a) { lastAid = null; return; }
   const reko = a.rolle === 'reko', last = sent();
@@ -104,7 +105,7 @@ function renderAuftrag() {
   let btns = '';
   if (a.fuehrung) btns += !vor ? `<button class="blue" data-rm="vorort">Vor Ort</button>` : reko ? `<button class="reko" data-rm="rekoEnd">Reko abschliessen</button>` : `<button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
   btns += files.length ? `<button type="button" class="anhb" data-anh="1">📎 Anhänge (${files.length})${unseen ? `<span class="dot">${unseen} neu</span>` : ''}</button>` : `<button type="button" class="anhb" disabled>Keine Anhänge</button>`;
-  btns += `<button type="button" data-cam="1">📷 Foto zum Auftrag</button>`;
+  if (a.fuehrung && vor) btns += `<button type="button" data-cam="1">📷 Foto machen</button>`;
   btns += `<a class="abtn" href="${navUrl(a)}" target="_blank" rel="noopener">Navigation öffnen</a>`;
   if (a.tel) btns += `<a class="abtn" href="tel:${esc(a.tel.replace(/\s/g, ''))}">Meldende Person anrufen</a>`;
   box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${vor ? ' <span class="mute">· vor Ort</span>' : ''}

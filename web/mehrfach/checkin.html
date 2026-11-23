@@ -14,7 +14,7 @@
 body{margin:0;min-height:100vh;background:var(--red);color:var(--ink);font:17px/1.4 Barlow,system-ui,sans-serif;display:flex;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 14px 24px}
 .card{width:min(460px,100%);background:#fff;border-radius:18px;padding:20px 20px 22px;align-self:flex-start;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .hd{display:flex;align-items:center;gap:12px;margin-bottom:12px}.hd img{width:56px;height:58px;object-fit:contain}
-h1{font:600 26px/1.05 "Barlow Condensed",sans-serif;margin:0}h2{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:16px 0 8px}
+h1{font:600 24px/1.1 "Barlow Condensed",sans-serif;margin:0}h2{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:16px 0 8px}
 .mute{color:var(--mute);font-size:14.5px}
 label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
 input{display:block;width:100%;font:500 18px Barlow,sans-serif;min-height:50px;padding:8px 12px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink)}
@@ -53,7 +53,7 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 </head>
 <body>
 <main class="card">
-  <div class="hd"><img src="logo.png" alt="Logo Feuerwehr"><div><h1>Anmeldung im Depot</h1><span class="mute" id="org">Feuerwehr</span></div></div>
+  <div class="hd"><img src="logo.png" alt="Logo Feuerwehr"><h1 id="org">Feuerwehr</h1></div>
   <div id="msg" class="mute">Verbinde …</div>
 
   <!-- Angaben -->
@@ -76,6 +76,7 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
     <div class="ev"><span class="mute">Laufendes Ereignis</span><b id="evName"></b></div>
     <p style="margin:4px 0 12px;font:600 22px Barlow,sans-serif" id="greet"></p>
     <div id="inForm" class="stack">
+      <h2 style="margin:0">Anmeldung im Depot</h2>
       <label style="margin:0">Code vom Bildschirm im KP<input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off" pattern="[0-9]*"></label>
       <p class="err" id="mErr"></p>
       <button class="ok" id="bIn" type="button">Ich bin anwesend</button>
@@ -86,7 +87,7 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
       <p class="err" id="dErr"></p>
       <div id="auftrag" hidden></div>
       <div id="noAuftrag" class="mute" style="text-align:center">Noch kein Auftrag. Lass diese Seite offen – ein Auftrag erscheint hier automatisch.</div>
-      <button id="bOut" type="button">Abmelden (ich gehe)</button>
+      <button id="bOut" type="button" class="anhb">Abmelden (ich gehe)</button>
     </div>
     <button class="link" id="bEdit" type="button">Angaben ändern</button>
   </section>
@@ -127,6 +128,6 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 </main>
 <div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.6.0"></script>
+<script type="module" src="checkin.js?v=0.7.0"></script>
 </body>
 </html>
