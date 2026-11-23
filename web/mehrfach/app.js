@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -49,10 +49,10 @@ const COLS = [['offen', 'Offen', '#c8102e'], ['reko', 'Reko', '#7a3db8'], ['pend
 const STL = { offen: 'Offen', reko: 'Reko', pendent: 'Pendent', bew: 'In Bewältigung', abg: 'Abgeschlossen' };
 const PINC = { offen: '#c8102e', reko: '#7a3db8', pendent: '#f2b705', disp: '#16181a', vorort: '#1557c0', abg: '#8f969c' };
 
-const S = { settings: { ...DEF }, eid: null, meta: {}, A: [], res: {}, log: [], list: [], view: 'start', sel: null, filt: 'alle' };
+const S = { settings: { ...DEF }, eid: null, meta: {}, A: [], res: {}, ci: {}, log: [], list: [], view: 'start', sel: null, filt: 'alle' };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
-const COLLS = ['auftraege', 'res', 'log'];
+const COLLS = ['auftraege', 'res', 'log', 'checkin'];
 
 /* ================= Speicher: nur lokal ================= */
 function LocalBackend() {
@@ -63,7 +63,7 @@ function LocalBackend() {
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { SY.error = 'Speicher voll'; banner('Speicher auf diesem Gerät ist voll. Bitte Daten sichern und alte Ereignisse löschen.'); } };
   const emitList = () => listCb && listCb(Object.entries(db.ereignisse).map(([id, e]) => ({ id, ...clone(e.meta), n: Object.keys(e.auftraege || {}).length })).sort((a, b) => b.created - a.created));
   const emitCur = () => { if (!curCb) return; const e = db.ereignisse[cur]; if (!e) return curCb({ meta: {}, auftraege: [], res: [], log: [] });
-    curCb({ meta: clone(e.meta), auftraege: clone(Object.values(e.auftraege)), res: clone(Object.values(e.res)), log: clone(Object.values(e.log)).sort((a, b) => a.t - b.t) }); };
+    curCb({ meta: clone(e.meta), auftraege: clone(Object.values(e.auftraege)), res: clone(Object.values(e.res)), checkin: clone(Object.values(e.checkin || {})), log: clone(Object.values(e.log)).sort((a, b) => a.t - b.t) }); };
   const ch = () => { persist(); emitCur(); emitList(); };
   return {
     mode: 'local',
@@ -74,7 +74,8 @@ function LocalBackend() {
     open(id, cb) { cur = id; curCb = cb; emitCur(); },
     create(meta) { const id = uid(); db.ereignisse[id] = { meta: clone(meta), auftraege: {}, res: {}, log: {} }; persist(); emitList(); return id; },
     putMeta(id, meta) { if (!db.ereignisse[id]) return; db.ereignisse[id].meta = clone(meta); ch(); },
-    put(id, coll, did, o) { const e = db.ereignisse[id]; if (!e) return; e[coll][did] = clone(o); ch(); },
+    put(id, coll, did, o) { const e = db.ereignisse[id]; if (!e) return; (e[coll] = e[coll] || {})[did] = clone(o); ch(); },
+    putPublic() {},
     del(id, coll, did) { const e = db.ereignisse[id]; if (!e) return; delete e[coll][did]; ch(); },
     delEreignis(id) { delete db.ereignisse[id]; persist(); emitList(); },
     exportAll() { return clone(db); },
@@ -106,14 +107,15 @@ async function CloudBackend(fbConfig) {
     logout: () => Au.signOut(auth),
     watchSettings(cb) { F.onSnapshot(F.doc(fs, 'config', 'mf_settings'), d => cb(d.exists() ? d.data() : {}), fail); },
     putSettings(s) { w(F.setDoc(F.doc(fs, 'config', 'mf_settings'), clone(s))); },
+    putPublic(o) { w(F.setDoc(F.doc(fs, 'mf_public', 'aktuell'), clone(o))); },
     watchList(cb) { F.onSnapshot(F.query(E, F.orderBy('created', 'desc'), F.limit(60)), q => cb(q.docs.map(d => ({ id: d.id, ...d.data() }))), fail); },
     open(id, cb) {
       subs.forEach(u => u()); subs = [];
-      const st = { meta: {}, auftraege: [], res: [], log: [] }, p = {};
+      const st = { meta: {}, auftraege: [], res: [], log: [], checkin: [] }, p = {};
       const emit = () => { SY.pending = Object.values(p).some(Boolean); SY.error = ''; cb(st); renderSync(); };
       const o = { includeMetadataChanges: true };
       subs.push(F.onSnapshot(F.doc(E, id), o, d => { st.meta = d.exists() ? d.data() : {}; p.m = d.metadata.hasPendingWrites; emit(); }, fail));
-      for (const c of COLLS) subs.push(F.onSnapshot(F.collection(E, id, c), o, q => { st[c] = q.docs.map(d => d.data()); if (c === 'log') st.log.sort((a, b) => a.t - b.t); p[c] = q.metadata.hasPendingWrites; emit(); }, fail));
+      for (const c of COLLS) subs.push(F.onSnapshot(F.collection(E, id, c), o, q => { st[c] = q.docs.map(d => c === 'checkin' ? { ...d.data(), id: d.id } : d.data()); if (c === 'log') st.log.sort((a, b) => a.t - b.t); p[c] = q.metadata.hasPendingWrites; emit(); }, fail));
     },
     create(meta) { const id = uid(); w(F.setDoc(F.doc(E, id), clone(meta))); return id; },
     putMeta(id, meta) { w(F.setDoc(F.doc(E, id), clone(meta))); },
@@ -139,13 +141,49 @@ async function openFile(f) {
 /* ---------- Ereignis & Daten ---------- */
 function openE(id) {
   S.eid = id; LP.set('eid', id);
-  BE.open(id, st => { S.meta = st.meta || {}; S.A = st.auftraege || []; S.res = {}; (st.res || []).forEach(r => S.res[r.id] = r); S.log = st.log || []; render(); });
+  BE.open(id, st => { S.meta = st.meta || {}; S.A = st.auftraege || []; S.res = {}; (st.res || []).forEach(r => S.res[r.id] = r);
+    S.ci = {}; (st.checkin || []).forEach(c => S.ci[c.id] = c); S.log = st.log || [];
+    if (S.meta.created && !S.meta.closed && !S.meta.code) { S.meta.code = newCode(); saveMeta(); }
+    processCheckins(); render(); publish(); });
 }
+const newCode = () => String(1000 + Math.floor(Math.random() * 9000));
+/* Öffentliche Angaben für die Anmeldeseite (nur mit Synchronisation) */
+let pubKey = '';
+function publish() {
+  if (SY.mode !== 'cloud' || !S.eid || !S.meta.created) return;
+  const o = S.meta.closed ? { eid: null, t: Date.now() } : { eid: S.eid, name: S.meta.name || '', start: S.meta.start || null, org: S.settings.org || '',
+  };
+  const k = JSON.stringify(o); if (k === pubKey) return; pubKey = k; BE.putPublic({ ...o, t: Date.now() });
+}
+/* Anmeldungen per QR-Code verarbeiten */
+const norm = s => String(s || '').trim().toLowerCase();
+/* Anmeldung der Stammliste zuordnen (Name + Vorname), sonst als zusätzliche Person führen */
+const ciPid = c => { const p = (S.settings.personal || []).find(p => norm(p.name) === norm(c.nachname) && norm(p.vorname) === norm(c.vorname)); return p ? p.id : 'g_' + c.id; };
+function processCheckins() {
+  for (const c of Object.values(S.ci)) {
+    if (!c.t || !c.status) continue;
+    const pid = ciPid(c), r = resOf(pid, 'p'); if (r.ciT === c.t) continue;
+    const who = c.name || 'Unbekannt';
+    if (c.status === 'an') {
+      setRes(pid, 'p', { ciT: c.t, ...(['abwesend', 'abgetreten'].includes(r.status) ? { status: 'verfuegbar', auftrag: null } : {}) });
+      log(`${who} im Depot angemeldet (QR)${c.masch ? ', Maschinist' : ''}${c.tel ? ', Tel. ' + c.tel : ''}`, 'ci-' + c.id + '-' + c.t);
+    } else {
+      const a = r.auftrag && A(r.auftrag);
+      setRes(pid, 'p', { ciT: c.t, ...(r.status === 'verfuegbar' ? { status: 'abgetreten', auftrag: null } : {}) });
+      log(`${who} hat sich abgemeldet (QR)${a ? ` – ist noch bei Auftrag ${a.nr} eingeteilt!` : ''}`, 'ci-' + c.id + '-' + c.t);
+    }
+  }
+}
+const ciOf = pid => Object.values(S.ci).find(c => ciPid(c) === pid);
 const A = id => S.A.find(a => a.id === id);
 function saveA(a) { BE.put(S.eid, 'auftraege', a.id, a); }
 function saveMeta() { BE.putMeta(S.eid, S.meta); }
-function log(text) { if (S.eid) BE.put(S.eid, 'log', uid(), { t: Date.now(), text, dev: LP.get('dev') || '' }); }
-const personal = () => Array.isArray(S.settings.personal) ? S.settings.personal : [];
+function log(text, id) { if (S.eid) BE.put(S.eid, 'log', id || uid(), { t: Date.now(), text, dev: LP.get('dev') || '' }); }
+const personal = () => {
+  const l = Array.isArray(S.settings.personal) ? S.settings.personal : [];
+  const g = Object.values(S.ci).filter(c => ciPid(c).startsWith('g_')).map(c => ({ id: 'g_' + c.id, vorname: c.vorname || '', name: c.nachname || c.name || 'Unbekannt', rang: c.rang || '', fkt: c.masch ? 'Maschinist' : '', gast: true }));
+  return g.length ? [...l, ...g] : l;
+};
 const mittel = () => Array.isArray(S.settings.mittel) ? S.settings.mittel : [];
 const arten = () => String(S.settings.arten || '').split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 const gattungen = () => [...new Set(mittel().map(m => m.gattung || m.name))];
@@ -243,7 +281,7 @@ $('#fStart').addEventListener('submit', e => {
   e.preventDefault(); const f = e.target, el = f.elements.el.value.trim();
   if (!el) { $('#startErr').textContent = 'Bitte den Einsatzleiter eintragen.'; return; }
   const meta = { created: Date.now(), start: parseStart(f.elements.datum.value, f.elements.beginn.value), end: null, closed: false,
-    name: f.elements.name.value.trim() || 'Mehrfachereignis ' + dmy(Date.now()), el, fu: f.elements.fu.value.trim(), kp: f.elements.kp.value.trim(), lage: f.elements.lage.value.trim() };
+    name: f.elements.name.value.trim() || 'Mehrfachereignis ' + dmy(Date.now()), el, code: newCode(), fu: f.elements.fu.value.trim(), kp: f.elements.kp.value.trim(), lage: f.elements.lage.value.trim() };
   const id = BE.create(meta); openE(id);
   log(`Ereignis eröffnet: ${meta.name}, Einsatzleiter ${el}${meta.kp ? ', KP ' + meta.kp : ''}${meta.lage ? ' – ' + meta.lage : ''}`);
   f.reset(); delete f.dataset.init; $('#startErr').textContent = ''; go('dash');
@@ -258,6 +296,9 @@ function renderDash() {
   const u = S.A.filter(a => a.status === 'offen' || a.status === 'pendent').sort(sortA).slice(0, 8);
   $('#urg').innerHTML = u.length ? u.map(a => `<li data-a="${a.id}"><span class="nr">${a.nr}</span><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><span><b>${esc(a.art)}</b> · ${esc(a.adresse)} <span class="tag s-${a.status}">${STL[a.status]}</span></span><span class="since" data-since="${a.tEin}"></span></li>`).join('')
     : '<li class="empty" style="display:block;cursor:default">Keine offenen oder pendenten Aufträge.</li>';
+  const nci = Object.values(S.ci).filter(c => c.status === 'an').length;
+  $('#ciBox').innerHTML = `<div><span class="flab">Anmeldung im Depot · Code</span><b class="bc" style="display:block;font-size:42px;line-height:1;letter-spacing:4px">${esc(S.meta.code || '----')}</b>
+    <span class="hint" style="margin:0">${SY.mode === 'cloud' ? nci + ' per QR angemeldet' : 'QR-Anmeldung braucht die Synchronisation (config.js)'}</span></div><button id="bQR" class="dark" style="white-space:nowrap">QR-Code</button>`;
   $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li><time>${hm(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li class="empty">Noch keine Einträge.</li>';
 }
 $('#urg').addEventListener('click', e => { const li = e.target.closest('[data-a]'); if (li) openDetail(li.dataset.a); });
@@ -457,7 +498,8 @@ function renderMittel() {
     const r = resOf(p.id, 'p'), a = r.auftrag && A(r.auftrag);
     const b = { abwesend: '<button data-pa="in">Einrücken</button>', verfuegbar: '<button data-pa="out" class="ghost">Abtreten</button>', abgetreten: '<button data-pa="in">Wieder einrücken</button>',
       einsatz: a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}${a.status === 'reko' ? ' (Reko)' : ''}</button>` : '<button data-pa="in">Freigeben</button>' }[r.status];
-    return `<li data-p="${p.id}"><span class="rg">${esc(p.rang || '')}</span><span><b style="font-weight:600">${esc(p.name)} ${esc(p.vorname)}</b> <span class="fk">${esc(p.fkt || '')}</span></span><span class="acts"><span class="tag st-${r.status}">${PST[r.status]}</span>${b}</span></li>`;
+    const ci = ciOf(p.id), det = ci ? [ci.masch && !p.gast ? 'Maschinist' : '', ci.tel ? 'Tel. ' + ci.tel : '', p.gast ? 'nicht in Stammliste' : ''].filter(Boolean).join(' · ') : '';
+    return `<li data-p="${p.id}"><span class="rg">${esc(p.rang || '')}</span><span><b style="font-weight:600">${esc(p.name)} ${esc(p.vorname)}</b> <span class="fk">${esc(p.fkt || '')}</span>${ci ? `<br><span class="fk"><span class="tag" title="per QR-Code">QR ${ci.status === 'an' ? hm(ci.t) : 'ab ' + hm(ci.t)}</span> ${esc(det)}</span>` : ''}</span><span class="acts"><span class="tag st-${r.status}">${PST[r.status]}</span>${b}</span></li>`;
   }).join('') : '<li class="empty">Noch kein Personal erfasst (Einstellungen → Stammdaten).</li>';
   $('#mGrid').innerHTML = mittel().map(m => {
     const r = resOf(m.id, 'm'), a = r.auftrag && A(r.auftrag);
@@ -543,7 +585,7 @@ function renderPick() {
   const a = A(PK.id), mine = id => (a.assigned || []).includes(id);
   const ps = personal().filter(p => resOf(p.id, 'p').status === 'verfuegbar' || (PK.mode === 'disp' && mine(p.id)));
   const ms = mittel().filter(m => resOf(m.id, 'm').status === 'verfuegbar' || (PK.mode === 'disp' && mine(m.id)));
-  $('#pkP').innerHTML = ps.map(p => `<button type="button" data-id="${p.id}" class="${PK.sel.has(p.id) ? 'on' : ''}">${esc(pShort(p))}${p.fkt ? ` <span class="x">${esc(p.fkt)}</span>` : ''}</button>`).join('') || '<span class="hint">Niemand verfügbar. Personal unter «Personal & Mittel» einrücken.</span>';
+  $('#pkP').innerHTML = ps.map(p => `<button type="button" data-id="${p.id}" class="${PK.sel.has(p.id) ? 'on' : ''}">${esc(pShort(p))}${(p.fkt || (ciOf(p.id) || {}).masch) ? ` <span class="x">${esc(p.fkt || 'Maschinist')}</span>` : ''}</button>`).join('') || '<span class="hint">Niemand verfügbar. Personal unter «Personal & Mittel» einrücken.</span>';
   $('#pkM').innerHTML = ms.map(m => `<button type="button" data-id="${m.id}" class="${PK.sel.has(m.id) ? 'on' : ''}">${esc(m.name)}</button>`).join('') || '<span class="hint">Keine Mittel verfügbar.</span>';
   const np = ps.filter(p => PK.sel.has(p.id)).length; $('#pkOk').textContent = PK.mode === 'reko' ? 'Reko schicken' : `Disponieren${np ? ' (' + np + ' AdF)' : ''}`;
 }
@@ -657,8 +699,29 @@ $('#bSwitch').onclick = () => { $('#dS').close(); go('start'); };
 $('#bCloseE').onclick = () => {
   const open = S.A.filter(a => a.status !== 'abg').length; $('#dS').close();
   confirmBox('Ereignis abschliessen?', open ? `Achtung: ${open} Aufträge sind noch nicht abgeschlossen. Das Ereignis bleibt gespeichert und kann wieder geöffnet werden.` : 'Das Ereignis wird abgeschlossen und bleibt für den Rapport gespeichert.', () => {
-    S.meta.closed = true; S.meta.end = Date.now(); saveMeta(); log('Ereignis abgeschlossen'); });
+    S.meta.closed = true; S.meta.end = Date.now(); saveMeta(); log('Ereignis abgeschlossen'); publish(); });
 };
+
+/* ---------- QR-Code für die Anmeldung ---------- */
+const ciUrl = () => new URL('checkin.html', location.href).href;
+function qrSvg(text, cell) { const q = window.qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag(cell || 8, 2); }
+document.addEventListener('click', e => { if (e.target.closest('#bQR')) openQR(); });
+function openQR() {
+  const u = ciUrl();
+  $('#qrBody').innerHTML = (window.qrcode ? qrSvg(u, 7) : '<p class="err">QR-Modul nicht geladen.</p>') + `<p class="hint" style="word-break:break-all">${esc(u)}</p>
+    <p>Aktueller Code: <b class="bc" style="font-size:32px;letter-spacing:3px">${esc(S.meta.code || '----')}</b></p>`;
+  $('#dQR').showModal();
+}
+$('#bQrPrint').onclick = () => {
+  const u = ciUrl(), w = window.open('', '_blank'); if (!w || !window.qrcode) return;
+  w.document.write(`<!doctype html><html lang="de-CH"><head><meta charset="utf-8"><title>Anmeldung im Depot</title><style>body{font-family:Helvetica,Arial,sans-serif;text-align:center;margin:40px}
+    h1{font-size:34px;margin:10px 0}p{font-size:18px}svg{width:340px;height:340px}img{width:110px}</style></head><body>
+    <img src="${new URL('logo.png', location.href).href}" alt=""><h1>Anmeldung im Depot</h1><p>${esc(S.settings.org || '')}</p>${qrSvg(u, 10)}
+    <p><b>1.</b> QR-Code mit dem Handy scannen &nbsp; <b>2.</b> Angaben erfassen (nur beim ersten Mal) &nbsp; <b>3.</b> Code vom Bildschirm im KP eingeben</p><p style="font-size:13px;color:#555">${esc(u)}</p>
+    <script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`);
+  w.document.close();
+};
+$('#bQrClose').onclick = () => $('#dQR').close();
 
 /* ---------- Datensicherung & Demo ---------- */
 async function deliver(blob, name) {
@@ -677,7 +740,7 @@ $('#fImport').addEventListener('change', async e => { const file = e.target.file
 $('#bDemo').onclick = () => demo();
 function demo() {
   const now = Date.now(), m = 60000;
-  const id = BE.create({ created: now, start: now - 95 * m, end: null, closed: false, name: 'Demo Mehrfachereignis', el: 'Hptm Muster', fu: 'Oblt Beispiel', kp: 'Depot Rheineck', lage: 'Übung / Demo' });
+  const id = BE.create({ created: now, start: now - 95 * m, end: null, closed: false, code: newCode(), name: 'Demo Mehrfachereignis', el: 'Hptm Muster', fu: 'Oblt Beispiel', kp: 'Depot Rheineck', lage: 'Übung / Demo' });
   openE(id);
   const P = personal(), M = mittel(), pid = i => P[i] && P[i].id, mid = n => (M.find(x => x.name === n) || {}).id;
   P.slice(0, 10).forEach(p => setRes(p.id, 'p', { status: 'verfuegbar', auftrag: null }));
@@ -744,7 +807,7 @@ $('#bExp').onclick = async () => {
 let started = false;
 function start() {
   if (started) return; started = true;
-  BE.watchSettings(s => { S.settings = { ...DEF, ...s }; render(); });
+  BE.watchSettings(s => { S.settings = { ...DEF, ...s }; processCheckins(); render(); publish(); });
   BE.watchList(l => { S.list = l; if (S.view === 'start') renderStart(); });
   const last = LP.get('eid');
   if (last && (!BE.has || BE.has(last))) { openE(last); go(LP.get('view') || 'dash'); } else go('start');
@@ -766,5 +829,5 @@ async function boot() {
 }
 boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-window.__MF = { S, A, go };
+window.__MF = { S, A, go, put: (c, id, o) => BE.put(S.eid, c, id, o) };
 })();

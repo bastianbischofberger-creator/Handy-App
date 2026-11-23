@@ -108,7 +108,8 @@ body.startmode .top{display:none}
 .urg li{display:grid;grid-template-columns:40px 44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line2);cursor:pointer}
 .urg .nr{font:700 23px/1 "Barlow Condensed",sans-serif}
 .urg .since{font:600 17px "Barlow Condensed",sans-serif;color:var(--mute);white-space:nowrap}
-.journal{display:flex;flex-direction:column;max-height:calc(100vh - 160px)}
+.journal{display:flex;flex-direction:column;max-height:calc(100vh - 260px)}
+#qrBody svg{width:280px;height:280px}
 .jform{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
 .jform input{margin:0;min-height:42px}.jform button{min-height:42px}
 #log{list-style:none;margin:0;padding:0 0 6px;overflow:auto;font-size:14.5px}
@@ -269,10 +270,13 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
         </div>
         <div class="box"><div class="boxh"><h2>Dringende Aufträge (offen &amp; pendent)</h2><button class="ghost" data-go="lage">Alle anzeigen</button></div><ul class="urg" id="urg"></ul></div>
       </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="box" id="ciBox" style="display:flex;align-items:center;gap:12px;padding:12px 14px;justify-content:space-between"></div>
       <div class="box journal">
         <div class="boxh"><h2>Journal</h2><span class="hint" style="margin:0">neueste zuerst</span></div>
         <form class="jform" id="fJournal"><input name="t" placeholder="Eintrag ins Journal …" autocomplete="off"><button class="dark">+</button></form>
         <ul id="log"></ul>
+      </div>
       </div>
     </div>
   </section>
@@ -393,6 +397,12 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
   <div class="dbtn"><button value="logout" id="bLogout" class="ghost" formnovalidate>Abmelden</button><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
 </form></dialog>
 
+<dialog id="dQR" style="width:min(460px,96vw)"><div class="dp" style="text-align:center">
+  <h3>Anmeldung im Depot</h3><div id="qrBody"></div>
+  <p class="hint">Dieser QR-Code bleibt immer gleich – einmal ausdrucken und im Depot aufhängen. Der 4-stellige Code ist bei jedem Ereignis neu und steht auf dem Dashboard.</p>
+  <div class="dbtn" style="justify-content:center"><button id="bQrPrint">Drucken</button><button id="bQrClose" class="dark">Schliessen</button></div>
+</div></dialog>
+
 <dialog id="dC"><form class="dp" method="dialog">
   <h3 id="cTitle"></h3><p id="cText"></p>
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
@@ -408,9 +418,10 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 <input type="file" id="fileAnh" accept="application/pdf,image/*,.eml,.msg,.txt,.doc,.docx" multiple hidden>
 <input type="file" id="fileFoto" accept="image/*" capture="environment" hidden>
 
-<script src="config.js?v=0.1.0"></script>
+<script src="config.js?v=0.2.0"></script>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
-<script src="app.js?v=0.1.0"></script>
+<script src="../vendor/qrcode-generator/qrcode.js"></script>
+<script src="app.js?v=0.2.0"></script>
 </body>
 </html>

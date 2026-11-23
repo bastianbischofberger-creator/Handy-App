@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anmeldung im Depot</title>
+<meta name="theme-color" content="#c8102e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c8102e;--ink:#16181a;--mute:#5b6166;--line:#d8d4ce;--field:#f7f6f4;--ok:#1d7a46}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;min-height:100vh;background:var(--red);color:var(--ink);font:17px/1.4 Barlow,system-ui,sans-serif;display:flex;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 14px 24px}
+.card{width:min(460px,100%);background:#fff;border-radius:18px;padding:20px 20px 22px;align-self:flex-start;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.hd{display:flex;align-items:center;gap:12px;margin-bottom:12px}.hd img{width:56px;height:58px;object-fit:contain}
+h1{font:600 26px/1.05 "Barlow Condensed",sans-serif;margin:0}h2{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:16px 0 8px}
+.mute{color:var(--mute);font-size:14.5px}
+label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
+input{display:block;width:100%;font:500 18px Barlow,sans-serif;min-height:50px;padding:8px 12px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink)}
+button{font:600 18px Barlow,sans-serif;min-height:52px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;width:100%}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{background:var(--ok);border-color:var(--ok);color:#fff}button.link{background:none;border:0;color:var(--mute);font-size:15px;min-height:40px;text-decoration:underline}
+.ev{background:#fbe9ec;border-radius:12px;padding:10px 12px;margin:6px 0 12px}.ev b{display:block;font:600 21px/1.1 "Barlow Condensed",sans-serif}
+.list{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:6px 0 10px}
+.list button{display:block;text-align:left;border:0;border-bottom:1px solid #ebe7e1;border-radius:0;background:#fff;font-weight:500;min-height:50px}
+.list button.on{background:var(--red);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}.chips button{width:auto;min-height:46px;font-size:16px;font-weight:500}.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.code{font:700 40px "Barlow Condensed",sans-serif;letter-spacing:12px;text-align:center}
+.err{color:var(--red);font-weight:600;min-height:1.3em;margin:6px 0}
+.done{text-align:center;padding:10px 0}.done .big{font:700 30px/1.1 "Barlow Condensed",sans-serif;color:var(--ok)}
+.done svg{width:72px;height:72px}
+.stack{display:flex;flex-direction:column;gap:10px}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="hd"><img src="logo.png" alt="Logo Feuerwehr"><div><h1>Anmeldung im Depot</h1><span class="mute" id="org">Feuerwehr</span></div></div>
+  <div id="msg" class="mute">Verbinde …</div>
+
+  <!-- Angaben -->
+  <section id="sProfile" hidden>
+    <h2>Deine Angaben</h2>
+    <p class="mute" style="margin:0 0 10px">Werden auf diesem Handy gespeichert – beim nächsten Mal genügt ein Tipp.</p>
+    <label>Name<input id="nn" autocomplete="family-name"></label>
+    <label>Vorname<input id="vn" autocomplete="given-name"></label>
+    <span class="mute">Rang</span>
+    <div class="chips" id="rang"></div>
+    <span class="mute">Maschinist</span>
+    <div class="chips" id="masch"><button type="button" data-m="1">Ja</button><button type="button" data-m="0">Nein</button></div>
+    <label>Telefonnummer<input id="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="079 …"></label>
+    <p class="err" id="pErr"></p>
+    <button class="pri" id="bSaveProfile" type="button">Weiter</button>
+  </section>
+
+  <!-- Anmelden -->
+  <section id="sMain" hidden>
+    <div class="ev"><span class="mute">Laufendes Ereignis</span><b id="evName"></b></div>
+    <p style="margin:4px 0 12px">Hallo <b id="who"></b></p>
+    <div id="inForm" class="stack">
+      <label style="margin:0">Code vom Bildschirm im KP<input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off" pattern="[0-9]*"></label>
+      <p class="err" id="mErr"></p>
+      <button class="ok" id="bIn" type="button">Ich bin anwesend</button>
+    </div>
+    <div id="inDone" hidden class="stack">
+      <div class="done"><svg viewBox="0 0 24 24" fill="none" stroke="#1d7a46" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7 12.5l3.2 3.2L17 9"/></svg>
+        <div class="big">Du bist angemeldet</div><div class="mute" id="since"></div></div>
+      <p class="err" id="dErr"></p>
+      <button id="bOut" type="button">Abmelden (ich gehe)</button>
+    </div>
+    <button class="link" id="bEdit" type="button">Angaben ändern</button>
+  </section>
+</main>
+<script src="config.js?v=0.2.0"></script>
+<script type="module" src="checkin.js?v=0.2.0"></script>
+</body>
+</html>

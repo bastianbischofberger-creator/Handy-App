@@ -52,6 +52,12 @@ Adresse: https://bastianbischofberger-creator.github.io/Handy-App/mehrfach/
   In Bewältigung / Abgeschlossen oder Karte) und Personal & Mittel.
 - Zum Ausprobieren auf dem Startbildschirm «Demo-Ereignis» wählen.
 - Personal, Fahrzeuge und Auftragsarten: Zahnrad → «Stammdaten bearbeiten» (zuerst sind Musterdaten drin).
-- Speichert vorerst nur lokal auf dem Gerät. Synchronisation über Firebase: siehe `web/mehrfach/config.js`.
-  Anhänge (PDF, Fotos) bleiben immer auf dem Gerät, auf dem sie erfasst wurden.
+- Synchronisation über Firebase (gleiches Projekt wie ASÜ, gleiche Konten). Anhänge (PDF, Fotos) bleiben
+  immer auf dem Gerät, auf dem sie erfasst wurden.
+- **Anmeldung im Depot per QR-Code:** Dashboard → «QR-Code» → Drucken und im Depot aufhängen (bleibt immer gleich).
+  Die Leute scannen, wählen ihren Namen, hinterlegen Handynummer und Qualifikationen und tippen den 4-stelligen
+  Code vom Dashboard ein (neu bei jedem Ereignis). Sie erscheinen dann unter «Personal & Mittel» als verfügbar.
+- **Einmalig in der Firebase-Konsole (Reihenfolge einhalten!):**
+  1. Firestore → Regeln: Inhalt von `firebase/firestore.rules` einfügen → Veröffentlichen.
+  2. Erst danach: Authentication → Sign-in method → «Anonymous» aktivieren.
 - Nach Änderungen in `web/mehrfach/sw.js` die Versionsnummer (`CACHE`) erhöhen.
