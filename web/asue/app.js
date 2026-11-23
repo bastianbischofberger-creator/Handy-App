@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.8.0';
+const VERSION = '1.8.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -166,14 +166,14 @@ function selChanged(selName, inpName) {
 function renderPick(boxId, inpName, list, otherLabel, allowNone) {
   const f = $('#fTeam'), inp = f.elements[inpName], v = inp.value.trim(), other = !!v && !list.includes(v);
   const box = document.getElementById(boxId); box.dataset.inp = inpName; box.dataset.none = allowNone ? '1' : '';
-  box.innerHTML = list.map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join('') + `<button type="button" data-k="__other" class="oth${other || (!inp.hidden && !v) ? ' on' : ''}">${esc(otherLabel)}</button>`;
+  box.innerHTML = (allowNone ? `<button type="button" data-k="" class="${!v && inp.hidden ? 'on' : ''}">${esc(allowNone === true ? 'Keins' : allowNone)}</button>` : '') + list.map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join('') + `<button type="button" data-k="__other" class="oth${other || (!inp.hidden && !v) ? ' on' : ''}">${esc(otherLabel)}</button>`;
   inp.hidden = !(other || box.querySelector('.oth.on'));
 }
 for (const id of ['kChips', 'sChips']) document.getElementById(id).addEventListener('click', e => {
   const b = e.target.closest('[data-k]'); if (!b) return; const box = e.currentTarget, inp = $('#fTeam').elements[box.dataset.inp];
   box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
   if (b.dataset.k === '__other') { b.classList.add('on'); inp.hidden = false; inp.value = ''; inp.focus(); return; }
-  if (box.dataset.none && inp.value.trim() === b.dataset.k) { inp.value = ''; inp.hidden = true; return; }
+  if (box.dataset.none && (b.dataset.k === '' || inp.value.trim() === b.dataset.k)) { inp.value = ''; inp.hidden = true; box.querySelector('[data-k=""]').classList.add('on'); return; }
   b.classList.add('on'); inp.value = b.dataset.k; inp.hidden = true;
 });
 $('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
@@ -322,7 +322,7 @@ function openTeam(id) {
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
   f.elements.kanal.hidden = true; renderPick('kChips', 'kanal', presets(), 'Anderer …');
   fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –'); syncZusatz();
-  f.elements.stock.hidden = true; renderPick('sChips', 'stock', floors(), 'Anderer Ort …', true);
+  f.elements.stock.hidden = true; renderPick('sChips', 'stock', [...floors()].reverse(), 'Anderer Ort …', 'Bereit');
   $('#dTeam').showModal();
 }
 $('#fTeam').addEventListener('submit', e => {
@@ -446,19 +446,16 @@ function renderBau() {
   const egI = fl.findIndex(isEG);
   const og = countOG(fl), ug = countUG(fl), opt = (n, sel, sign) => [...Array(n + 1)].map((_, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i ? sign + i : '0'}</option>`).join('');
   const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = vis.filter(t => t.status === 'bereit' && !t.rett).sort(byNr), rready = vis.filter(t => t.status === 'bereit' && t.rett).sort(byNr);
-  const yard = `<div class="yard${rready.length ? ' on' : ''}" title="Vor dem Gebäude">${rready.map(t => badge(t)).join('')}</div>`;
   let h = `<div class="bau-h"><b>Gebäude</b></div><div class="bau-sel"><label>OG<select id="selOG">${opt(20, og, '+')}</select></label><label>UG<select id="selUG">${opt(5, ug, '-')}</select></label></div>`;
   el.classList.toggle('many', fl.length > 10);
-  h += '<div class="site"><div class="roof"></div><div></div>';
+  h += '<div class="roof"></div>';
   for (let i = fl.length - 1; i >= 0; i--) {
     const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
     h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}${i === fl.length - 1 ? ' ftop' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`;
-    h += i === egI ? yard : `<div class="${egI >= 0 && i < egI ? 'earth' : ''}"></div>`;
     if (i === egI) h += '<div class="ground"></div>';
   }
-  if (egI < 0) h += '<div class="ground"></div>' + yard + '<div></div>';
-  h += '</div>';
-  if (rready.length) h += `<div class="zone rzl">${AXE} Rettungstrupp bereit vor dem Gebäude</div>`;
+  if (egI < 0) h += '<div class="ground"></div>';
+  if (rready.length) h += `<div class="zone rz">${AXE} Rettungstrupp bereit<div class="tm">${rready.map(t => badge(t)).join('')}</div></div>`;
   if (other.length) h += `<div class="zone">Anderer Ort<div class="tm">${other.map(t => badge(t, t.stock)).join('')}</div></div>`;
   if (none.length) h += `<div class="zone">Ohne Stockwerk<div class="tm">${none.map(t => badge(t)).join('')}</div></div>`;
   if (ready.length) h += `<div class="zone">Bereit<div class="tm">${ready.map(t => badge(t)).join('')}</div></div>`;
