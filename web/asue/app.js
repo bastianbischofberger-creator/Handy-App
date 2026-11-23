@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.9.0';
+const VERSION = '2.0.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -280,18 +280,21 @@ function tick() {
 
 /* ---------- Einsätze-Liste ---------- */
 function renderList() {
+  renderAdList();
   const ul = $('#elist'); if (!ul) return;
   ul.innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
     <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span>
-    ${e.id === S.eid ? '' : `<button data-open="${esc(e.id)}">Öffnen</button><button class="ghost" data-del="${esc(e.id)}">Löschen</button>`}</li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
+    ${e.id === S.eid ? '' : `<button data-open="${esc(e.id)}">Öffnen</button>`}</li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
 }
 $('#elist').addEventListener('click', e => {
   const b = e.target.closest('[data-open]'); if (b) { openE(b.dataset.open); $('#dE').close(); return; }
+});
+$('#adList').addEventListener('click', e => {
   const d = e.target.closest('[data-del]'); if (!d) return;
   const ein = S.list.find(x => x.id === d.dataset.del); if (!ein) return;
-  $('#dE').close();
   confirmBox('Einsatz löschen?', `«${ein.ereignis || 'Ohne Bezeichnung'}» vom ${dt(ein.start || ein.created)} wird mit allen Trupps und dem Protokoll endgültig gelöscht${SY.mode === 'cloud' ? ' – auf allen Geräten' : ''}. Exportiere das Protokoll vorher, falls du es brauchst.`, async () => {
-    try { await BE.delEinsatz(ein.id); } catch (err) { msg('Löschen fehlgeschlagen' + (navigator.onLine ? '.' : ' – dafür braucht es Internet.')); }
+    try { await BE.delEinsatz(ein.id); $('#adMsg').textContent = ''; } catch (err) { $('#adMsg').textContent = 'Löschen fehlgeschlagen' + (navigator.onLine ? '.' : ' – dafür braucht es Internet.'); }
+    renderAdList();
   });
 });
 $('#bList').onclick = () => { renderList(); $('#eMsg').textContent = ''; $('#bBackup').hidden = !BE.exportAll; $('#lImport').hidden = !BE.importAll; $('#dE').showModal(); };
@@ -391,6 +394,7 @@ function openSettings() {
   const f = $('#fS'), st = S.settings;
   for (const k of ['org', 'kanaele', 'kanalStd', 'auftraege', 'interval', 'defP0', 'rzMode', 'rzFixed', 'pfeife', 'defRate']) f.elements[k].value = st[k];
   f.elements.dev.value = LP.get('dev') || '';
+  $('#sAdmin').hidden = true; $('#bAdmin').hidden = false;
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
   $('#dS').showModal();
@@ -399,6 +403,8 @@ $('#fS').addEventListener('submit', e => {
   const f = e.target;
   if (e.submitter && e.submitter.value === 'logout') { confirmBox('Abmelden?', 'Danach braucht dieses Gerät Internet, um sich wieder anzumelden.', () => BE.logout()); return; }
   if (e.submitter && e.submitter.value !== 'ok') return;
+  LP.set('dev', f.elements.dev.value.trim());
+  if ($('#sAdmin').hidden) { render(); return; }
   const s = { ...S.settings };
   for (const k of ['interval', 'defP0', 'rzFixed', 'pfeife', 'defRate']) { const v = parseFloat(f.elements[k].value); if (v > 0 || (k === 'reserve' && v >= 0)) s[k] = v; }
   s.rzMode = f.elements.rzMode.value; s.org = f.elements.org.value.trim(); s.kanaele = f.elements.kanaele.value.trim(); s.kanalStd = f.elements.kanalStd.value.trim(); s.auftraege = f.elements.auftraege.value.trim();
@@ -523,6 +529,43 @@ $('#fFl').addEventListener('submit', e => {
   if (!e.submitter || e.submitter.value === 'cancel' || !v) return;
   if (e.submitter.value === 'std') BE.putSettings({ ...S.settings, floors: v });
   S.meta.floors = v; saveMeta();
+});
+
+
+/* ---------- Adminbereich (PIN) ---------- */
+async function hashPin(p) {
+  try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('asue:' + p)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  catch (e) { let h = 0; for (const c of 'asue:' + p) h = (h * 31 + c.charCodeAt(0)) | 0; return 'x' + h; }
+}
+let pinMode = null;
+function openPin(mode) {
+  pinMode = mode; const f = $('#fPin'); f.reset(); $('#pinErr').textContent = '';
+  $('#pinTitle').textContent = mode === 'set' ? (S.settings.adminPin ? 'Admin-PIN ändern' : 'Admin-PIN festlegen') : 'Adminbereich';
+  $('#pinHint').textContent = mode === 'set' ? 'Mindestens 4 Ziffern. Die PIN gilt für alle Geräte – gut aufbewahren.' : 'PIN eingeben, um Grunddaten zu ändern und Einsätze zu löschen.';
+  $('#pinL2').hidden = mode !== 'set';
+  $('#dPin').showModal(); setTimeout(() => f.elements.p1.focus(), 50);
+}
+function unlockAdmin() { $('#sAdmin').hidden = false; $('#bAdmin').hidden = true; renderAdList(); }
+function renderAdList() {
+  const ul = $('#adList'); if (!ul || $('#sAdmin').hidden) return;
+  const l = S.list.filter(e => e.id !== S.eid);
+  ul.innerHTML = l.length ? l.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}${e.closed ? ' · abgeschlossen' : ''}</span></div><button type="button" class="ghost" data-del="${esc(e.id)}">Löschen</button></li>`).join('')
+    : '<li><span>Keine weiteren Einsätze. Der geöffnete Einsatz kann nicht gelöscht werden.</span></li>';
+}
+const ADMIN_PIN = false; /* auf true setzen, um den Adminbereich mit PIN zu schützen */
+$('#bAdmin').onclick = () => ADMIN_PIN ? openPin(S.settings.adminPin ? 'unlock' : 'set') : unlockAdmin();
+$('#bPinChg').hidden = !ADMIN_PIN;
+$('#bPinChg').onclick = () => openPin('set');
+$('#pinCancel').onclick = () => $('#dPin').close();
+$('#fPin').addEventListener('submit', async e => {
+  e.preventDefault(); const f = e.target, p1 = f.elements.p1.value.trim();
+  if (pinMode === 'set') {
+    if (!/^\d{4,}$/.test(p1)) { $('#pinErr').textContent = 'Bitte mindestens 4 Ziffern.'; return; }
+    if (p1 !== f.elements.p2.value.trim()) { $('#pinErr').textContent = 'Die beiden PIN stimmen nicht überein.'; return; }
+    BE.putSettings({ ...S.settings, adminPin: await hashPin(p1) }); $('#dPin').close(); unlockAdmin(); return;
+  }
+  if (await hashPin(p1) === S.settings.adminPin) { $('#dPin').close(); unlockAdmin(); }
+  else { $('#pinErr').textContent = 'PIN falsch.'; f.elements.p1.value = ''; }
 });
 
 /* ---------- Aktionen auf der Tafel ---------- */

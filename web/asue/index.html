@@ -95,6 +95,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .err{color:var(--red);font-weight:600;min-height:1.2em;margin:0}
 .elist{list-style:none;margin:0 0 6px;padding:0;max-height:55vh;overflow:auto}
 .elist li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.admbtn{width:100%;margin:4px 0 8px}.admh{font:600 19px 'Barlow Condensed',sans-serif;margin:16px 0 8px;padding-top:10px;border-top:1px solid var(--line)}.admh small{font:400 13px Barlow,sans-serif;color:var(--mute);margin-left:6px}
 .elist div{flex:1}.elist button{min-height:40px;padding:6px 12px}.elist b{display:block}.elist span{font-size:14px;color:var(--mute)}
 .tag{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--field);border:1px solid var(--line);white-space:nowrap}
 .btnlbl{display:inline-flex;align-items:center;font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;margin:0}
@@ -284,28 +285,43 @@ label select+input{margin-top:6px}
 
 <dialog id="dS"><form method="dialog" id="fS">
   <h3>Einstellungen</h3>
-  <p class="hint">Gilt für alle Geräte (bei Synchronisation).</p>
-  <label>Feuerwehr (erscheint auf Protokoll)<input name="org"></label>
-  <div class="g2"><label>Funkkanäle zur Auswahl<input name="kanaele" placeholder="3, 4, 6, 8, 12"></label><label>Standard-Funkkanal<input name="kanalStd" placeholder="6"></label></div>
-  <label>Aufträge zur Auswahl (mit Komma getrennt)<input name="auftraege" placeholder="Absuchen, Brandbekämpfung, Rettung"></label>
-  <div class="g2">
-    <label>Druckkontrolle alle (Min.)<input name="interval" type="number" min="1"></label>
-    <label>Standard-Anfangsdruck (bar)<input name="defP0" type="number"></label>
-  </div>
-  <label>Rückzugsdruck berechnen
-    <select name="rzMode">
-      <option value="half">Hälfte des Anfangsdrucks</option>
-      <option value="fixed">Fester Wert</option>
-    </select></label>
-  <div class="g2">
-    <label>Fester Rückzugsdruck (bar)<input name="rzFixed" type="number"></label>
-    <label>Warnsignal (bar, Untergrenze)<input name="pfeife" type="number"></label>
-    <label>Verbrauch ohne Messung (bar/Min.)<input name="defRate" type="number" step="0.5"></label>
-  </div>
-  <p class="hint" style="margin-top:6px">Nur dieses Gerät:</p>
   <label>Gerätename (erscheint im Protokoll)<input name="dev" placeholder="z. B. iPad 1"></label>
   <p class="hint" id="sInfo"></p>
+  <button type="button" id="bAdmin" class="admbtn">Adminbereich öffnen</button>
+  <div id="sAdmin" hidden>
+    <h4 class="admh">Adminbereich · Grunddaten <small>gilt für alle Geräte</small></h4>
+    <label>Feuerwehr (erscheint auf Protokoll)<input name="org"></label>
+    <div class="g2"><label>Funkkanäle zur Auswahl<input name="kanaele" placeholder="3, 4, 6, 8, 12"></label><label>Standard-Funkkanal<input name="kanalStd" placeholder="6"></label></div>
+    <label>Aufträge zur Auswahl (mit Komma getrennt)<input name="auftraege" placeholder="Absuchen, Brandbekämpfung, Rettung"></label>
+    <div class="g2">
+      <label>Druckkontrolle alle (Min.)<input name="interval" type="number" min="1"></label>
+      <label>Standard-Anfangsdruck (bar)<input name="defP0" type="number"></label>
+    </div>
+    <label>Rückzugsdruck berechnen
+      <select name="rzMode">
+        <option value="half">Hälfte des Anfangsdrucks</option>
+        <option value="fixed">Fester Wert</option>
+      </select></label>
+    <div class="g2">
+      <label>Fester Rückzugsdruck (bar)<input name="rzFixed" type="number"></label>
+      <label>Warnsignal (bar, Untergrenze)<input name="pfeife" type="number"></label>
+      <label>Verbrauch ohne Messung (bar/Min.)<input name="defRate" type="number" step="0.5"></label>
+    </div>
+    <h4 class="admh">Einsätze löschen</h4>
+    <ul class="elist" id="adList"></ul>
+    <p class="err" id="adMsg"></p>
+    <button type="button" id="bPinChg" class="ghost">Admin-PIN ändern</button>
+  </div>
   <div class="dbtn"><button value="logout" id="bLogout" class="ghost" formnovalidate>Abmelden</button><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
+</form></dialog>
+
+<dialog id="dPin"><form id="fPin">
+  <h3 id="pinTitle">Admin-PIN</h3>
+  <p class="hint" id="pinHint"></p>
+  <label>PIN<input name="p1" type="password" inputmode="numeric" autocomplete="off"></label>
+  <label id="pinL2">PIN wiederholen<input name="p2" type="password" inputmode="numeric" autocomplete="off"></label>
+  <p class="err" id="pinErr"></p>
+  <div class="dbtn"><button type="button" id="pinCancel">Abbrechen</button><button class="pri" type="submit">OK</button></div>
 </form></dialog>
 
 <dialog id="dE"><div class="dpad">
@@ -344,9 +360,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.9.0"></script>
+<script src="config.js?v=2.0.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.9.0"></script>
+<script src="app.js?v=2.0.0"></script>
 </body>
 </html>
