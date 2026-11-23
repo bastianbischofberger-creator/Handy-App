@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'asue-1.3.1';
+const CACHE = 'asue-1.3.2';
 const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './vendor/jspdf.umd.min.js', './vendor/jsQR.js'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];
@@ -8,7 +8,7 @@ const FBMODS = [FB + 'firebase-app.js', FB + 'firebase-auth.js', FB + 'firebase-
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(async c => {
-    await c.addAll(SHELL);
+    await c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })));
     await Promise.all(EXTRA.map(u => fetch(u, { mode: 'no-cors' }).then(r => c.put(u, r)).catch(() => {})));
     await Promise.all(FBMODS.map(u => fetch(u).then(r => r.ok && c.put(u, r)).catch(() => {})));
   }));
@@ -20,17 +20,27 @@ self.addEventListener('activate', e => {
 const handled = u => u.origin === location.origin || u.hostname === 'cdnjs.cloudflare.com' || u.hostname === 'fonts.googleapis.com' ||
   u.hostname === 'fonts.gstatic.com' || (u.hostname === 'www.gstatic.com' && u.pathname.startsWith('/firebasejs/'));
 
-/* Aus dem Cache liefern (sofort, auch offline) und im Hintergrund aktualisieren. */
+/* Eigene Dateien: zuerst aus dem Netz (immer neuste Version), offline aus dem Cache.
+   Fremde Bibliotheken (Firebase, Schriften): aus dem Cache, im Hintergrund aktualisieren. */
+const timeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 self.addEventListener('fetch', e => {
   const r = e.request; if (r.method !== 'GET') return;
   const u = new URL(r.url); if (!handled(u)) return;
+  const own = u.origin === location.origin;
   e.respondWith(caches.open(CACHE).then(async c => {
-    const hit = await c.match(r, { ignoreSearch: u.origin === location.origin });
-    const net = fetch(r, u.origin === location.origin ? { cache: 'no-cache' } : {}).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()); return res; }).catch(() => null);
+    if (own) {
+      try {
+        const res = await timeout(fetch(r, { cache: 'no-cache' }), 4000);
+        if (res && res.ok) { c.put(r, res.clone()); return res; }
+      } catch (err) {}
+      const hit = await c.match(r, { ignoreSearch: true });
+      if (hit) return hit;
+      if (r.mode === 'navigate') return (await c.match('./index.html')) || (await c.match('./')) || Response.error();
+      return Response.error();
+    }
+    const hit = await c.match(r);
+    const net = fetch(r).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()); return res; }).catch(() => null);
     if (hit) { e.waitUntil(net); return hit; }
-    const res = await net;
-    if (res) return res;
-    if (r.mode === 'navigate') return (await c.match('./index.html')) || Response.error();
-    return Response.error();
+    return (await net) || Response.error();
   }));
 });
