@@ -159,6 +159,15 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .compact .mt td{padding-block:1px}.compact .kpis b{font-size:17px;line-height:1.1}
 .compact .lbl.d{font-size:0}.compact .lbl.d::after{content:"Kontrolle!";font-size:12.5px}
 
+/* Rettungstrupp */
+:root{--rt:#e8740c}
+.chk{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:16px;font-weight:600;margin:2px 0 12px}.chk input{width:24px;min-height:24px;margin:0;accent-color:var(--rt)}
+.axe{width:18px;height:18px;vertical-align:-3px}.axe.rt{color:var(--rt);width:22px;height:22px}
+.rtag{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:700;padding:1px 7px;border-radius:6px;background:var(--rt);color:#fff;white-space:nowrap}
+.card.rett{border-left:8px solid var(--rt)}
+.tbg.rett{background:var(--rt);color:#fff;display:inline-flex;align-items:center;gap:3px}.tbg.rett.bereit{background:var(--rt);color:#fff;border:0}
+.zone.rz{background:color-mix(in srgb,var(--rt) 14%,transparent);border:2px solid var(--rt);border-radius:10px;padding:6px 8px;color:var(--ink);font-weight:600}
+.compact .rtag span{display:none}
 /* Kompakt v2: 9 Trupps + Gebäude auf einem iPad-Bildschirm */
 .kpis b i,.kpis b em{font-style:normal}
 .compact .board{grid-template-columns:205px minmax(0,1fr);gap:10px}
@@ -239,6 +248,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <label>Auftrag<input name="auftrag" placeholder="z. B. Menschenrettung"></label>
   <label>Stockwerk<input name="stock" placeholder="z. B. 2. OG"></label>
   <div class="chips" id="sChips"></div>
+  <label class="chk"><input type="checkbox" name="rett"> <svg class="axe rt" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 21.8 2.2 20.4l10-10 1.4 1.4z" fill="currentColor"/><path d="M11.2 6.6 14.9 2.9c2.6.2 5 1.6 6.6 3.7l-3.9 3.9-2.2-.6-.8 2.9-3.6-3.6 2.9-.8z" fill="currentColor"/><path d="M11.2 6.6 9 4.4l1.8-.4z" fill="currentColor"/></svg> Rettungstrupp (Sicherheitstrupp)</label>
   <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0"><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 2<span class="inq"><input name="n1"><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2"><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
@@ -316,9 +326,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.4.0"></script>
+<script src="config.js?v=1.5.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.4.0"></script>
+<script src="app.js?v=1.5.0"></script>
 </body>
 </html>
