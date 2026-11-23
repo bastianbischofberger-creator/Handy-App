@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.7.1';
+const VERSION = '1.8.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -445,18 +445,22 @@ function renderBau() {
   const byNr = (a, b) => String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true });
   const egI = fl.findIndex(isEG);
   const og = countOG(fl), ug = countUG(fl), opt = (n, sel, sign) => [...Array(n + 1)].map((_, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i ? sign + i : '0'}</option>`).join('');
-  let h = `<div class="bau-h"><b>Gebäude</b></div><div class="bau-sel"><label>OG<select id="selOG">${opt(20, og, '+')}</select></label><label>UG<select id="selUG">${opt(5, ug, '-')}</select></label></div><div class="roof"></div>`;
+  const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = vis.filter(t => t.status === 'bereit' && !t.rett).sort(byNr), rready = vis.filter(t => t.status === 'bereit' && t.rett).sort(byNr);
+  const yard = `<div class="yard${rready.length ? ' on' : ''}" title="Vor dem Gebäude">${rready.map(t => badge(t)).join('')}</div>`;
+  let h = `<div class="bau-h"><b>Gebäude</b></div><div class="bau-sel"><label>OG<select id="selOG">${opt(20, og, '+')}</select></label><label>UG<select id="selUG">${opt(5, ug, '-')}</select></label></div>`;
   el.classList.toggle('many', fl.length > 10);
+  h += '<div class="site"><div class="roof"></div><div></div>';
   for (let i = fl.length - 1; i >= 0; i--) {
     const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
-    h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`;
+    h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}${i === fl.length - 1 ? ' ftop' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`;
+    h += i === egI ? yard : `<div class="${egI >= 0 && i < egI ? 'earth' : ''}"></div>`;
     if (i === egI) h += '<div class="ground"></div>';
   }
-  if (egI < 0) h += '<div class="ground"></div>';
-  const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = vis.filter(t => t.status === 'bereit' && !t.rett).sort(byNr), rready = vis.filter(t => t.status === 'bereit' && t.rett).sort(byNr);
+  if (egI < 0) h += '<div class="ground"></div>' + yard + '<div></div>';
+  h += '</div>';
+  if (rready.length) h += `<div class="zone rzl">${AXE} Rettungstrupp bereit vor dem Gebäude</div>`;
   if (other.length) h += `<div class="zone">Anderer Ort<div class="tm">${other.map(t => badge(t, t.stock)).join('')}</div></div>`;
   if (none.length) h += `<div class="zone">Ohne Stockwerk<div class="tm">${none.map(t => badge(t)).join('')}</div></div>`;
-  if (rready.length) h += `<div class="zone rz">${AXE} Rettungstrupp bereit<div class="tm">${rready.map(t => badge(t)).join('')}</div></div>`;
   if (ready.length) h += `<div class="zone">Bereit<div class="tm">${ready.map(t => badge(t)).join('')}</div></div>`;
   if (!inside.length && !ready.length && !rready.length) h += '<div class="zone">Noch kein Trupp im Gebäude.</div>';
   el.innerHTML = h;
