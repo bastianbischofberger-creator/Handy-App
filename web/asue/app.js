@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.6.2';
+const VERSION = '1.6.3';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -178,10 +178,14 @@ for (const id of ['kChips', 'sChips']) document.getElementById(id).addEventListe
 });
 $('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
 const RT_AUF = 'Rettungstrupp / Sicherheitstrupp';
+const aufText = T => [T.auftrag, T.zusatz].filter(Boolean).join(' – ');
+function syncZusatz() { const f = $('#fTeam'), v = f.elements.aufSel.value; f.elements.zusatz.hidden = !v || v === '__other'; }
+$('#fTeam').elements.aufSel.addEventListener('change', syncZusatz);
 $('#fTeam').elements.rett.addEventListener('change', e => {
   const f = $('#fTeam'), cur = f.elements.auftrag.value.trim();
   if (e.target.checked) fillSel('aufSel', 'auftrag', auftraege(), RT_AUF, 'Freitext …', '– Auftrag wählen –');
   else if (cur === RT_AUF) fillSel('aufSel', 'auftrag', auftraege(), '', 'Freitext …', '– Auftrag wählen –');
+  syncZusatz();
 });
 function renderChips() {}
 const AXE = '<i class="axe" aria-hidden="true"></i>';
@@ -197,7 +201,7 @@ function card(T) {
   return `<article class="card${T.rett ? ' rett' : ''}" id="c-${T.id}" data-id="${T.id}">
   <header><div class="nr">${esc(T.nr)}</div><div class="hd">
     <div class="row">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span>` : ''}<span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
-    <div class="auftrag">${esc(T.auftrag || 'Kein Auftrag erfasst')}</div></div></header>
+    <div class="auftrag">${esc(aufText(T) || 'Kein Auftrag erfasst')}</div></div></header>
   <table class="mt"><thead><tr><th>Name</th><th>Start</th><th>Druck</th><th>bar/Min.</th><th>RZ-Druck</th></tr></thead><tbody>${mem}</tbody></table>
   <div class="kpis"><div><span data-s="Einsatz">Im Einsatz</span><b id="k1-${T.id}">–</b></div><div><span data-s="Kontrolle">Nächste Kontrolle</span><b id="k2-${T.id}">–</b></div><div><span id="k3l-${T.id}" data-s="${T.status === 'draussen' ? 'Raus' : 'Rückzug'}">${T.status === 'draussen' ? 'Raus um' : 'Rückzug spätestens'}</span><b><i class="k3t" id="k3t-${T.id}"></i><em id="k3-${T.id}">–</em></b></div></div>
   <div class="btns">${B}</div></article>`;
@@ -313,11 +317,11 @@ function openTeam(id) {
   const T = id && team(id);
   $('#tTitle').textContent = T ? 'Trupp ' + T.nr + ' bearbeiten' : 'Neuer Trupp';
   f.elements.stock.value = (T && T.stock) || ''; f.elements.rett.checked = !!(T && T.rett);
-  if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
+  if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; f.elements.zusatz.value = T.zusatz || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
   else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = kanalStd() || presets()[0] || ''; f.elements.auftrag.value = ''; }
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
   f.elements.kanal.hidden = true; renderPick('kChips', 'kanal', presets(), 'Anderer …');
-  fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –');
+  fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –'); syncZusatz();
   f.elements.stock.hidden = true; renderPick('sChips', 'stock', floors(), 'Anderer Ort …', true);
   $('#dTeam').showModal();
 }
@@ -326,14 +330,14 @@ $('#fTeam').addEventListener('submit', e => {
   const f = e.target, mem = [];
   for (let i = 0; i < 3; i++) { const n = f.elements['n' + i].value.trim(); if (n) mem.push({ name: n, p0: parseInt(f.elements['p' + i].value) || S.settings.defP0, readings: [], pArr: null }); }
   if (!mem.length) { e.preventDefault(); $('#tErr').textContent = 'Mindestens einen Namen erfassen.'; return; }
-  const T = editId && team(editId), kanal = f.elements.kanal.value.trim(), auftrag = f.elements.auftrag.value.trim(), stock = f.elements.stock.value.trim(), rett = f.elements.rett.checked;
+  const T = editId && team(editId), kanal = f.elements.kanal.value.trim(), auftrag = f.elements.auftrag.value.trim(), zusatz = f.elements.zusatz.hidden ? '' : f.elements.zusatz.value.trim(), stock = f.elements.stock.value.trim(), rett = f.elements.rett.checked;
   if (T) {
-    const ch = []; if ((T.kanal || '') !== kanal) ch.push('Funk ' + (kanal || '–')); if ((T.auftrag || '') !== auftrag) ch.push('Auftrag: ' + (auftrag || '–')); if ((T.stock || '') !== stock) ch.push('Stockwerk ' + (stock || '–')); if (!!T.rett !== rett) ch.push(rett ? 'als Rettungstrupp markiert' : 'nicht mehr Rettungstrupp');
-    T.nr = f.elements.nr.value.trim(); T.kanal = kanal; T.auftrag = auftrag; T.stock = stock; T.rett = rett;
+    const ch = []; if ((T.kanal || '') !== kanal) ch.push('Funk ' + (kanal || '–')); if ((T.auftrag || '') !== auftrag || (T.zusatz || '') !== zusatz) ch.push('Auftrag: ' + (aufText({ auftrag, zusatz }) || '–')); if ((T.stock || '') !== stock) ch.push('Stockwerk ' + (stock || '–')); if (!!T.rett !== rett) ch.push(rett ? 'als Rettungstrupp markiert' : 'nicht mehr Rettungstrupp');
+    T.nr = f.elements.nr.value.trim(); T.kanal = kanal; T.auftrag = auftrag; T.zusatz = zusatz; T.stock = stock; T.rett = rett;
     if (T.status === 'bereit') T.members = mem; else T.members.forEach((m, i) => { const n = f.elements['n' + i].value.trim(); if (n) m.name = n; });
     saveTeam(T); if (ch.length && (T.status !== 'bereit' || !!T.rett !== !!rett || ch.some(c => c.includes('Rettungstrupp')))) log(`Trupp ${T.nr}: ${ch.join(', ')}`);
   } else {
-    const N = { id: uid(), nr: f.elements.nr.value.trim(), kanal, auftrag, stock, rett, status: 'bereit', members: mem, tIn: null, tOut: null, hidden: false };
+    const N = { id: uid(), nr: f.elements.nr.value.trim(), kanal, auftrag, zusatz, stock, rett, status: 'bereit', members: mem, tIn: null, tOut: null, hidden: false };
     saveTeam(N); log(`${rett ? 'Rettungstrupp' : 'Trupp'} ${N.nr} erfasst (Funk ${kanal || '–'}): ${mem.map(m => m.name + ' ' + m.p0 + ' bar').join(', ')}`);
   }
 });
@@ -460,7 +464,7 @@ function enter(T, stock) {
   T.status = 'innen'; T.tIn = now; T.stock = stock || ''; T.members.forEach(m => { m.readings = [{ t: now, p: m.p0 }]; m.pArr = null; });
   if (!S.meta.start) { S.meta.start = now; saveMeta(); }
   saveTeam(T);
-  log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.stock ? ', ' + T.stock : ''}${T.auftrag ? ', ' + T.auftrag : ''}): ${T.members.map(m => m.name + ' ' + m.p0).join(', ')} bar`);
+  log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.stock ? ', ' + T.stock : ''}${aufText(T) ? ', ' + aufText(T) : ''}): ${T.members.map(m => m.name + ' ' + m.p0).join(', ')} bar`);
 }
 let stCtx = null;
 function openStock(id, mode) {
@@ -565,7 +569,7 @@ function layout(R, W, pageH) {
   if (!used.length) { R.t(M + 4, y + 2, 'Kein Trupp im Einsatz erfasst.', 9.5, 0, MUTE); y += 18; }
   for (const T of [...used].sort((a, b) => a.tIn - b.tIn)) {
     const last = T.members.map(m => m.readings.length ? m.readings[m.readings.length - 1].p : m.p0);
-    const auf = wrap(R, (T.rett && !/rettungstrupp/i.test(T.auftrag || '') ? 'Rettungstrupp' + (T.auftrag ? ' - ' : '') : '') + (T.auftrag || (T.rett ? '' : '-')), cols[2][1] - 8, 9, 0);
+    const auf = wrap(R, (T.rett && !/rettungstrupp/i.test(T.auftrag || '') ? 'Rettungstrupp' + (T.auftrag ? ' - ' : '') : '') + (aufText(T) || (T.rett ? '' : '-')), cols[2][1] - 8, 9, 0);
     const rh = 13, h = Math.max(T.members.length, auf.length) * rh + 6;
     if (need(h)) head();
     const v = [clean(T.nr), clean(T.kanal || '-'), 0, wrap(R, T.stock || '-', cols[3][1] - 8, 9, 0)[0], 0, 0, 0, hm(T.tIn), T.tOut ? hm(T.tOut) : 'drin', T.tOut ? dur(T.tOut - T.tIn) : '-'];
