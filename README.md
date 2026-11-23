@@ -42,3 +42,16 @@ Adresse: https://bastianbischofberger-creator.github.io/Handy-App/asue/
 - Unter «Einsätze» lassen sich alle Daten als Datei sichern und auf einem anderen Gerät wieder laden.
 - Nach einer Änderung an den Dateien in `web/asue/sw.js` die Versionsnummer (`CACHE`) erhöhen,
   damit die Geräte die neue Version laden.
+
+## Mehrfachereignisse (Web-App, Testversion)
+
+Im Ordner `web/mehrfach` liegt die App für **Mehrfachereignisse** der Feuerwehr RTL.
+Adresse: https://bastianbischofberger-creator.github.io/Handy-App/mehrfach/
+
+- Ablauf: Ereignis eröffnen → Dashboard → Auftragserfassung, Ereignisbewältigung (Spalten Offen / Reko / Pendent /
+  In Bewältigung / Abgeschlossen oder Karte) und Personal & Mittel.
+- Zum Ausprobieren auf dem Startbildschirm «Demo-Ereignis» wählen.
+- Personal, Fahrzeuge und Auftragsarten: Zahnrad → «Stammdaten bearbeiten» (zuerst sind Musterdaten drin).
+- Speichert vorerst nur lokal auf dem Gerät. Synchronisation über Firebase: siehe `web/mehrfach/config.js`.
+  Anhänge (PDF, Fotos) bleiben immer auf dem Gerät, auf dem sie erfasst wurden.
+- Nach Änderungen in `web/mehrfach/sw.js` die Versionsnummer (`CACHE`) erhöhen.

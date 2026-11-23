@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mehrfachereignisse</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mehrfach">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#efedea;--card:#fff;--ink:#16181a;--mute:#5b6166;--line:#d8d4ce;--line2:#ebe7e1;--field:#f7f6f4;--red:#c8102e;--warn:#f2b705;--ok:#1d7a46;--blue:#1557c0;--reko:#7a3db8;--grey:#8f969c;--col:#e4e0da}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Barlow,system-ui,sans-serif;overflow-x:clip}
+.bc{font-family:"Barlow Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums}
+button,.btn{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.acard:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+button.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+button.okb{background:var(--ok);border-color:var(--ok);color:#fff}
+button.warnb{background:var(--warn);border-color:var(--warn);color:#1a1a1a}
+button.rekob{background:var(--reko);border-color:var(--reko);color:#fff}
+button.ghost{background:transparent}
+button.line{background:#fff;border-color:var(--ink)}
+svg.i{width:22px;height:22px;flex:none}
+label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
+input,select,textarea{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height:46px;padding:8px 10px;margin-top:5px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink)}
+textarea{resize:vertical;min-height:70px}
+.req{color:var(--red);font-weight:700}
+.err{color:var(--red);font-weight:600;min-height:1.2em;margin:4px 0}
+.hint{font-size:13.5px;color:var(--mute);margin:2px 0 10px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:5px 0 12px}
+.chips button{font-weight:500;font-size:15.5px}
+.chips button.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.chips.dk button.on{background:var(--ink);border-color:var(--ink)}
+.flab{font-size:14px;color:var(--mute)}
+.tag{display:inline-block;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap;background:var(--field);border:1px solid var(--line)}
+.p1{background:var(--red);color:#fff;border-color:var(--red)}.p2{background:var(--warn);color:#1a1a1a;border-color:var(--warn)}.p3{background:#e6e2dc;color:var(--ink);border-color:#e6e2dc}
+.s-offen{background:var(--red);color:#fff;border-color:var(--red)}.s-reko{background:var(--reko);color:#fff;border-color:var(--reko)}.s-pendent{background:var(--warn);color:#1a1a1a;border-color:var(--warn)}
+.s-bew,.s-vorort{background:var(--blue);color:#fff;border-color:var(--blue)}.s-disp{background:var(--ink);color:#fff;border-color:var(--ink)}.s-abg{background:#e6e2dc;color:#3d4247;border-color:#e6e2dc}
+.s-ohne{background:#e6e2dc;color:var(--ink);border-color:#e6e2dc}
+
+/* Kopf */
+.top{position:sticky;top:0;z-index:500;background:var(--red);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:calc(8px + env(safe-area-inset-top)) max(2vw,12px) 8px}
+.top .logo{width:50px;height:52px;flex:none;background:none;border:0;padding:0;min-height:0}
+.top .logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 23px/1.05 "Barlow Condensed",sans-serif;margin:0;flex:1 1 150px}
+.top h1 small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top h1 small{display:block;font:500 13.5px Barlow,sans-serif;opacity:.92;margin-top:2px}
+.top .back{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.45);color:#fff}
+.top .tb{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.top .tb button{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.4);color:#fff}
+.top .tb button.wh{background:#fff;color:var(--red);border-color:#fff}
+.dur{font-size:13px;line-height:1.1;text-align:right}.dur b{display:block;font:700 22px/1 "Barlow Condensed",sans-serif}
+#clock{font:700 32px/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.sync{font-size:13px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#bbb;vertical-align:0}
+.sync.ok::before{background:#5ee08f}.sync.warn::before{background:var(--warn)}.sync.err::before{background:#fff;outline:2px solid #000}
+.seg{display:flex;border:1px solid rgba(255,255,255,.6);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent !important;color:#fff;min-height:42px}
+.seg button.on{background:#fff !important;color:var(--red)}
+main{padding:16px max(2vw,12px) 24px;max-width:1600px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+.banner{background:var(--warn);color:#1a1a1a;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-weight:500}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.box>h2,.boxh{display:flex;align-items:center;gap:10px;margin:0;padding:11px 14px;border-bottom:1px solid var(--line);font:600 21px "Barlow Condensed",sans-serif}
+.boxh h2{margin:0;flex:1;font:inherit}
+
+/* Start */
+#vStart{min-height:calc(100vh - 0px)}
+.startwrap{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start;padding:4vh 0}
+.startcard{width:min(560px,100%);background:#fff;border-radius:18px;padding:24px 28px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.startcard .hd{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.startcard .hd img{width:70px;height:73px;object-fit:contain}
+.startcard h2{font:600 32px/1 "Barlow Condensed",sans-serif;margin:0}
+.startlist{width:min(440px,100%);background:#fff;border-radius:18px;padding:20px 22px}
+.startlist h3{font:600 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 6px}
+.elist{list-style:none;margin:0;padding:0}
+.elist li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2)}
+.elist li div{flex:1}.elist b{display:block;font-weight:600}.elist span{font-size:13.5px;color:var(--mute)}
+body.startmode{background:var(--red)}
+body.startmode .top{display:none}
+
+/* Dashboard */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:5px solid var(--c,var(--ink))}
+.kpi span{display:block;font-size:13px;color:var(--mute)}.kpi b{font:700 34px/1.05 "Barlow Condensed",sans-serif}
+.dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;min-height:150px;padding:18px;border-radius:14px;background:#fff;border:2px solid var(--ink);text-align:left}
+.tile svg{width:38px;height:38px}
+.tile b{font:600 27px/1.05 "Barlow Condensed",sans-serif;hyphens:auto;overflow-wrap:break-word;max-width:100%}
+.tile span{font-weight:400;font-size:15px;color:var(--mute)}
+.tile.red{background:var(--red);border-color:var(--red);color:#fff}.tile.red span{color:#fff;opacity:.92}
+.urg{list-style:none;margin:0;padding:0}
+.urg li{display:grid;grid-template-columns:40px 44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line2);cursor:pointer}
+.urg .nr{font:700 23px/1 "Barlow Condensed",sans-serif}
+.urg .since{font:600 17px "Barlow Condensed",sans-serif;color:var(--mute);white-space:nowrap}
+.journal{display:flex;flex-direction:column;max-height:calc(100vh - 160px)}
+.jform{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.jform input{margin:0;min-height:42px}.jform button{min-height:42px}
+#log{list-style:none;margin:0;padding:0 0 6px;overflow:auto;font-size:14.5px}
+#log li{display:flex;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line2)}
+#log time{font:600 16px "Barlow Condensed",sans-serif;color:var(--mute);white-space:nowrap}
+#log em{margin-left:auto;font-style:normal;color:var(--mute);font-size:12.5px;white-space:nowrap}
+.empty{padding:18px 14px;color:var(--mute)}
+
+/* Erfassung */
+.erfgrid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+.erf{padding:16px 18px}
+.adr{position:relative}
+.sugg{position:absolute;left:0;right:0;top:calc(100% - 4px);z-index:600;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);overflow:hidden}
+.sugg button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line2);border-radius:0;background:#fff;font-weight:500;min-height:44px}
+.sugg button:hover,.sugg button.first{background:#fbe9ec}
+.sugg .sh{padding:8px 12px;font-size:13px;color:var(--mute)}
+#erfMap{height:280px;border-radius:0 0 12px 12px}
+.anh{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:5px 0 12px}
+.anh .file{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:4px 4px 4px 12px;border-radius:8px;border:1px solid var(--line);background:var(--field);font-size:15px}
+.anh .file small{color:var(--mute)}.anh .file button{min-height:36px;padding:0 10px;border:0;background:transparent}
+.anh .add{border-style:dashed;background:#fff}
+.dbtn{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px}
+.recent{list-style:none;margin:0;padding:0}.recent li{display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line2);font-size:14.5px;cursor:pointer}
+.recent b{font:700 19px/1 "Barlow Condensed",sans-serif;min-width:24px}
+
+/* Spalten */
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}
+.col{background:var(--col);border-radius:12px;border-top:5px solid var(--c);min-height:60vh}
+.col h3{display:flex;align-items:center;margin:0;padding:10px 12px;font:600 21px "Barlow Condensed",sans-serif}
+.col h3 span{flex:1}.col h3 i{font:700 17px/1 "Barlow Condensed",sans-serif;font-style:normal;background:#fff;padding:3px 9px;border-radius:12px}
+.cards{display:flex;flex-direction:column;gap:8px;padding:0 8px 10px}
+.acard{background:#fff;border-radius:9px;border:2px solid #fff;padding:8px 10px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;min-height:0;gap:4px;box-shadow:0 1px 2px rgba(0,0,0,.08);cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
+.acard .h{display:flex;align-items:center;gap:8px}.acard .row{justify-content:flex-start}
+.acard .h .nr{font:700 26px/1 "Barlow Condensed",sans-serif}
+.acard .h time{margin-left:auto;font:600 15px "Barlow Condensed",sans-serif;color:var(--mute)}
+.acard b{font-weight:600;font-size:15px;line-height:1.2}
+.acard .ad{font-size:13px;color:var(--mute);line-height:1.25}
+.acard .inf{font-size:12.5px;line-height:1.3;padding:5px 7px;border-radius:6px;background:#f4f2ee}
+.acard .go{font-size:12.5px;font-weight:700;padding:5px 7px;border-radius:6px;background:var(--ok);color:#fff}
+.acard.ready{border-color:var(--ok)}
+.acard.sel{border-color:var(--red)}
+.acard.flash{outline:4px solid var(--warn)}
+
+/* Karte */
+.mapwrap{display:grid;grid-template-columns:360px minmax(0,1fr);gap:12px;height:calc(100vh - var(--toph,70px) - 36px);min-height:420px}
+.maplist{overflow:auto;display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--col);border-radius:12px}
+#lageMap{border-radius:12px;height:100%}
+.filt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.filt button{min-height:38px;padding:3px 11px;border-radius:20px;font-size:14px;background:#fff}
+.filt button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pin{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:grid;place-items:center;font:700 16px "Barlow Condensed",sans-serif;color:#fff}
+.pin.sel{outline:4px solid var(--warn)}
+.legend{background:rgba(255,255,255,.94);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.7;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.mapsw{display:flex;border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.mapsw button{border:0;border-radius:0;background:#fff;min-height:38px}.mapsw button.on{background:var(--ink);color:#fff}
+
+/* Personal & Mittel */
+.pmgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.sums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.sums div{padding:7px 12px;border-right:1px solid var(--line2)}.sums span{display:block;font-size:12.5px;color:var(--mute)}.sums b{font:700 25px/1.1 "Barlow Condensed",sans-serif}
+.plist{list-style:none;margin:0;padding:0}
+.plist li{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line2)}
+.plist .rg{font-weight:700;font-size:14px;color:var(--mute)}
+.plist .fk{font-size:13px;color:var(--mute)}
+.plist .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.plist .acts button{min-height:38px;padding:3px 10px;font-size:14px}
+.st-verfuegbar{background:var(--ok);color:#fff;border-color:var(--ok)}.st-einsatz{background:var(--blue);color:#fff;border-color:var(--blue)}
+.st-abwesend{background:#fff;color:var(--mute)}.st-abgetreten{background:#e6e2dc;color:#3d4247}.st-ausser{background:var(--warn);color:#1a1a1a;border-color:var(--warn)}
+.mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
+.mcard{border:2px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.mcard.av{border-color:var(--ok)}
+.mcard .h{display:flex;align-items:center;gap:8px}.mcard .h b{flex:1;font:600 20px/1.1 "Barlow Condensed",sans-serif}
+.mcard .inf{font-size:13.5px;color:var(--mute)}
+.mcard .acts{display:flex;gap:6px}.mcard .acts button{min-height:36px;padding:2px 10px;font-size:14px}
+
+/* Dialoge */
+dialog{border:0;border-radius:14px;padding:0;width:min(720px,96vw);max-height:92vh;background:#fff;color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog .dp{padding:18px 20px}
+dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
+.dh{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line2)}
+.dh .nr{font:700 40px/1 "Barlow Condensed",sans-serif}
+.dh h3{margin:0}.dh p{margin:2px 0 0;color:var(--mute);font-size:14.5px}
+.dl{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 12px;font-size:15px;margin:0 0 10px}
+.dl dt{color:var(--mute)}.dl dd{margin:0}
+.acts2{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.acts2 button{flex:1 1 160px}
+.pick{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 12px}
+.pick button{font-weight:500;font-size:15px;min-height:42px}
+.pick button.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+.pick button .x{font-size:12px;opacity:.8}
+.step{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--ink);border-radius:8px;padding:3px}
+.step button{width:40px;min-height:38px;padding:0;border:0;font-size:20px}
+.step b{font:700 22px "Barlow Condensed",sans-serif;padding:0 8px}
+.note{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:10px;background:#fdf4d6;font-size:14.5px;margin:6px 0}
+.note.ok{background:#dff3e7}
+.adm h4{font:600 19px "Barlow Condensed",sans-serif;margin:16px 0 8px;padding-top:10px;border-top:1px solid var(--line2)}
+.slist{list-style:none;margin:0 0 8px;padding:0;max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.slist li{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--line2)}.slist li:last-child{border:0}
+.slist li span{flex:1}.slist button{min-height:34px;padding:2px 10px;font-size:14px}
+.sform{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:6px;margin-bottom:8px}.sform input{margin:0}
+.leaflet-container{font:inherit}
+@media(max-width:1000px){.dashgrid,.erfgrid{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.board{grid-template-columns:repeat(5,minmax(220px,1fr));overflow-x:auto}.mapwrap{grid-template-columns:minmax(0,1fr);height:auto}.maplist{max-height:260px}#lageMap{height:60vh}.pmgrid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.tiles{grid-template-columns:minmax(0,1fr)}.g2{grid-template-columns:minmax(0,1fr)}.sform{grid-template-columns:1fr 1fr}#clock{font-size:28px}.top .dur{display:none}}
+</style>
+</head>
+<body class="startmode">
+<header class="top">
+  <button class="logo" id="bHome" aria-label="Zum Dashboard"><img id="logo" src="logo.png" alt=""></button>
+  <button class="back" id="bBack" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Übersicht</button>
+  <h1 id="title">Mehrfachereignisse<small id="sub"></small></h1>
+  <div class="seg" id="segLage" hidden><button data-go="lage">Spalten</button><button data-go="karte">Karte</button></div>
+  <div class="dur">Ereignisdauer<b id="dauer" class="bc">00:00:00</b></div>
+  <div id="clock">--:--:--</div>
+  <span class="sync" id="sync">Startet …</span>
+  <div class="tb">
+    <button class="wh" id="bNewA" hidden>+ Auftrag</button>
+    <button id="bExp" title="Rapport als PDF">PDF</button>
+    <button id="bSet" title="Einstellungen" aria-label="Einstellungen"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <div class="banner" id="banner" hidden></div>
+
+  <!-- 0 Start -->
+  <section class="view" id="vStart">
+    <div class="startwrap">
+      <form class="startcard" id="fStart" autocomplete="off">
+        <div class="hd"><img src="logo.png" alt="Logo Feuerwehr"><div><h2>Ereignis eröffnen</h2><span class="hint" id="startOrg"></span></div></div>
+        <label>Bezeichnung<input name="name" required></label>
+        <div class="g2"><label>Datum<input name="datum"></label><label>Beginn<input name="beginn"></label></div>
+        <label>Einsatzleiter <span class="req">*</span><input name="el" placeholder="Name, Rang" required></label>
+        <div class="g2"><label>Führungsunterstützung (optional)<input name="fu" placeholder="Name"></label><label>Standort KP (optional)<input name="kp" placeholder="z. B. Depot Rheineck"></label></div>
+        <label>Lage / Bemerkung (optional)<input name="lage" placeholder="z. B. Sturm, Starkregen seit 14 Uhr"></label>
+        <p class="err" id="startErr"></p>
+        <button class="pri" style="width:100%;min-height:54px;font-size:18px">Ereignis eröffnen</button>
+      </form>
+      <div class="startlist">
+        <h3>Laufendes oder früheres Ereignis öffnen</h3>
+        <ul class="elist" id="eList"></ul>
+        <p class="hint" style="margin-top:12px">Ohne Synchronisation liegen die Daten nur auf diesem Gerät. Sichere sie ab und zu als Datei.</p>
+        <div class="row"><button id="bBackup">Daten sichern</button><label class="btn" id="lImport" style="margin:0">Daten laden<input type="file" id="fImport" accept=".json,application/json" hidden></label><button class="ghost" id="bDemo">Demo-Ereignis</button></div>
+        <p class="err" id="eMsg" style="color:var(--ok)"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 Dashboard -->
+  <section class="view" id="vDash">
+    <div class="kpis" id="kpis"></div>
+    <div class="dashgrid">
+      <div>
+        <div class="tiles">
+          <button class="tile red" data-go="erfassen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg><b>Auftragserfassung</b><span>Neuer Auftrag aus Anruf, E-Mail oder Alarm</span></button>
+          <button class="tile" data-go="lage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><b>Ereignisbewältigung</b><span>Alle Aufträge in Spalten und auf der Karte</span></button>
+          <button class="tile" data-go="mittel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><rect x="15" y="9" width="7" height="5" rx="1"/><circle cx="16.5" cy="16" r="1.3"/><circle cx="20.5" cy="16" r="1.3"/></svg><b>Personal &amp; Mittel</b><span>Wer und was ist verfügbar, wo gebunden</span></button>
+        </div>
+        <div class="box"><div class="boxh"><h2>Dringende Aufträge (offen &amp; pendent)</h2><button class="ghost" data-go="lage">Alle anzeigen</button></div><ul class="urg" id="urg"></ul></div>
+      </div>
+      <div class="box journal">
+        <div class="boxh"><h2>Journal</h2><span class="hint" style="margin:0">neueste zuerst</span></div>
+        <form class="jform" id="fJournal"><input name="t" placeholder="Eintrag ins Journal …" autocomplete="off"><button class="dark">+</button></form>
+        <ul id="log"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 Erfassung -->
+  <section class="view" id="vErf">
+    <div class="erfgrid">
+      <form class="box erf" id="fErf" autocomplete="off">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 class="bc" style="margin:0;font-size:24px" id="erfTitle">Neuer Auftrag</h2><span class="tag" id="erfNr"></span></div>
+        <div class="g2" style="grid-template-columns:minmax(0,1fr) 140px">
+          <div><span class="flab">Eingang über</span><div class="chips" id="cQuelle"></div></div>
+          <label>Eingang um<input name="tEin" class="bc" style="font-size:20px"></label>
+        </div>
+        <span class="flab">Art des Auftrags</span><div class="chips" id="cArt"></div>
+        <input name="artFrei" placeholder="Art eingeben" hidden style="margin:-6px 0 12px">
+        <span class="flab">Dringlichkeit</span><div class="chips" id="cPrio"></div>
+        <label class="adr">Adresse / Ort <span class="req">*</span><input name="adresse" placeholder="Strasse Nr., Ort"><div class="sugg" id="sugg" hidden></div></label>
+        <div class="g2"><label>Meldende Person<input name="melder"></label><label>Telefon für Rückfragen<input name="tel" type="tel" inputmode="tel"></label></div>
+        <label>Beschreibung<textarea name="text" placeholder="Was ist passiert? Gefahren, Zufahrt, Besonderes …"></textarea></label>
+        <span class="flab">Anhänge (optional)</span>
+        <div class="anh" id="erfAnh"></div>
+        <p class="err" id="erfErr"></p>
+        <div class="dbtn"><button type="button" id="erfCancel">Verwerfen</button><button type="submit" value="save" class="line">Speichern</button><button type="submit" value="next" class="pri" id="erfNext">Speichern &amp; nächster Auftrag</button></div>
+      </form>
+      <div>
+        <div class="box" style="margin-bottom:14px"><h2>Einsatzort</h2><div id="erfMap"></div></div>
+        <p class="hint" id="erfMapHint">Punkt wird aus der Adresse gesetzt. Zum Setzen oder Korrigieren auf die Karte tippen.</p>
+        <div class="box"><h2>Zuletzt erfasst</h2><ul class="recent" id="recent"></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 Spalten -->
+  <section class="view" id="vLage"><div class="board" id="board"></div></section>
+
+  <!-- 3b Karte -->
+  <section class="view" id="vKarte">
+    <div class="mapwrap">
+      <div class="maplist"><div class="filt" id="filt"></div><div id="mlist" style="display:flex;flex-direction:column;gap:8px"></div></div>
+      <div id="lageMap"></div>
+    </div>
+  </section>
+
+  <!-- 4 Personal & Mittel -->
+  <section class="view" id="vMittel">
+    <div class="pmgrid">
+      <div class="box"><div class="boxh"><h2>Personal</h2><button id="bAllIn" class="ghost">Alle einrücken</button></div><div class="sums" id="pSums"></div><ul class="plist" id="pList"></ul></div>
+      <div class="box"><div class="boxh"><h2>Fahrzeuge &amp; Geräte</h2></div><div class="mgrid" id="mGrid"></div></div>
+    </div>
+    <p class="hint" style="margin-top:12px">Personal und Fahrzeuge erfassen bzw. ändern: Einstellungen (Zahnrad) → Stammdaten.</p>
+  </section>
+</main>
+
+<!-- Auftrag Detail -->
+<dialog id="dA"><div class="dp" id="dABody"></div></dialog>
+
+<!-- Reko schicken / Disponieren -->
+<dialog id="dPick"><form class="dp" id="fPick" method="dialog">
+  <h3 id="pkTitle"></h3>
+  <div class="note" id="pkBedarf" hidden></div>
+  <span class="flab" id="pkPL">Personal</span><div class="pick" id="pkP"></div>
+  <div id="pkMW"><span class="flab">Fahrzeuge &amp; Geräte</span><div class="pick" id="pkM"></div></div>
+  <label id="pkExtraL">Weitere / externe Mittel (optional)<input name="extra" placeholder="z. B. Nachbarfeuerwehr, Firma …"></label>
+  <p class="err" id="pkErr"></p>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok" id="pkOk">OK</button></div>
+</form></dialog>
+
+<!-- Reko-Ergebnis / Bedarf -->
+<dialog id="dBed"><form class="dp" id="fBed" method="dialog">
+  <h3 id="bdTitle"></h3>
+  <label id="bdLageL">Lagebeurteilung<textarea name="lage"></textarea></label>
+  <span class="flab">Benötigte Mittel</span>
+  <div class="row" style="margin:5px 0 8px"><span class="step"><button type="button" id="adfMinus" aria-label="weniger">−</button><b id="adfN">0</b> AdF<button type="button" id="adfPlus" aria-label="mehr">+</button></span></div>
+  <div class="chips dk" id="bdM"></div>
+  <div class="g2">
+    <div><span class="flab">Geschätzte Dauer</span><div class="chips dk" id="bdD"></div></div>
+    <div><span class="flab">Dringlichkeit</span><div class="chips" id="bdP"></div></div>
+  </div>
+  <div class="note" id="bdNote" hidden></div>
+  <div class="dbtn">
+    <button value="cancel" formnovalidate>Abbrechen</button>
+    <button value="none" id="bdNone" class="ghost" formnovalidate>Kein Einsatz nötig – abschliessen</button>
+    <button value="disp" id="bdDisp" class="line">Sofort disponieren</button>
+    <button value="pend" class="warnb" id="bdPend">In «Pendent» setzen</button>
+  </div>
+</form></dialog>
+
+<!-- Abschliessen -->
+<dialog id="dAbg"><form class="dp" id="fAbg" method="dialog">
+  <h3 id="abgTitle"></h3>
+  <label>Abschlussbemerkung (optional)<textarea name="txt" placeholder="z. B. Baum entfernt, Strasse frei"></textarea></label>
+  <p class="hint">Alle zugewiesenen Leute und Mittel werden wieder als verfügbar gemeldet.</p>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="okb" value="ok">Auftrag abschliessen</button></div>
+</form></dialog>
+
+<!-- Einstellungen -->
+<dialog id="dS"><form class="dp" id="fS" method="dialog">
+  <h3>Einstellungen</h3>
+  <label>Dieses Gerät wird benutzt von (erscheint im Journal)<input name="dev" placeholder="z. B. Disponent, iPad 1"></label>
+  <div id="sEreignis">
+    <h4 class="bc" style="font-size:19px;margin:14px 0 8px">Geöffnetes Ereignis</h4>
+    <div class="g2"><label>Bezeichnung<input name="eName"></label><label>Einsatzleiter<input name="eEl"></label></div>
+    <div class="row"><button type="button" id="bSwitch">Anderes Ereignis öffnen</button><button type="button" id="bCloseE" class="warnb">Ereignis abschliessen</button></div>
+  </div>
+  <p class="hint" id="sInfo" style="margin-top:12px"></p>
+  <button type="button" id="bAdm" style="width:100%">Stammdaten bearbeiten (Personal, Fahrzeuge, Auftragsarten)</button>
+  <div id="sAdm" class="adm" hidden>
+    <label>Feuerwehr (erscheint im Rapport)<input name="org"></label>
+    <label>Auftragsarten (mit Komma getrennt)<input name="arten"></label>
+    <h4>Personal <small class="hint" id="spCount"></small></h4>
+    <div class="sform"><input id="spV" placeholder="Vorname"><input id="spN" placeholder="Name"><input id="spR" placeholder="Rang"><input id="spF" placeholder="Funktion"><button type="button" class="pri" id="spAdd">+</button></div>
+    <ul class="slist" id="spList"></ul>
+    <h4>Fahrzeuge &amp; Geräte</h4>
+    <p class="hint">«Gattung» fasst gleiche Mittel zusammen, z. B. Wassersauger 1 und 2 → Wassersauger. Sie erscheint bei «Benötigte Mittel».</p>
+    <div class="sform" style="grid-template-columns:repeat(3,minmax(0,1fr)) auto"><input id="smN" placeholder="Name, z. B. TLF"><input id="smG" placeholder="Gattung"><input id="smI" placeholder="Info, z. B. Funk K 6"><button type="button" class="pri" id="smAdd">+</button></div>
+    <ul class="slist" id="smList"></ul>
+  </div>
+  <div class="dbtn"><button value="logout" id="bLogout" class="ghost" formnovalidate>Abmelden</button><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
+</form></dialog>
+
+<dialog id="dC"><form class="dp" method="dialog">
+  <h3 id="cTitle"></h3><p id="cText"></p>
+  <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
+</form></dialog>
+
+<div id="login" hidden style="position:fixed;inset:0;z-index:900;background:var(--red);display:grid;place-items:center;padding:20px"><form id="fLogin" class="startcard" style="width:min(400px,100%);text-align:center">
+  <img src="logo.png" alt="" style="width:100px"><h2 class="bc" style="font-size:28px">Mehrfachereignisse</h2>
+  <label style="text-align:left">E-Mail<input name="email" type="email" autocomplete="username" required></label>
+  <label style="text-align:left">Passwort<input name="pw" type="password" autocomplete="current-password" required></label>
+  <p class="err" id="lErr"></p><button class="pri" style="width:100%">Anmelden</button>
+</form></div>
+
+<input type="file" id="fileAnh" accept="application/pdf,image/*,.eml,.msg,.txt,.doc,.docx" multiple hidden>
+<input type="file" id="fileFoto" accept="image/*" capture="environment" hidden>
+
+<script src="config.js?v=0.1.0"></script>
+<script src="../vendor/leaflet/leaflet.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="app.js?v=0.1.0"></script>
+</body>
+</html>
