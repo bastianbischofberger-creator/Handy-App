@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -164,6 +164,12 @@ function selChanged(selName, inpName) {
 }
 $('#fTeam').elements.kanalSel.addEventListener('change', () => selChanged('kanalSel', 'kanal'));
 $('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
+const RT_AUF = 'Rettungstrupp / Sicherheitstrupp';
+$('#fTeam').elements.rett.addEventListener('change', e => {
+  const f = $('#fTeam'), cur = f.elements.auftrag.value.trim();
+  if (e.target.checked) fillSel('aufSel', 'auftrag', auftraege(), RT_AUF, 'Freitext …', '– Auftrag wählen –');
+  else if (cur === RT_AUF) fillSel('aufSel', 'auftrag', auftraege(), '', 'Freitext …', '– Auftrag wählen –');
+});
 function renderChips() {}
 const AXE = '<i class="axe" aria-hidden="true"></i>';
 const STL = { bereit: 'Bereit', innen: 'Im Einsatz', rueckzug: 'Rückzug', draussen: 'Draussen' };
@@ -547,7 +553,7 @@ function layout(R, W, pageH) {
   if (!used.length) { R.t(M + 4, y + 2, 'Kein Trupp im Einsatz erfasst.', 9.5, 0, MUTE); y += 18; }
   for (const T of [...used].sort((a, b) => a.tIn - b.tIn)) {
     const last = T.members.map(m => m.readings.length ? m.readings[m.readings.length - 1].p : m.p0);
-    const auf = wrap(R, (T.rett ? 'Rettungstrupp' + (T.auftrag ? ' - ' : '') : '') + (T.auftrag || (T.rett ? '' : '-')), cols[2][1] - 8, 9, 0);
+    const auf = wrap(R, (T.rett && !/rettungstrupp/i.test(T.auftrag || '') ? 'Rettungstrupp' + (T.auftrag ? ' - ' : '') : '') + (T.auftrag || (T.rett ? '' : '-')), cols[2][1] - 8, 9, 0);
     const rh = 13, h = Math.max(T.members.length, auf.length) * rh + 6;
     if (need(h)) head();
     const v = [clean(T.nr), clean(T.kanal || '-'), 0, wrap(R, T.stock || '-', cols[3][1] - 8, 9, 0)[0], 0, 0, 0, hm(T.tIn), T.tOut ? hm(T.tOut) : 'drin', T.tOut ? dur(T.tOut - T.tIn) : '-'];
