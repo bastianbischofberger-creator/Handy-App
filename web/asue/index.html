@@ -34,6 +34,7 @@ button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-r
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .top button{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff}
 .muteind{display:inline-flex;align-items:center;gap:6px;background:var(--warn) !important;color:#1a1a1a !important;border:2px solid #1a1a1a !important;font-weight:700;animation:blink2 1.6s steps(2) infinite}.muteind svg{width:22px;height:22px}@keyframes blink2{50%{opacity:.6}}
+.icob{width:46px;padding:0;display:inline-grid;place-items:center}.icob svg{width:24px;height:24px}
 .tb .ico{display:inline-flex;align-items:center;gap:8px}.ico svg{width:22px;height:22px;flex:none}
 .top button.add{background:#fff;color:var(--red);border-color:#fff}
 button.pri{background:var(--red);border-color:var(--red);color:#fff}
@@ -227,7 +228,7 @@ label select+input{margin-top:6px}
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
     <button id="bList">Einsätze</button>
-    <button id="bExp">Export</button>
+    <button id="bExp" class="icob" title="Einsatzdaten &amp; Export" aria-label="Export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
     <button id="bSet">Einstellungen</button>
   </div>
 </div>
@@ -374,9 +375,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.1.0"></script>
+<script src="config.js?v=2.1.1"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.1.0"></script>
+<script src="app.js?v=2.1.1"></script>
 </body>
 </html>
