@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.2.0';
+const VERSION = '2.2.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -345,6 +345,7 @@ function openTeam(id) {
 $('#fTeam').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
   const f = e.target, mem = [];
+  for (let i = 0; i < 3; i++) { const inp = f.elements['n' + i], byNr = personal().find(p => p.nr && p.nr === inp.value.trim()); if (byNr) inp.value = pName(byNr); }
   for (let i = 0; i < 3; i++) { const n = f.elements['n' + i].value.trim(); if (n) mem.push({ name: n, p0: parseInt(f.elements['p' + i].value) || S.settings.defP0, readings: [], pArr: null }); }
   if (!mem.length) { e.preventDefault(); $('#tErr').textContent = 'Mindestens einen Namen erfassen.'; return; }
   { const nr = f.elements.nr.value.trim(), act = S.teams.filter(t => t.id !== editId && !t.hidden && t.status !== 'draussen');
@@ -597,6 +598,46 @@ $('#fPin').addEventListener('submit', async e => {
   if (await hashPin(p1) === S.settings.adminPin) { $('#dPin').close(); unlockAdmin(); }
   else { $('#pinErr').textContent = 'PIN falsch.'; f.elements.p1.value = ''; }
 });
+
+
+/* ---------- Namensvorschläge aus dem Personalstamm ---------- */
+function persMatches(q) {
+  q = q.trim().toLowerCase(); if (!q) return [];
+  const words = q.split(/\s+/);
+  return personal().map(p => {
+    const nr = String(p.nr || '').toLowerCase(), hay = `${p.vorname} ${p.name} ${p.vorname}`.toLowerCase();
+    let score = -1;
+    if (nr && nr === q) score = 100; else if (nr && nr.startsWith(q)) score = 80;
+    else if (words.every(w => hay.split(' ').some(x => x.startsWith(w)))) score = 60;
+    else if (words.every(w => hay.includes(w))) score = 40;
+    return { p, score };
+  }).filter(x => x.score >= 0).sort((a, b) => b.score - a.score || (b.score === 80 ? String(a.p.nr).localeCompare(String(b.p.nr), 'de', { numeric: true }) : pName(a.p).localeCompare(pName(b.p), 'de'))).slice(0, 6).map(x => x.p);
+}
+function showSugg(inp) {
+  const box = inp.parentElement.querySelector('.sugg'); if (!box) return;
+  const m = persMatches(inp.value);
+  if (!m.length || m.some(p => pName(p) === inp.value.trim()) && m.length === 1) { box.hidden = true; return; }
+  const busy = p => { const t = S.teams.find(t => t.id !== editId && !t.hidden && t.status !== 'draussen' && t.members.some(x => x.name.trim().toLowerCase() === pName(p).toLowerCase())); return t ? t.nr : null; };
+  box.innerHTML = m.map((p, i) => { const b = busy(p); return `<button type="button" class="${i ? '' : 'first'}${b ? ' busy' : ''}" data-pn="${esc(pName(p))}"><span class="sr">${esc(p.rang || '')}</span>${esc(p.name)} ${esc(p.vorname)}${b ? `<small class="sb">in Trupp ${esc(b)}</small>` : ''}<span class="snr">${p.nr ? 'Nr. ' + esc(p.nr) : ''}</span></button>`; }).join('');
+  box.hidden = false;
+}
+function pickSugg(inp, name) {
+  inp.value = name; const box = inp.parentElement.querySelector('.sugg'); if (box) box.hidden = true;
+  const idx = +inp.name.slice(1), nxt = $('#fTeam').elements['n' + (idx + 1)];
+  if (nxt && !nxt.value) nxt.focus(); else inp.blur();
+}
+for (let i = 0; i < 3; i++) {
+  const inp = $('#fTeam').elements['n' + i], box = inp.parentElement.querySelector('.sugg');
+  inp.addEventListener('input', () => showSugg(inp));
+  inp.addEventListener('focus', () => showSugg(inp));
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !box.hidden) { const b = box.querySelector('button'); if (b) { e.preventDefault(); pickSugg(inp, b.dataset.pn); } } if (e.key === 'Escape') box.hidden = true; });
+  inp.addEventListener('blur', () => setTimeout(() => {
+    box.hidden = true;
+    const v = inp.value.trim(), byNr = personal().find(p => p.nr && p.nr === v); if (byNr) inp.value = pName(byNr);
+  }, 180));
+  box.addEventListener('pointerdown', e => { const b = e.target.closest('[data-pn]'); if (b) { e.preventDefault(); pickSugg(inp, b.dataset.pn); } });
+  box.addEventListener('click', e => { const b = e.target.closest('[data-pn]'); if (b) pickSugg(inp, b.dataset.pn); });
+}
 
 /* ---------- Aktionen auf der Tafel ---------- */
 $('#grid').addEventListener('click', e => {
