@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.0.4';
+const VERSION = '2.1.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -589,6 +589,8 @@ $('#grid').addEventListener('click', e => {
   else if (a === 'del') confirmBox('Trupp ' + T.nr + ' entfernen?', 'Der Trupp wird gelöscht, er war noch nicht im Einsatz.', () => { BE.delTeam(S.eid, id); log(`Trupp ${T.nr} gelöscht`); });
 });
 $('#bAdd').onclick = () => openTeam();
+$('#bExp').onclick = () => { $('#msg').textContent = ''; $('#dX').showModal(); };
+$('#bXClose').onclick = () => $('#dX').close();
 for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
 $('#muteInd').onclick = () => confirmBox('Ton wieder einschalten?', 'Alarme für Druckkontrolle und Rückzug sind dann wieder hörbar.', () => { LP.set('mute', false); render(); initAudio(); beep(1); });

@@ -97,6 +97,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .elist{list-style:none;margin:0 0 6px;padding:0;max-height:55vh;overflow:auto}
 .elist li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .admbtn{width:100%;margin:4px 0 8px}.admh{font:600 19px 'Barlow Condensed',sans-serif;margin:16px 0 8px;padding-top:10px;border-top:1px solid var(--line)}.admh small{font:400 13px Barlow,sans-serif;color:var(--mute);margin-left:6px}
+#dX{width:min(680px,96vw)}.xmeta{padding:0;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}.xexp{padding:6px 0 0}
 .elist div{flex:1}.elist button{min-height:40px;padding:6px 12px}.elist b{display:block}.elist span{font-size:14px;color:var(--mute)}
 .tag{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--field);border:1px solid var(--line);white-space:nowrap}
 .btnlbl{display:inline-flex;align-items:center;font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;margin:0}
@@ -226,6 +227,7 @@ label select+input{margin-top:6px}
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
     <button id="bList">Einsätze</button>
+    <button id="bExp">Export</button>
     <button id="bSet">Einstellungen</button>
   </div>
 </div>
@@ -234,15 +236,6 @@ label select+input{margin-top:6px}
   <div class="board"><aside id="bau" class="bau"></aside><div class="grid" id="grid"></div></div>
   <section class="logp">
     <div class="row"><h2>Protokoll</h2><span class="tag" id="eState"></span><button id="bClose" class="ghost">Einsatz abschliessen</button></div>
-    <div class="meta" id="meta">
-      <label>Ereignis<input data-m="ereignis" placeholder="z. B. Brand Mehrfamilienhaus"></label>
-      <label>Einsatzort<input data-m="ort" placeholder="Strasse, Ort"></label>
-      <label>Atemschutzüberwacher<input data-m="asue" placeholder="Name"></label>
-      <label>Atemschutzoffizier (optional)<input data-m="aso" placeholder="Name, falls vorhanden"></label>
-      <label>Einsatzleiter<input data-m="el" placeholder="Name"></label>
-    </div>
-    <div class="exp"><button class="pri" id="bPdf">Protokoll als PDF</button><button id="bPng">Protokoll als Foto</button><button id="bCopy">Text kopieren</button></div>
-    <p class="err" id="msg" style="padding:0 14px"></p>
     <ul id="log"></ul>
   </section>
   <p class="foot">Hilfsmittel für den Atemschutzüberwacher – ersetzt weder dessen Verantwortung noch die regelmässige Druckabfrage per Funk. Die berechneten Zeiten sind Schätzungen aus dem gemessenen Verbrauch. Halte eine analoge Tafel als Rückfallebene bereit.</p>
@@ -361,15 +354,29 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button value="std">Als Standard für alle Einsätze</button><button class="pri" value="ok">Für diesen Einsatz</button></div>
 </form></dialog>
 
+<dialog id="dX"><div class="dpad">
+  <h3>Einsatzdaten &amp; Export</h3>
+    <div class="meta xmeta" id="meta">
+      <label>Ereignis<input data-m="ereignis" placeholder="z. B. Brand Mehrfamilienhaus"></label>
+      <label>Einsatzort<input data-m="ort" placeholder="Strasse, Ort"></label>
+      <label>Atemschutzüberwacher<input data-m="asue" placeholder="Name"></label>
+      <label>Atemschutzoffizier (optional)<input data-m="aso" placeholder="Name, falls vorhanden"></label>
+      <label>Einsatzleiter<input data-m="el" placeholder="Name"></label>
+    </div>
+  <div class="exp xexp"><button class="pri" id="bPdf">Protokoll als PDF</button><button id="bPng">Protokoll als Foto</button><button id="bCopy">Text kopieren</button></div>
+  <p class="err" id="msg"></p>
+  <div class="dbtn"><button id="bXClose" class="pri">Schliessen</button></div>
+</div></dialog>
+
 <dialog id="dC"><form method="dialog">
   <h3 id="cTitle">Sicher?</h3>
   <p id="cText"></p>
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.0.4"></script>
+<script src="config.js?v=2.1.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.0.4"></script>
+<script src="app.js?v=2.1.0"></script>
 </body>
 </html>
