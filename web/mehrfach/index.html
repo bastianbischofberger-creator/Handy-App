@@ -366,6 +366,11 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 </form></dialog>
 
 <!-- Abschliessen -->
+<dialog id="dFile" style="width:min(900px,96vw)"><div class="dp">
+  <h3 id="fvTitle"></h3><div id="fvBody"></div>
+  <div class="dbtn"><span id="fvLinks" class="row"></span><button class="dark" onclick="this.closest('dialog').close()">Schliessen</button></div>
+</div></dialog>
+
 <dialog id="dZu"><div class="dp">
   <h3 id="zuTitle"></h3>
   <ul class="elist" id="zuList"></ul>
@@ -429,6 +434,6 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
-<script src="app.js?v=0.3.1"></script>
+<script src="app.js?v=0.4.0"></script>
 </body>
 </html>

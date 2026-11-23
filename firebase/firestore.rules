@@ -29,9 +29,18 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if staff();
     }
+    function checkedIn(eid) {
+      return request.auth != null && exists(/databases/$(database)/documents/mf_ereignisse/$(eid)/checkin/$(request.auth.uid));
+    }
     match /mf_ereignisse/{eid} {
       allow read, write: if staff();
-      match /{sub}/{doc} { allow read, write: if staff(); }
+      match /{path=**} { allow read, write: if staff(); }
+
+      // Anhänge: angemeldete AdF (QR) dürfen sie lesen
+      match /files/{fid} {
+        allow read: if checkedIn(eid);
+        match /chunks/{c} { allow read: if checkedIn(eid); }
+      }
 
       // Auftrag fürs Handy: jede Person liest nur ihren eigenen Eintrag
       match /inbox/{uid} {

@@ -85,7 +85,8 @@ function renderAuftrag() {
   if (!a) { lastAid = null; return; }
   const reko = a.rolle === 'reko', last = sent();
   const rows = [['Priorität', a.prio], ['Beschreibung', a.text], ['Meldung von', [a.melder, a.tel].filter(Boolean).join(' · ')], ['Führung', a.fuehrungName], ['Team', (a.team || []).join(', ')],
-    ['Mittel', (a.mittel || []).join(', ')], ['Lage (Reko)', !reko ? a.lageReko : ''], ['Anhänge', a.anh ? a.anh + ' im KP (nur auf dem iPad)' : '']].filter(r => r[1]);
+    ['Mittel', (a.mittel || []).join(', ')], ['Lage (Reko)', !reko ? a.lageReko : ''], ['', a.anhLokal ? a.anhLokal + ' weitere Anhänge nur im KP' : '']].filter(r => r[1]);
+  const files = Array.isArray(a.anh) ? a.anh : [];
   let btns = '';
   if (a.fuehrung) {
     if (!a.vorOrt) btns += `<button class="blue" data-rm="vorort">Vor Ort</button>`;
@@ -95,10 +96,28 @@ function renderAuftrag() {
   if (a.tel) btns += `<a class="abtn" href="tel:${esc(a.tel.replace(/\s/g, ''))}">Meldende Person anrufen</a>`;
   box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${a.vorOrt ? ' <span class="mute">· vor Ort</span>' : ''}
     <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    ${files.length ? `<div class="mute">Anhänge</div><div class="files">${files.map((f, i) => `<button type="button" data-f="${i}">📄 ${esc(f.name)} <small>${kbs(f.size)}</small></button>`).join('')}</div>` : ''}
     ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht die Führung (★).</p>' : ''}${last && last.typ !== 'vorort' ? '<p class="mute" style="color:var(--ok);font-weight:600">✓ Rückmeldung gesendet</p>' : ''}
     <div class="btns">${btns}</div></div>`;
   if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} }
 }
+const kbs = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function b64ToBlob(b64, type) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || 'application/octet-stream' }); }
+let fvUrl = null;
+async function openFile(f) {
+  const v = $('#fv'); $('#fvName').textContent = f.name; $('#fvBody').innerHTML = '<p class="mute">Lädt …</p>'; $('#fvOpen').hidden = true; v.hidden = false; window.scrollTo(0, 0);
+  try {
+    const m = await withTimeout(F.getDoc(F.doc(fs, 'mf_ereignisse', PUB.eid, 'files', f.id)), 20000); if (!m.exists()) throw new Error('fehlt');
+    const q = await withTimeout(F.getDocs(F.collection(fs, 'mf_ereignisse', PUB.eid, 'files', f.id, 'chunks')), 30000);
+    const parts = q.docs.sort((x, y) => x.id.localeCompare(y.id)).map(d => d.data().d); if (parts.length < m.data().n) throw new Error('unvollständig');
+    const b = b64ToBlob(parts.join(''), m.data().type || f.type); if (fvUrl) URL.revokeObjectURL(fvUrl); fvUrl = URL.createObjectURL(b);
+    $('#fvBody').innerHTML = (b.type || '').startsWith('image/') ? `<img src="${fvUrl}" alt="" style="max-width:100%;border-radius:10px">`
+      : b.type === 'application/pdf' ? `<iframe src="${fvUrl}" title="${esc(f.name)}" style="width:100%;height:60vh;border:1px solid var(--line);border-radius:10px"></iframe>` : '<p class="mute">Keine Vorschau.</p>';
+    $('#fvOpen').href = fvUrl; $('#fvOpen').hidden = false;
+  } catch (e) { $('#fvBody').innerHTML = `<p class="err">${e && e.code === 'permission-denied' ? 'Kein Zugriff auf den Anhang.' : 'Anhang konnte nicht geladen werden. Bitte nochmals versuchen.'}</p>`; }
+}
+$('#fvClose').onclick = () => { $('#fv').hidden = true; };
+$('#auftrag').addEventListener('click', e => { const fb = e.target.closest('[data-f]'); if (fb) return openFile(inbox.anh[+fb.dataset.f]); });
 $('#auftrag').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return;
   if (b.dataset.rm === 'vorort') return reply({ typ: 'vorort' });
   openRm(b.dataset.rm); });

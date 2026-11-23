@@ -35,6 +35,7 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .auf h3{font:700 26px/1.1 "Barlow Condensed",sans-serif;margin:8px 0 2px}.auf .adr{font-size:18px;font-weight:600;margin:0 0 8px}
 .auf dl{display:grid;grid-template-columns:95px 1fr;gap:3px 8px;font-size:15px;margin:8px 0}.auf dt{color:var(--mute)}.auf dd{margin:0}
 .abtn{display:flex;align-items:center;justify-content:center;font:600 18px Barlow,sans-serif;min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);text-decoration:none}
+.files{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px}.files button{text-align:left;min-height:46px;font-size:16px;font-weight:500}.files small{color:var(--mute)}
 .auf .btns{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{background:#7a3db8;border-color:#7a3db8;color:#fff}
 .step{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);border-radius:10px;padding:3px;margin:6px 0 12px}.step button{width:52px;min-height:46px;padding:0;border:0;font-size:24px}.step b{font:700 26px "Barlow Condensed",sans-serif;min-width:40px;text-align:center}
@@ -81,6 +82,12 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
     <button class="link" id="bEdit" type="button">Angaben ändern</button>
   </section>
 
+  <!-- Anhang anzeigen -->
+  <div id="fv" hidden style="position:fixed;inset:0;z-index:50;background:#fff;overflow:auto;padding:max(14px,env(safe-area-inset-top)) 14px 20px">
+    <div class="stack"><h2 id="fvName" style="margin:0;word-break:break-word"></h2><div id="fvBody"></div>
+      <a id="fvOpen" class="abtn" target="_blank" rel="noopener" hidden>In neuem Fenster öffnen</a><button id="fvClose" type="button" class="pri">Zurück zum Auftrag</button></div>
+  </div>
+
   <!-- Rückmeldung -->
   <section id="sRm" hidden>
     <h2 id="rmTitle"></h2>
@@ -104,6 +111,6 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
   </section>
 </main>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.3.0"></script>
+<script type="module" src="checkin.js?v=0.4.0"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -109,6 +109,16 @@ async function CloudBackend(fbConfig) {
     watchSettings(cb) { F.onSnapshot(F.doc(fs, 'config', 'mf_settings'), d => cb(d.exists() ? d.data() : {}), fail); },
     putSettings(s) { w(F.setDoc(F.doc(fs, 'config', 'mf_settings'), clone(s))); },
     putPublic(o) { w(F.setDoc(F.doc(fs, 'mf_public', 'aktuell'), clone(o))); },
+    async putFile(eid, fid, meta, parts) {
+      await Promise.all(parts.map((d, i) => F.setDoc(F.doc(E, eid, 'files', fid, 'chunks', String(i).padStart(3, '0')), { d })));
+      await F.setDoc(F.doc(E, eid, 'files', fid), { ...meta, n: parts.length });
+    },
+    async getFile(eid, fid) {
+      const m = await F.getDoc(F.doc(E, eid, 'files', fid)); if (!m.exists()) return null;
+      const q = await F.getDocs(F.collection(E, eid, 'files', fid, 'chunks'));
+      const parts = q.docs.sort((a, b) => a.id.localeCompare(b.id)).map(d => d.data().d); if (parts.length < m.data().n) return null;
+      return b64ToBlob(parts.join(''), m.data().type);
+    },
     watchList(cb) { F.onSnapshot(F.query(E, F.orderBy('created', 'desc'), F.limit(60)), q => cb(q.docs.map(d => ({ id: d.id, ...d.data() }))), fail); },
     open(id, cb) {
       subs.forEach(u => u()); subs = [];
@@ -133,10 +143,29 @@ const FILES = (() => {
   const tx = async (mode, fn) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction('f', mode); const r = fn(t.objectStore('f')); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }); };
   return { put: (id, blob) => tx('readwrite', s => s.put(blob, id)), get: id => tx('readonly', s => s.get(id)), del: id => tx('readwrite', s => s.delete(id)) };
 })();
+/* Anhänge über die Datenbank (Stücke à ~500 KB) – max. 5 MB pro Datei */
+const FILE_MAX = 5 * 1048576, CHUNK = 700000;
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(b); });
+function b64ToBlob(b64, type) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || 'application/octet-stream' }); }
+async function uploadFile(f, aid) {
+  try { const b = await FILES.get(f.id); if (!b) return; const s64 = await blobToB64(b), parts = [];
+    for (let i = 0; i < s64.length; i += CHUNK) parts.push(s64.slice(i, i + CHUNK));
+    await BE.putFile(S.eid, f.id, { name: f.name, type: f.type || b.type, size: f.size, aid }, parts); }
+  catch (e) { banner(`Anhang «${f.name}» konnte nicht hochgeladen werden – er bleibt nur auf diesem Gerät.`); }
+}
+let viewUrl = null;
 async function openFile(f) {
-  try { const b = await FILES.get(f.id); if (!b) return alert('Dieser Anhang liegt nur auf dem Gerät, auf dem er erfasst wurde.');
-    const u = URL.createObjectURL(b); const w = window.open(u, '_blank'); if (!w) location.href = u; setTimeout(() => URL.revokeObjectURL(u), 60000); }
-  catch (e) { alert('Anhang konnte nicht geöffnet werden.'); }
+  const d = $('#dFile'); $('#fvTitle').textContent = f.name; $('#fvBody').innerHTML = '<p class="hint">Lädt …</p>'; $('#fvLinks').innerHTML = ''; d.showModal();
+  try {
+    let b = await FILES.get(f.id).catch(() => null);
+    if (!b && f.cloud && BE.getFile) { b = await BE.getFile(S.eid, f.id); if (b) FILES.put(f.id, b).catch(() => {}); }
+    if (!b) { $('#fvBody').innerHTML = `<p class="err">${f.cloud ? 'Anhang ist noch nicht übertragen. Später nochmals versuchen.' : 'Dieser Anhang liegt nur auf dem Gerät, auf dem er erfasst wurde.'}</p>`; return; }
+    if (viewUrl) URL.revokeObjectURL(viewUrl); viewUrl = URL.createObjectURL(b);
+    const t = b.type || f.type || '';
+    $('#fvBody').innerHTML = t.startsWith('image/') ? `<img src="${viewUrl}" alt="${esc(f.name)}" style="max-width:100%;border-radius:8px">`
+      : t === 'application/pdf' ? `<iframe src="${viewUrl}" title="${esc(f.name)}" style="width:100%;height:65vh;border:1px solid var(--line);border-radius:8px"></iframe>` : `<p class="hint">Vorschau nicht möglich (${esc(t || 'Datei')}).</p>`;
+    $('#fvLinks').innerHTML = `<a class="btn" href="${viewUrl}" target="_blank" rel="noopener">In neuem Fenster öffnen</a><a class="btn" href="${viewUrl}" download="${esc(f.name)}">Herunterladen</a>`;
+  } catch (e) { $('#fvBody').innerHTML = '<p class="err">Anhang konnte nicht geladen werden.</p>'; }
 }
 
 /* ---------- Ereignis & Daten ---------- */
@@ -215,7 +244,8 @@ function syncInbox() {
         rolle, fuehrung: lead === pid, fuehrungName: leadP ? pName(leadP) : '', team: ids.map(i => { const p = personal().find(x => x.id === i); return p ? pName(p) : '?'; }),
         mittel: rolle === 'disp' ? (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(resName).concat(a.extra ? [a.extra] : []) : [],
         bedarf: a.bedarf ? bedarfText(a.bedarf) : '', lageReko: a.lageReko || '', vorOrt: rolle === 'reko' ? !!(a.reko && a.reko.vorOrt) : a.sub === 'vorort',
-        gattungen: gattungen(), anh: (a.anh || []).length };
+        gattungen: gattungen(), anh: (a.anh || []).filter(f => f.cloud).map(f => ({ id: f.id, name: f.name, type: f.type || '', size: f.size || 0 })),
+        anhLokal: (a.anh || []).filter(f => !f.cloud).length };
     }
     const k = JSON.stringify(doc); if (inboxSent[c.id] === k) continue; inboxSent[c.id] = k;
     BE.put(S.eid, 'inbox', c.id, { ...doc, t: Date.now() });
@@ -378,7 +408,7 @@ function renderErf() {
   $('#erfTitle').textContent = ERF.edit ? 'Auftrag bearbeiten' : 'Neuer Auftrag';
   $('#erfNr').textContent = 'Auftrag Nr. ' + (ERF.edit ? A(ERF.edit).nr : nextNr());
   $('#erfNext').hidden = !!ERF.edit;
-  $('#erfAnh').innerHTML = ERF.anh.map((f, i) => `<span class="file">${SVGF}<a href="#" data-of="${i}">${esc(f.name)}</a> <small>${kb(f.size)}</small><button type="button" data-rm="${i}" aria-label="Anhang entfernen">${SVGX}</button></span>`).join('') +
+  $('#erfAnh').innerHTML = ERF.anh.map((f, i) => `<span class="file">${SVGF}<a href="#" data-of="${i}">${esc(f.name)}</a> <small>${kb(f.size)}${SY.mode === 'cloud' && !f.cloud ? ' · nur dieses Gerät' : ''}</small><button type="button" data-rm="${i}" aria-label="Anhang entfernen">${SVGX}</button></span>`).join('') +
     `<button type="button" class="add" id="bAnh"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"/></svg>Datei / PDF</button>
      <button type="button" class="add" id="bFoto"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto aufnehmen</button>`;
   const r = [...S.A].sort((x, y) => y.tEin - x.tEin).slice(0, 6);
@@ -396,10 +426,19 @@ $('#erfAnh').addEventListener('click', e => {
   const o = e.target.closest('[data-of]'); if (o) { e.preventDefault(); return openFile(ERF.anh[+o.dataset.of]); }
   const r = e.target.closest('[data-rm]'); if (r) { const f = ERF.anh.splice(+r.dataset.rm, 1)[0]; if (f && f.neu) FILES.del(f.id).catch(() => {}); renderErf(); }
 });
+async function shrinkImage(file) {
+  if (!/^image\/(jpeg|png|heic|heif|webp)/.test(file.type) || file.size < 1200000) return file;
+  try { const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+    const sc = Math.min(1, 1800 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); const b = await new Promise(r => c.toBlob(r, 'image/jpeg', .8));
+    return b ? new File([b], (file.name || 'Foto').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file; } catch (e) { return file; }
+}
 async function addFiles(list) {
-  for (const file of list) {
+  for (let file of list) {
+    file = await shrinkImage(file);
     if (file.size > 25 * 1048576) { $('#erfErr').textContent = `${file.name} ist zu gross (max. 25 MB).`; continue; }
-    const id = 'f' + uid(); try { await FILES.put(id, file); ERF.anh.push({ id, name: file.name || 'Foto.jpg', type: file.type, size: file.size, neu: true }); }
+    if (SY.mode === 'cloud' && file.size > FILE_MAX) $('#erfErr').textContent = `${file.name} ist grösser als 5 MB – bleibt nur auf diesem Gerät (nicht auf dem Handy sichtbar).`;
+    const id = 'f' + uid(); try { await FILES.put(id, file); ERF.anh.push({ id, name: file.name || 'Foto.jpg', type: file.type, size: file.size, neu: true, cloud: SY.mode === 'cloud' && file.size <= FILE_MAX }); }
     catch (e) { $('#erfErr').textContent = 'Anhang konnte nicht gespeichert werden.'; }
   }
   renderErf();
@@ -412,11 +451,11 @@ $('#fErf').addEventListener('submit', e => {
   const art = ERF.art === '__other' ? f.elements.artFrei.value.trim() : ERF.art, adresse = f.elements.adresse.value.trim();
   if (!art) { $('#erfErr').textContent = 'Bitte die Art des Auftrags wählen.'; return; }
   if (!adresse) { $('#erfErr').textContent = 'Bitte Adresse oder Ort eintragen.'; f.elements.adresse.focus(); return; }
-  const anh = ERF.anh.map(({ neu, ...x }) => x);
+  const anh = ERF.anh.map(({ neu, ...x }) => x), upl = ERF.anh.filter(x => x.neu && x.cloud);
   const fields = { quelle: ERF.quelle, art, prio: ERF.prio, adresse, lat: ERF.lat, lng: ERF.lng, melder: f.elements.melder.value.trim(), tel: f.elements.tel.value.trim(), text: f.elements.text.value.trim(), anh };
-  if (ERF.edit) { const a = A(ERF.edit); Object.assign(a, fields, { tEin: parseTime(f.elements.tEin.value, a.tEin) }); saveA(a); log(`Auftrag ${a.nr} geändert`); ERF.anh.forEach(x => x.neu = false); go('lage'); return; }
+  if (ERF.edit) { const a = A(ERF.edit); Object.assign(a, fields, { tEin: parseTime(f.elements.tEin.value, a.tEin) }); saveA(a); upl.forEach(x => uploadFile(x, a.id)); log(`Auftrag ${a.nr} geändert`); ERF.anh.forEach(x => x.neu = false); go('lage'); return; }
   const a = { id: uid(), nr: nextNr(), tEin: parseTime(f.elements.tEin.value, Date.now()), ...fields, status: 'offen', sub: null, assigned: [] };
-  saveA(a);
+  saveA(a); upl.forEach(x => uploadFile(x, a.id));
   log(`Auftrag ${a.nr} erfasst (${a.quelle}, ${a.prio}): ${a.art} · ${a.adresse}${anh.length ? ` · ${anh.length} Anhang` + (anh.length > 1 ? 'e' : '') : ''}`);
   ERF.anh = [];
   if (mode === 'next') { erfReset(); f.elements.adresse.focus(); $('#erfErr').style.color = 'var(--ok)'; $('#erfErr').textContent = `Auftrag ${a.nr} gespeichert.`; setTimeout(() => { $('#erfErr').textContent = ''; $('#erfErr').style.color = ''; }, 3000); }
