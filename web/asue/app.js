@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -109,7 +109,7 @@ function openE(eid) {
   S.eid = eid; LP.set('eid', eid);
   BE.open(eid, st => { S.meta = st.meta || {}; S.teams = st.teams || []; S.log = st.log || []; render(); });
 }
-function newMeta() { return { created: Date.now(), start: null, end: null, closed: false, ereignis: '', ort: '', asue: '', el: '' }; }
+function newMeta() { return { created: Date.now(), start: null, end: null, closed: false, ereignis: '', ort: '', asue: '', aso: '', el: '' }; }
 function ensureE() { if (!S.eid) openE(BE.create(newMeta())); return S.eid; }
 function saveTeam(T) { BE.putTeam(ensureE(), T); }
 function saveMeta() { const m = { ...newMeta(), ...S.meta }; const id = ensureE(); S.meta = m; BE.putMeta(id, m); }
@@ -632,7 +632,7 @@ function layout(R, W, pageH) {
   y += 66; R.rect(M, y, CW, 2, RED); y += 12;
   const used = S.teams.filter(t => t.tIn);
   const tEnd = used.length && used.every(t => t.tOut) ? Math.max(...used.map(t => t.tOut)) : null;
-  const meta = [['Ereignis', S.meta.ereignis], ['Einsatzort', S.meta.ort], ['Atemschutzüberwacher', S.meta.asue], ['Einsatzleiter', S.meta.el], ['Erster Eingang', dt(S.meta.start)], ['Letzter Trupp draussen', tEnd ? dt(tEnd) : '-']];
+  const meta = [['Ereignis', S.meta.ereignis], ['Einsatzort', S.meta.ort], ['Atemschutzüberwacher', S.meta.asue], ...(S.meta.aso ? [['Atemschutzoffizier', S.meta.aso]] : []), ['Einsatzleiter', S.meta.el], ['Erster Eingang', dt(S.meta.start)], ['Letzter Trupp draussen', tEnd ? dt(tEnd) : '-']];
   meta.forEach((m, i) => { const x = M + (i % 2) * CW / 2, yy = y + Math.floor(i / 2) * 30; R.t(x, yy, m[0], 8, 0, MUTE); R.t(x, yy + 10, clean(m[1] || '-'), 10.5, 1, INK); });
   y += Math.ceil(meta.length / 2) * 30 + 10;
   R.t(M, y, 'Trupps', 13, 1, RED); y += 20;
