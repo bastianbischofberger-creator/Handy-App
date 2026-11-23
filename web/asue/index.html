@@ -162,6 +162,11 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 /* Rettungstrupp */
 :root{--rt:#1557c0}
 [hidden]{display:none !important}
+#dTeam{width:min(680px,96vw)}
+.gnr{display:grid;grid-template-columns:110px minmax(0,1fr);gap:0 12px}
+.fld{margin-bottom:10px}.fld .lab{display:block;font-size:14px;color:var(--mute);margin-bottom:4px}.fld input{margin-top:6px}
+.pick{display:flex;flex-wrap:wrap;gap:6px}.pick button{min-height:44px;padding:6px 12px;font-size:16px}
+.pick button.on{background:var(--red);border-color:var(--red);color:#fff}.pick button.oth{font-weight:500;color:var(--mute)}.pick button.oth.on{color:#fff}
 select{appearance:auto}
 label select+input{margin-top:6px}
 .chk{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:16px;font-weight:600;margin:2px 0 12px}.chk input{width:24px;min-height:24px;margin:0;accent-color:var(--rt)}
@@ -245,13 +250,13 @@ label select+input{margin-top:6px}
 
 <dialog id="dTeam"><form method="dialog" id="fTeam">
   <h3 id="tTitle">Neuer Trupp</h3>
-  <div class="g2">
+  <div class="gnr">
     <label>Trupp-Nr.<input name="nr" required></label>
-    <label>Funkkanal<select name="kanalSel"></select><input name="kanal" placeholder="Kanal eingeben" hidden></label>
+    <div class="fld"><span class="lab">Funkkanal</span><div class="pick" id="kChips"></div><input name="kanal" placeholder="Kanal eingeben" hidden></div>
   </div>
   <label class="chk"><input type="checkbox" name="rett"> <i class="axe rt" aria-hidden="true"></i> Rettungstrupp (Sicherheitstrupp)</label>
   <label>Auftrag<select name="aufSel"></select><input name="auftrag" placeholder="Auftrag eingeben" hidden></label>
-  <label>Stockwerk<select name="stockSel"></select><input name="stock" placeholder="Ort eingeben, z. B. Treppenhaus" hidden></label>
+  <div class="fld"><span class="lab">Stockwerk</span><div class="pick" id="sChips"></div><input name="stock" placeholder="Ort eingeben, z. B. Treppenhaus" hidden></div>
   <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0"><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 2<span class="inq"><input name="n1"><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
   <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2"><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
@@ -330,9 +335,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=1.6.1"></script>
+<script src="config.js?v=1.6.2"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=1.6.1"></script>
+<script src="app.js?v=1.6.2"></script>
 </body>
 </html>

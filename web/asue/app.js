@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.6.1';
+const VERSION = '1.6.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -162,7 +162,20 @@ function selChanged(selName, inpName) {
   const f = $('#fTeam'), sel = f.elements[selName], inp = f.elements[inpName];
   if (sel.value === '__other') { inp.hidden = false; inp.value = ''; inp.focus(); } else { inp.hidden = true; inp.value = sel.value; }
 }
-$('#fTeam').elements.kanalSel.addEventListener('change', () => selChanged('kanalSel', 'kanal'));
+/* Sichtbare Auswahlknöpfe (Funkkanal, Stockwerk) mit «Andere …» */
+function renderPick(boxId, inpName, list, otherLabel, allowNone) {
+  const f = $('#fTeam'), inp = f.elements[inpName], v = inp.value.trim(), other = !!v && !list.includes(v);
+  const box = document.getElementById(boxId); box.dataset.inp = inpName; box.dataset.none = allowNone ? '1' : '';
+  box.innerHTML = list.map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join('') + `<button type="button" data-k="__other" class="oth${other || (!inp.hidden && !v) ? ' on' : ''}">${esc(otherLabel)}</button>`;
+  inp.hidden = !(other || box.querySelector('.oth.on'));
+}
+for (const id of ['kChips', 'sChips']) document.getElementById(id).addEventListener('click', e => {
+  const b = e.target.closest('[data-k]'); if (!b) return; const box = e.currentTarget, inp = $('#fTeam').elements[box.dataset.inp];
+  box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  if (b.dataset.k === '__other') { b.classList.add('on'); inp.hidden = false; inp.value = ''; inp.focus(); return; }
+  if (box.dataset.none && inp.value.trim() === b.dataset.k) { inp.value = ''; inp.hidden = true; return; }
+  b.classList.add('on'); inp.value = b.dataset.k; inp.hidden = true;
+});
 $('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
 const RT_AUF = 'Rettungstrupp / Sicherheitstrupp';
 $('#fTeam').elements.rett.addEventListener('change', e => {
@@ -303,9 +316,9 @@ function openTeam(id) {
   if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.p0; }); }
   else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = kanalStd() || presets()[0] || ''; f.elements.auftrag.value = ''; }
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
-  fillSel('kanalSel', 'kanal', presets(), f.elements.kanal.value.trim(), 'Anderer Kanal …');
+  f.elements.kanal.hidden = true; renderPick('kChips', 'kanal', presets(), 'Anderer …');
   fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –');
-  fillSel('stockSel', 'stock', [...floors()].reverse(), f.elements.stock.value.trim(), 'Anderer Ort …', '– kein Stockwerk –');
+  f.elements.stock.hidden = true; renderPick('sChips', 'stock', floors(), 'Anderer Ort …', true);
   $('#dTeam').showModal();
 }
 $('#fTeam').addEventListener('submit', e => {
@@ -441,7 +454,6 @@ $('#bau').addEventListener('click', e => {
   openStock(T.id, 'move');
 });
 function renderSChips() {}
-$('#fTeam').elements.stockSel.addEventListener('change', () => selChanged('stockSel', 'stock'));
 
 function enter(T, stock) {
   const now = Date.now();
