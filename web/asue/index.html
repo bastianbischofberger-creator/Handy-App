@@ -100,6 +100,12 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .admbtn{width:100%;margin:4px 0 8px}.admh{font:600 19px 'Barlow Condensed',sans-serif;margin:16px 0 8px;padding-top:10px;border-top:1px solid var(--line)}.admh small{font:400 13px Barlow,sans-serif;color:var(--mute);margin-left:6px}
 #dX{width:min(680px,96vw)}.xmeta{padding:0;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}.xexp{padding:6px 0 0}
 .req{color:var(--red);font-weight:700}input.miss{border:2px solid var(--red);background:color-mix(in srgb,var(--red) 8%,var(--field))}
+.pform{display:grid;grid-template-columns:1fr 1fr 80px 80px auto;gap:6px;margin-bottom:8px}.pform input{margin:0}.pform button{min-height:46px}
+.plist{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.plist li{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}.plist li:last-child{border:0}
+.plist .pn{flex:1}.plist .pr{display:inline-block;min-width:42px;font-weight:700;color:var(--mute)}.plist .pnr{font-family:"Barlow Condensed",sans-serif;color:var(--mute);margin-left:6px}
+.plist button{min-height:36px;padding:4px 10px;font-size:14px}
+@media(max-width:600px){.pform{grid-template-columns:1fr 1fr}}
 .elist div{flex:1}.elist button{min-height:40px;padding:6px 12px}.elist b{display:block}.elist span{font-size:14px;color:var(--mute)}
 .tag{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--field);border:1px solid var(--line);white-space:nowrap}
 .btnlbl{display:inline-flex;align-items:center;font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;margin:0}
@@ -262,13 +268,15 @@ label select+input{margin-top:6px}
   <label class="chk"><input type="checkbox" name="rett"> <i class="axe rt" aria-hidden="true"></i> Rettungstrupp (Sicherheitstrupp)</label>
   <label>Auftrag<select name="aufSel"></select><input name="auftrag" placeholder="Auftrag eingeben" hidden><input name="zusatz" placeholder="Zusatzinfo (optional), z. B. Wohnung links, Person vermisst" hidden></label>
   <div class="fld"><span class="lab">Stockwerk</span><div class="pick" id="sChips"></div><input name="stock" placeholder="Ort eingeben, z. B. Treppenhaus" hidden></div>
-  <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0"><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
-  <div class="g3"><label>Name 2<span class="inq"><input name="n1"><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
-  <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2"><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0" list="personen" autocomplete="off"><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p0" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 2<span class="inq"><input name="n1" list="personen" autocomplete="off"><button type="button" class="qr" data-qr="n1" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p1" type="number" inputmode="numeric"></label></div>
+  <div class="g3"><label>Name 3 (optional)<span class="inq"><input name="n2" list="personen" autocomplete="off"><button type="button" class="qr" data-qr="n2" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck bar<input name="p2" type="number" inputmode="numeric"></label></div>
   <p class="err" id="tErr"></p>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
 </form></dialog>
 <datalist id="kanaele"></datalist>
+<datalist id="personen"></datalist>
+<datalist id="raenge"><option value="Sdt"><option value="Gfr"><option value="Kpl"><option value="Wm"><option value="Fw"><option value="Four"><option value="Lt"><option value="Oblt"><option value="Hptm"><option value="Maj"></datalist>
 
 <dialog id="dP"><form method="dialog" id="fP">
   <h3 id="pTitle">Druck erfassen</h3>
@@ -309,6 +317,10 @@ label select+input{margin-top:6px}
       <label>Warnsignal (bar, Untergrenze)<input name="pfeife" type="number"></label>
       <label>Verbrauch ohne Messung (bar/Min.)<input name="defRate" type="number" step="0.5"></label>
     </div>
+    <h4 class="admh">Personal <small id="pCount"></small></h4>
+    <p class="hint" id="pHint"></p>
+    <div class="pform"><input id="pfV" placeholder="Vorname"><input id="pfN" placeholder="Name"><input id="pfR" placeholder="Rang" list="raenge"><input id="pfNr" placeholder="Nr." inputmode="numeric"><button type="button" id="pfAdd" class="pri">Hinzufügen</button></div>
+    <ul class="plist" id="pList"></ul>
     <h4 class="admh">Einsätze löschen</h4>
     <ul class="elist" id="adList"></ul>
     <p class="err" id="adMsg"></p>
@@ -377,9 +389,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.1.4"></script>
+<script src="config.js?v=2.2.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.1.4"></script>
+<script src="app.js?v=2.2.0"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.1.4';
+const VERSION = '2.2.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -25,7 +25,7 @@ const LP = (() => {
   return { get: k => o[k], set: (k, v) => { o[k] = v; try { localStorage.setItem('asue-prefs', JSON.stringify(o)); } catch (e) {} } };
 })();
 
-const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', kanalStd: '6', auftraege: 'Absuchen, Brandbekämpfung, Rettung', floors: 'UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
+const DEF = { interval: 10, rzMode: 'half', rzFixed: 150, reserve: 50, pfeife: 55, defRate: 8, defP0: 300, kanaele: '3, 4, 6, 8, 12', personal: [{v:'Hans',n:'Meier',r:'Kpl',nr:'101'},{v:'Lukas',n:'Keller',r:'Sdt',nr:'102'},{v:'Sandra',n:'Huber',r:'Gfr',nr:'103'},{v:'Marco',n:'Graf',r:'Wm',nr:'104'},{v:'Reto',n:'Brunner',r:'Sdt',nr:'105'},{v:'Nadine',n:'Frei',r:'Lt',nr:'106'},{v:'Daniel',n:'Lenz',r:'Gfr',nr:'107'},{v:'Patrick',n:'Koch',r:'Fw',nr:'108'},{v:'Simon',n:'Weber',r:'Sdt',nr:'109'},{v:'Michael',n:'Schmid',r:'Oblt',nr:'110'}].map(p => ({ id: 'm' + p.nr, vorname: p.v, name: p.n, rang: p.r, nr: p.nr, muster: true })), kanalStd: '6', auftraege: 'Absuchen, Brandbekämpfung, Rettung', floors: 'UG -1, EG, 1. OG, 2. OG, 3. OG, Dach', org: CFG.feuerwehr || 'Feuerwehr Rheineck-Thal-Lutzenberg' };
 const S = { settings: { ...DEF }, eid: null, meta: {}, teams: [], log: [], list: [] };
 const SY = { mode: 'local', pending: false, error: '', user: null };
 let BE = null;
@@ -183,6 +183,9 @@ for (const id of ['kChips', 'sChips']) document.getElementById(id).addEventListe
 });
 $('#fTeam').elements.aufSel.addEventListener('change', () => selChanged('aufSel', 'auftrag'));
 const RT_AUF = 'Rettungstrupp / Sicherheitstrupp';
+const personal = () => Array.isArray(S.settings.personal) ? S.settings.personal : [];
+const pName = p => `${p.name} ${p.vorname}`;
+function persByCode(raw) { const t = String(raw || '').trim().replace(/^(ASUE|ASÜ|AdA)\s*[:;]\s*/i, ''); const p = personal().find(p => p.nr && p.nr === t); return p ? pName(p) : null; }
 const aufText = T => [T.auftrag, T.zusatz].filter(Boolean).join(' – ');
 function syncZusatz() { const f = $('#fTeam'), v = f.elements.aufSel.value; f.elements.zusatz.hidden = !v || v === '__other'; }
 $('#fTeam').elements.aufSel.addEventListener('change', syncZusatz);
@@ -219,6 +222,7 @@ function render() {
   if (!vis.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch kein Trupp auf der Tafel</h2><p>Erfasse Trupp-Nummer, Funkkanal, Auftrag und die Namen mit Anfangsdruck. Beim Eingang startet die Überwachung.</p><div class="row"><button class="pri" data-g="add">+ Trupp erfassen</button></div></div>`;
   else { const o = { innen: 0, rueckzug: 1, bereit: 2, draussen: 3 };
     g.innerHTML = [...vis].sort((a, b) => o[a.status] - o[b.status] || String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true })).map(card).join(''); }
+  $('#personen').innerHTML = personal().map(p => `<option value="${esc(pName(p))}">${esc([p.rang, p.nr ? 'Nr. ' + p.nr : ''].filter(Boolean).join(' · '))}</option>`).join('');
   $('#kanaele').innerHTML = [...new Set([...presets(), ...S.teams.map(t => t.kanal).filter(Boolean)])].map(k => `<option value="${esc(k)}">`).join('');
   const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
   { const mi = $('#muteInd'); mi.hidden = !LP.get('mute'); mi.innerHTML = SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'; }
@@ -277,7 +281,7 @@ function tick() {
 
 /* ---------- Einsätze-Liste ---------- */
 function renderList() {
-  renderAdList();
+  renderAdList(); renderPers();
   const ul = $('#elist'); if (!ul) return;
   ul.innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
     <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span>
@@ -440,7 +444,7 @@ async function startScan(field) {
           cx.drawImage(v, 0, 0, cv.width, cv.height); const r = window.jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'attemptBoth' }); if (r) txt = r.data; }
       } catch (e) {}
     }
-    const name = txt && qrText(txt);
+    const name = txt && (persByCode(txt) || qrText(txt));
     if (name) { const inp = $('#fTeam').elements[me.field]; inp.value = name; inp.dispatchEvent(new Event('input')); initAudio(); beep(1); stopScan(); $('#dQR').close(); return; }
     setTimeout(loop, 150);
   };
@@ -544,7 +548,32 @@ function openPin(mode) {
   $('#pinL2').hidden = mode !== 'set';
   $('#dPin').showModal(); setTimeout(() => f.elements.p1.focus(), 50);
 }
-function unlockAdmin() { $('#sAdmin').hidden = false; $('#bAdmin').hidden = true; renderAdList(); }
+function unlockAdmin() { $('#sAdmin').hidden = false; $('#bAdmin').hidden = true; renderAdList(); renderPers(); }
+/* ---------- Personalstamm ---------- */
+let pEdit = null;
+function renderPers() {
+  const ul = $('#pList'); if (!ul || $('#sAdmin').hidden) return;
+  const l = personal(); $('#pCount').textContent = `(${l.length})`;
+  $('#pHint').textContent = l.some(p => p.muster) ? 'Musterdaten – bitte durch eure Leute ersetzen. Die Liste gilt für alle Geräte.' : 'Gilt für alle Geräte. Beim Trupp erfassen werden die Namen vorgeschlagen; der QR-Code kann Name oder Nummer enthalten.';
+  ul.innerHTML = l.length ? l.map(p => `<li><span class="pn"><span class="pr">${esc(p.rang || '')}</span>${esc(p.name)} ${esc(p.vorname)}<span class="pnr">${p.nr ? 'Nr. ' + esc(p.nr) : ''}</span></span><button type="button" class="ghost" data-pe="${esc(p.id)}">Bearbeiten</button><button type="button" class="ghost" data-pd="${esc(p.id)}">Löschen</button></li>`).join('') : '<li><span>Noch keine Personen erfasst.</span></li>';
+  $('#pfAdd').textContent = pEdit ? 'Speichern' : 'Hinzufügen';
+}
+function savePers(list) { BE.putSettings({ ...S.settings, personal: list }); }
+$('#pfAdd').onclick = () => {
+  const v = $('#pfV').value.trim(), n = $('#pfN').value.trim(), r = $('#pfR').value.trim(), nr = $('#pfNr').value.trim();
+  if (!v || !n) { $('#pHint').textContent = 'Vorname und Name sind nötig.'; return; }
+  const l = personal().map(p => ({ ...p }));
+  if (nr && l.some(p => p.nr === nr && p.id !== pEdit)) { $('#pHint').textContent = `Die Nummer ${nr} ist schon vergeben.`; return; }
+  if (pEdit) { const p = l.find(x => x.id === pEdit); Object.assign(p, { vorname: v, name: n, rang: r, nr, muster: false }); }
+  else l.push({ id: uid(), vorname: v, name: n, rang: r, nr });
+  l.sort((a, b) => (a.name + a.vorname).localeCompare(b.name + b.vorname, 'de'));
+  pEdit = null; ['#pfV', '#pfN', '#pfR', '#pfNr'].forEach(x => $(x).value = ''); savePers(l); setTimeout(renderPers, 50);
+};
+$('#pList').addEventListener('click', e => {
+  const ed = e.target.closest('[data-pe]'), dl = e.target.closest('[data-pd]');
+  if (ed) { const p = personal().find(x => x.id === ed.dataset.pe); if (!p) return; pEdit = p.id; $('#pfV').value = p.vorname; $('#pfN').value = p.name; $('#pfR').value = p.rang || ''; $('#pfNr').value = p.nr || ''; $('#pfV').focus(); renderPers(); }
+  if (dl) { const p = personal().find(x => x.id === dl.dataset.pd); if (!p) return; confirmBox('Person löschen?', `${p.rang || ''} ${p.name} ${p.vorname} wird aus dem Personalstamm entfernt.`, () => { savePers(personal().filter(x => x.id !== p.id)); setTimeout(renderPers, 50); }); }
+});
 function renderAdList() {
   const ul = $('#adList'); if (!ul || $('#sAdmin').hidden) return;
   const l = S.list.filter(e => e.id !== S.eid);
