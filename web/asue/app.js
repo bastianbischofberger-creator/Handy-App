@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.0.1';
+const VERSION = '2.0.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -393,7 +393,8 @@ $('#fP').addEventListener('submit', e => {
 function openSettings() {
   const f = $('#fS'), st = S.settings;
   for (const k of ['org', 'kanaele', 'kanalStd', 'auftraege', 'interval', 'defP0', 'rzMode', 'rzFixed', 'pfeife', 'defRate']) f.elements[k].value = st[k];
-  f.elements.dev.value = LP.get('dev') || '';
+  { const dv = LP.get('dev') || '', opts = ['Atemschutzüberwacher', 'Atemschutzoffizier'];
+    f.elements.dev.value = dv; f.elements.devSel.value = !dv ? '' : opts.includes(dv) ? dv : '__other'; f.elements.dev.hidden = f.elements.devSel.value !== '__other'; }
   $('#sAdmin').hidden = true; $('#bAdmin').hidden = false;
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
@@ -553,6 +554,8 @@ function renderAdList() {
     : '<li><span>Keine weiteren Einsätze. Der geöffnete Einsatz kann nicht gelöscht werden.</span></li>';
 }
 const ADMIN_PIN = false; /* auf true setzen, um den Adminbereich mit PIN zu schützen */
+$('#fS').elements.devSel.addEventListener('change', e => { const f = $('#fS'), v = e.target.value;
+  if (v === '__other') { f.elements.dev.hidden = false; f.elements.dev.value = ''; f.elements.dev.focus(); } else { f.elements.dev.hidden = true; f.elements.dev.value = v; } });
 $('#bAdmin').onclick = () => ADMIN_PIN ? openPin(S.settings.adminPin ? 'unlock' : 'set') : unlockAdmin();
 $('#bPinChg').hidden = !ADMIN_PIN;
 $('#bPinChg').onclick = () => openPin('set');
