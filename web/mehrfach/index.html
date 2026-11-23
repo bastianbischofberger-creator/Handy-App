@@ -89,7 +89,7 @@ main{padding:16px max(2vw,12px) 24px;max-width:1600px;margin:0 auto}
 .startlist h3{font:600 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 6px}
 .elist{list-style:none;margin:0;padding:0}
 .elist li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2)}
-.elist li div{flex:1}.elist b{display:block;font-weight:600}.elist span{font-size:13.5px;color:var(--mute)}
+.elist li div{flex:1}#zuList li{flex-wrap:wrap}#zuList .row{gap:6px}#zuList .row button{min-height:42px}.elist b{display:block;font-weight:600}.elist span:not(.tag){font-size:13.5px;color:var(--mute)}
 body.startmode{background:var(--red)}
 body.startmode .top{display:none}
 
@@ -338,6 +338,7 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
   <h3 id="pkTitle"></h3>
   <div class="note" id="pkBedarf" hidden></div>
   <span class="flab" id="pkPL">Personal</span><div class="pick" id="pkP"></div>
+  <p class="hint" id="pkLead"></p>
   <div id="pkMW"><span class="flab">Fahrzeuge &amp; Geräte</span><div class="pick" id="pkM"></div></div>
   <label id="pkExtraL">Weitere / externe Mittel (optional)<input name="extra" placeholder="z. B. Nachbarfeuerwehr, Firma …"></label>
   <p class="err" id="pkErr"></p>
@@ -365,6 +366,12 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 </form></dialog>
 
 <!-- Abschliessen -->
+<dialog id="dZu"><div class="dp">
+  <h3 id="zuTitle"></h3>
+  <ul class="elist" id="zuList"></ul>
+  <div class="dbtn"><button onclick="this.closest('dialog').close()">Abbrechen</button></div>
+</div></dialog>
+
 <dialog id="dAbg"><form class="dp" id="fAbg" method="dialog">
   <h3 id="abgTitle"></h3>
   <label>Abschlussbemerkung (optional)<textarea name="txt" placeholder="z. B. Baum entfernt, Strasse frei"></textarea></label>
@@ -387,7 +394,7 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
     <label>Feuerwehr (erscheint im Rapport)<input name="org"></label>
     <label>Auftragsarten (mit Komma getrennt)<input name="arten"></label>
     <h4>Personal <small class="hint" id="spCount"></small></h4>
-    <div class="sform"><input id="spV" placeholder="Vorname"><input id="spN" placeholder="Name"><input id="spR" placeholder="Rang"><input id="spF" placeholder="Funktion"><button type="button" class="pri" id="spAdd">+</button></div>
+    <div class="sform"><input id="spV" placeholder="Vorname"><input id="spN" placeholder="Name"><select id="spR" style="margin:0"><option>Soldat</option><option>Uof</option><option>Of</option></select><input id="spF" placeholder="Funktion"><button type="button" class="pri" id="spAdd">+</button></div>
     <ul class="slist" id="spList"></ul>
     <h4>Fahrzeuge &amp; Geräte</h4>
     <p class="hint">«Gattung» fasst gleiche Mittel zusammen, z. B. Wassersauger 1 und 2 → Wassersauger. Sie erscheint bei «Benötigte Mittel».</p>
@@ -418,10 +425,10 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 <input type="file" id="fileAnh" accept="application/pdf,image/*,.eml,.msg,.txt,.doc,.docx" multiple hidden>
 <input type="file" id="fileFoto" accept="image/*" capture="environment" hidden>
 
-<script src="config.js?v=0.2.0"></script>
+<script src="config.js?v=0.3.1"></script>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
-<script src="app.js?v=0.2.0"></script>
+<script src="app.js?v=0.3.1"></script>
 </body>
 </html>

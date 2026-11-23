@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -31,9 +31,10 @@ const LP = (() => {
 })();
 
 /* ---------- Grunddaten ---------- */
-const MUSTER_P = [['Peter', 'Muster', 'Hptm', 'Einsatzleiter'], ['Anna', 'Beispiel', 'Oblt', 'Führungsunterstützung'], ['Lukas', 'Keller', 'Wm', 'Gruppenführer'], ['Sandra', 'Huber', 'Gfr', 'Maschinistin'],
-  ['Reto', 'Brunner', 'Kpl', 'Gruppenführer'], ['Marco', 'Graf', 'Sdt', ''], ['Nadine', 'Frei', 'Sdt', ''], ['Daniel', 'Lenz', 'Gfr', 'Motorsäge'], ['Patrick', 'Koch', 'Fw', ''], ['Simon', 'Weber', 'Sdt', ''],
-  ['Michael', 'Schmid', 'Sdt', ''], ['Laura', 'Baumann', 'Sdt', '']];
+const RAENGE = ['Soldat', 'Uof', 'Of'];
+const MUSTER_P = [['Peter', 'Muster', 'Of', 'Einsatzleiter'], ['Anna', 'Beispiel', 'Of', 'Führungsunterstützung'], ['Lukas', 'Keller', 'Uof', 'Gruppenführer'], ['Sandra', 'Huber', 'Soldat', 'Maschinistin'],
+  ['Reto', 'Brunner', 'Uof', 'Gruppenführer'], ['Marco', 'Graf', 'Soldat', ''], ['Nadine', 'Frei', 'Soldat', ''], ['Daniel', 'Lenz', 'Soldat', 'Motorsäge'], ['Patrick', 'Koch', 'Uof', ''], ['Simon', 'Weber', 'Soldat', ''],
+  ['Michael', 'Schmid', 'Soldat', ''], ['Laura', 'Baumann', 'Soldat', '']];
 const MUSTER_M = [['TLF', 'TLF', 'Tanklöschfahrzeug'], ['Pionier', 'Pionier', 'Pionierfahrzeug'], ['MTF 1', 'MTF', 'Mannschaftstransport'], ['MTF 2', 'MTF', 'Mannschaftstransport'], ['Kdo-Fz', 'Kdo-Fz', 'Kommandofahrzeug'],
   ['Wassersauger 1', 'Wassersauger', ''], ['Wassersauger 2', 'Wassersauger', ''], ['Tauchpumpe 1', 'Tauchpumpe', ''], ['Tauchpumpe 2', 'Tauchpumpe', ''], ['Motorsäge 1', 'Motorsäge', ''], ['Motorsäge 2', 'Motorsäge', ''], ['Notstromaggregat', 'Notstromaggregat', '']];
 const DEF = {
@@ -144,7 +145,7 @@ function openE(id) {
   BE.open(id, st => { S.meta = st.meta || {}; S.A = st.auftraege || []; S.res = {}; (st.res || []).forEach(r => S.res[r.id] = r);
     S.ci = {}; (st.checkin || []).forEach(c => S.ci[c.id] = c); S.log = st.log || [];
     if (S.meta.created && !S.meta.closed && !S.meta.code) { S.meta.code = newCode(); saveMeta(); }
-    processCheckins(); render(); publish(); });
+    processCheckins(); render(); publish(); syncInbox(); });
 }
 const newCode = () => String(1000 + Math.floor(Math.random() * 9000));
 /* Öffentliche Angaben für die Anmeldeseite (nur mit Synchronisation) */
@@ -173,6 +174,52 @@ function processCheckins() {
       log(`${who} hat sich abgemeldet (QR)${a ? ` – ist noch bei Auftrag ${a.nr} eingeteilt!` : ''}`, 'ci-' + c.id + '-' + c.t);
     }
   }
+  for (const c of Object.values(S.ci)) if (c.rm && c.rm.id) applyReply(c);
+}
+/* Rückmeldungen vom Handy (Vor Ort, Reko abgeschlossen, erledigt) */
+const rmSeen = new Set();
+function applyReply(c) {
+  const m = c.rm; if (rmSeen.has(m.id)) return; const a = A(m.aid); if (!a) return;
+  if ((a.rms || []).includes(m.id)) { rmSeen.add(m.id); return; }
+  rmSeen.add(m.id);
+  const who = c.name || 'Unbekannt', pid = ciPid(c);
+  a.rms = [...(a.rms || []), m.id];
+  if (m.foto) a.fotos = [...(a.fotos || []), { t: m.t, data: m.foto, von: who }];
+  if (m.typ === 'vorort') {
+    if (a.status === 'reko') { if (a.reko) a.reko.vorOrt = m.t; log(`Auftrag ${a.nr}: Reko vor Ort (${who}, Handy)`); }
+    else if (a.status === 'bew' && a.sub !== 'vorort') { a.sub = 'vorort'; a.tVorOrt = m.t; log(`Auftrag ${a.nr}: vor Ort tätig (${who}, Handy)`); }
+  } else if (m.typ === 'rekoEnd' && a.status === 'reko') {
+    release(a, a.reko ? a.reko.ids : []); if (a.reko) a.reko.tEnd = m.t;
+    a.rekoDone = true; a.lageReko = m.lage || ''; a.bedarf = { adf: m.adf || 0, m: m.mittel || {} }; a.dauer = m.dauer || '';
+    if (m.keinEinsatz) { a.status = 'abg'; a.tAbg = m.t; a.abschluss = 'Kein Einsatz nötig' + (m.lage ? ': ' + m.lage : ''); log(`Auftrag ${a.nr}: Reko (${who}, Handy) – kein Einsatz nötig, abgeschlossen`); }
+    else { a.status = 'pendent'; log(`Auftrag ${a.nr}: Reko abgeschlossen (${who}, Handy) → Pendent. Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}${m.lage ? ' – ' + m.lage : ''}`); }
+  } else if (m.typ === 'erledigt' && a.status === 'bew') {
+    release(a); a.status = 'abg'; a.tAbg = m.t; a.abschluss = m.text || ''; log(`Auftrag ${a.nr} erledigt gemeldet (${who}, Handy)${m.text ? ': ' + m.text : ''}`);
+  } else if (m.typ === 'text') { log(`Auftrag ${a.nr}: Meldung von ${who}: ${m.text}`); }
+  else log(`Auftrag ${a.nr}: Meldung «${m.typ}» von ${who} nicht übernommen (Auftrag ist ${STL[a.status]})`);
+  saveA(a);
+}
+/* Auftrag aufs Handy der eingeteilten Person schicken */
+const inboxSent = {};
+function syncInbox() {
+  if (SY.mode !== 'cloud' || !S.eid) return;
+  for (const c of Object.values(S.ci)) {
+    if (c.status !== 'an') continue;
+    const pid = ciPid(c), r = resOf(pid, 'p'), a = r.status === 'einsatz' && r.auftrag && A(r.auftrag);
+    let doc = { aid: null };
+    if (a && a.status !== 'abg') {
+      const rolle = a.status === 'reko' ? 'reko' : 'disp', ids = rolle === 'reko' ? (a.reko ? a.reko.ids : []) : (a.assigned || []).filter(i => personal().some(p => p.id === i));
+      const lead = rolle === 'reko' ? (a.reko && a.reko.lead) || ids[0] : a.lead || ids[0];
+      const leadP = personal().find(p => p.id === lead);
+      doc = { aid: a.id, nr: a.nr, art: a.art, adresse: a.adresse, lat: a.lat ?? null, lng: a.lng ?? null, prio: a.prio, text: a.text || '', melder: a.melder || '', tel: a.tel || '',
+        rolle, fuehrung: lead === pid, fuehrungName: leadP ? pName(leadP) : '', team: ids.map(i => { const p = personal().find(x => x.id === i); return p ? pName(p) : '?'; }),
+        mittel: rolle === 'disp' ? (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(resName).concat(a.extra ? [a.extra] : []) : [],
+        bedarf: a.bedarf ? bedarfText(a.bedarf) : '', lageReko: a.lageReko || '', vorOrt: rolle === 'reko' ? !!(a.reko && a.reko.vorOrt) : a.sub === 'vorort',
+        gattungen: gattungen(), anh: (a.anh || []).length };
+    }
+    const k = JSON.stringify(doc); if (inboxSent[c.id] === k) continue; inboxSent[c.id] = k;
+    BE.put(S.eid, 'inbox', c.id, { ...doc, t: Date.now() });
+  }
 }
 const ciOf = pid => Object.values(S.ci).find(c => ciPid(c) === pid);
 const A = id => S.A.find(a => a.id === id);
@@ -188,7 +235,12 @@ const mittel = () => Array.isArray(S.settings.mittel) ? S.settings.mittel : [];
 const arten = () => String(S.settings.arten || '').split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 const gattungen = () => [...new Set(mittel().map(m => m.gattung || m.name))];
 const pName = p => `${p.rang ? p.rang + ' ' : ''}${p.name} ${p.vorname}`;
-const pShort = p => `${p.rang ? p.rang + ' ' : ''}${p.name}`;
+const pFull = p => `${p.name} ${p.vorname}`;
+/* Führung: höchster Rang (Of vor Uof vor Soldat), bei Gleichstand wer zuerst gewählt wurde */
+const RW = { of: 3, lt: 3, oblt: 3, hptm: 3, maj: 3, uof: 2, kpl: 2, wm: 2, fw: 2, four: 2, adj: 2 };
+const rankOf = id => { const p = personal().find(x => x.id === id); const c = ciOf(id); return RW[norm((c && c.rang) || (p && p.rang))] || 1; };
+const pickLead = ids => { const ps = ids.filter(i => personal().some(p => p.id === i)); return ps.reduce((b, i) => b == null || rankOf(i) > rankOf(b) ? i : b, null); };
+const pShort = p => `${p.name}${p.vorname ? ' ' + p.vorname[0] + '.' : ''}`;
 const resOf = (id, kind) => S.res[id] || { id, kind, status: kind === 'p' ? 'abwesend' : 'verfuegbar', auftrag: null };
 function setRes(id, kind, patch) { const r = { ...resOf(id, kind), ...patch, kind, t: Date.now() }; S.res[id] = r; BE.put(S.eid, 'res', id, r); }
 const freeP = () => personal().filter(p => resOf(p.id, 'p').status === 'verfuegbar');
@@ -450,7 +502,7 @@ function drawPins() {
 /* ---------- 3 Spalten ---------- */
 function cardHtml(a) {
   const st = subOf(a); let extra = '';
-  if (a.status === 'reko' && a.reko) extra += `<span class="tag s-reko">Reko: ${esc(a.reko.wer.join(', '))}</span>`;
+  if (a.status === 'reko' && a.reko) extra += `<span class="tag s-reko">Reko: ${esc(a.reko.wer.join(', '))}</span>${a.reko.vorOrt ? `<span class="tag s-vorort">vor Ort ${hm(a.reko.vorOrt)}</span>` : ''}`;
   if (a.status === 'pendent') extra += a.rekoDone ? `<span class="tag s-reko">Reko erfolgt${a.reko ? ' · ' + esc(a.reko.wer.join(', ')) : ''}</span>` : '<span class="tag s-ohne">Ohne Reko</span>';
   if (a.status === 'bew') extra += st === 'vorort' ? `<span class="tag s-vorort">Vor Ort tätig · seit ${hm(a.tVorOrt)}</span>` : '<span class="tag s-disp">Disponiert</span>';
   let inf = '';
@@ -497,7 +549,8 @@ function renderMittel() {
   $('#pList').innerHTML = ps.length ? [...ps].sort((x, y) => ord[resOf(x.id, 'p').status] - ord[resOf(y.id, 'p').status] || x.name.localeCompare(y.name, 'de')).map(p => {
     const r = resOf(p.id, 'p'), a = r.auftrag && A(r.auftrag);
     const b = { abwesend: '<button data-pa="in">Einrücken</button>', verfuegbar: '<button data-pa="out" class="ghost">Abtreten</button>', abgetreten: '<button data-pa="in">Wieder einrücken</button>',
-      einsatz: a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}${a.status === 'reko' ? ' (Reko)' : ''}</button>` : '<button data-pa="in">Freigeben</button>' }[r.status];
+      einsatz: a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}${a.status === 'reko' ? ' (Reko)' : ''}</button>` : '<button data-pa="in">Freigeben</button>' }[r.status]
+      + (r.status === 'verfuegbar' ? '<button data-pa="zu" class="blue">Zuweisen</button>' : '');
     const ci = ciOf(p.id), det = ci ? [ci.masch && !p.gast ? 'Maschinist' : '', ci.tel ? 'Tel. ' + ci.tel : '', p.gast ? 'nicht in Stammliste' : ''].filter(Boolean).join(' · ') : '';
     return `<li data-p="${p.id}"><span class="rg">${esc(p.rang || '')}</span><span><b style="font-weight:600">${esc(p.name)} ${esc(p.vorname)}</b> <span class="fk">${esc(p.fkt || '')}</span>${ci ? `<br><span class="fk"><span class="tag" title="per QR-Code">QR ${ci.status === 'an' ? hm(ci.t) : 'ab ' + hm(ci.t)}</span> ${esc(det)}</span>` : ''}</span><span class="acts"><span class="tag st-${r.status}">${PST[r.status]}</span>${b}</span></li>`;
   }).join('') : '<li class="empty">Noch kein Personal erfasst (Einstellungen → Stammdaten).</li>';
@@ -511,6 +564,7 @@ function renderMittel() {
 $('#pList').addEventListener('click', e => {
   const ab = e.target.closest('[data-a]'); if (ab) return openDetail(ab.dataset.a);
   const b = e.target.closest('[data-pa]'); if (!b) return; const id = b.closest('[data-p]').dataset.p, p = personal().find(x => x.id === id);
+  if (b.dataset.pa === 'zu') return openZu(id);
   if (b.dataset.pa === 'in') { setRes(id, 'p', { status: 'verfuegbar', auftrag: null }); log(`${pName(p)} eingerückt`); }
   else { setRes(id, 'p', { status: 'abgetreten', auftrag: null }); log(`${pName(p)} abgetreten`); }
   render();
@@ -531,7 +585,7 @@ function renderDetail() {
   const a = A(S.sel); if (!a) { $('#dA').close(); return; }
   const st = subOf(a), stTxt = a.status === 'bew' ? (st === 'vorort' ? 'Vor Ort tätig' : 'Disponiert') : STL[a.status];
   const rows = [['Eingang', `${hm(a.tEin)} · ${a.quelle}`], ['Meldende Person', [a.melder, a.tel].filter(Boolean).join(' · ')], ['Beschreibung', a.text],
-    ['Reko', a.reko ? `${a.reko.wer.join(', ')} · ${hm(a.reko.t)}${a.reko.tEnd ? '–' + hm(a.reko.tEnd) : ''}` : ''], ['Lagebeurteilung', a.lageReko],
+    ['Reko', a.reko ? `${a.reko.wer.join(', ')} · ${hm(a.reko.t)}${a.reko.vorOrt ? ' · vor Ort ' + hm(a.reko.vorOrt) : ''}${a.reko.tEnd ? ' · fertig ' + hm(a.reko.tEnd) : ''}` : ''], ['Lagebeurteilung', a.lageReko],
     ['Benötigt', a.bedarf ? bedarfText(a.bedarf) + (a.dauer ? ' · ca. ' + a.dauer : '') : ''], ['Zugewiesen', a.status === 'bew' ? assignedText(a) : ''],
     ['Disponiert', a.tDisp && a.status !== 'pendent' && a.status !== 'offen' ? hm(a.tDisp) : ''], ['Vor Ort', a.tVorOrt ? hm(a.tVorOrt) : ''], ['Abgeschlossen', a.tAbg && a.status === 'abg' ? hm(a.tAbg) + (a.abschluss ? ' · ' + a.abschluss : '') : '']]
     .filter(r => r[1]);
@@ -546,12 +600,14 @@ function renderDetail() {
   $('#dABody').innerHTML = `<div class="dh"><span class="nr">${a.nr}</span><div style="flex:1"><h3>${esc(a.art)}</h3><p>${esc(a.adresse)}</p></div><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><span class="tag s-${st}">${stTxt}</span></div>
     <dl class="dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     ${(a.anh || []).length ? `<span class="flab">Anhänge</span><div class="anh">${a.anh.map((f, i) => `<button class="file" data-file="${i}">${SVGF}${esc(f.name)} <small>${kb(f.size)}</small></button>`).join('')}</div>` : ''}
+    ${(a.fotos || []).length ? `<span class="flab">Fotos vom Handy</span><div class="anh">${a.fotos.map((f, i) => `<button class="file" data-foto="${i}" style="padding:4px"><img src="${f.data}" alt="Foto ${i + 1}" style="height:70px;border-radius:6px"> <small>${hm(f.t)} ${esc(f.von || '')}</small></button>`).join('')}</div>` : ''}
     ${isReady(a) ? '<div class="note ok"><b>Die benötigten Mittel sind verfügbar.</b></div>' : ''}
     <div class="acts2">${acts.join('')}</div>
     <div class="dbtn"><button data-act="edit" class="ghost">Bearbeiten</button>${a.lat != null ? '<button data-act="map" class="ghost">Auf Karte zeigen</button>' : ''}<button data-act="close" class="dark">Schliessen</button></div>`;
 }
 $('#dABody').addEventListener('click', e => {
   const fb = e.target.closest('[data-file]'); if (fb) return openFile(A(S.sel).anh[+fb.dataset.file]);
+  const fo = e.target.closest('[data-foto]'); if (fo) { const w = window.open(); if (w) w.document.write(`<img src="${A(S.sel).fotos[+fo.dataset.foto].data}" style="max-width:100%">`); return; }
   const b = e.target.closest('[data-act]'); if (!b) return; const a = A(S.sel), act = b.dataset.act, now = Date.now();
   if (act === 'close') return $('#dA').close();
   if (act === 'edit') { $('#dA').close(); return go('erfassen', { edit: a.id }); }
@@ -570,11 +626,42 @@ $('#dABody').addEventListener('click', e => {
   if (act === 'reopen') { a.status = 'offen'; a.tAbg = null; saveA(a); log(`Auftrag ${a.nr} wieder geöffnet`); }
 });
 
+/* Zuweisen von der Person aus */
+let ZU = null;
+function openZu(pid) {
+  const p = personal().find(x => x.id === pid); ZU = pid;
+  $('#zuTitle').textContent = pName(p) + ' zuweisen';
+  const l = S.A.filter(a => a.status !== 'abg').sort((x, y) => ['offen', 'reko', 'pendent', 'bew'].indexOf(x.status) - ['offen', 'reko', 'pendent', 'bew'].indexOf(y.status) || sortA(x, y));
+  $('#zuList').innerHTML = l.map(a => {
+    const st = subOf(a), lab = a.status === 'bew' ? (st === 'vorort' ? 'Vor Ort tätig' : 'Disponiert') : STL[a.status];
+    const btns = a.status === 'offen' ? `<button data-zu="reko" data-a="${a.id}" class="rekob">Als Reko</button><button data-zu="disp" data-a="${a.id}" class="blue">Disponieren</button>`
+      : a.status === 'reko' ? `<button data-zu="reko" data-a="${a.id}" class="rekob">Zur Reko dazu</button>` : `<button data-zu="disp" data-a="${a.id}" class="blue">${a.status === 'bew' ? 'Dazu disponieren' : 'Disponieren'}</button>`;
+    return `<li><div><b>${a.nr} · ${esc(a.art)}</b> <span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span> <span class="tag s-${st}">${lab}</span><br><span>${esc(a.adresse)}${a.bedarf ? ' · Benötigt: ' + esc(bedarfText(a.bedarf)) : ''}</span></div><span class="row">${btns}</span></li>`;
+  }).join('') || '<li><span>Keine offenen Aufträge.</span></li>';
+  $('#dZu').showModal();
+}
+$('#zuList').addEventListener('click', e => {
+  const b = e.target.closest('[data-zu]'); if (!b) return; const a = A(b.dataset.a), pid = ZU, p = personal().find(x => x.id === pid), now = Date.now();
+  $('#dZu').close();
+  if (resOf(pid, 'p').status !== 'verfuegbar') return;
+  setRes(pid, 'p', { status: 'einsatz', auftrag: a.id });
+  if (b.dataset.zu === 'reko') {
+    if (a.status === 'reko' && a.reko) { a.reko.ids = [...a.reko.ids, pid]; a.reko.wer = [...a.reko.wer, resName(pid)]; a.reko.lead = pickLead(a.reko.ids); log(`Auftrag ${a.nr}: ${pName(p)} zur Reko dazu`); }
+    else { a.status = 'reko'; a.reko = { ids: [pid], wer: [resName(pid)], t: now, lead: pid }; log(`Auftrag ${a.nr}: Reko durch ${pName(p)}`); }
+  } else {
+    a.assigned = [...(a.assigned || []), pid]; a.lead = pickLead(a.assigned);
+    if (a.status !== 'bew') { a.status = 'bew'; a.sub = 'disp'; a.tDisp = now; }
+    log(`Auftrag ${a.nr}: ${pName(p)} disponiert`);
+  }
+  saveA(a); render();
+});
+
 /* Reko schicken / Disponieren */
 let PK = null;
 function openPick(a, mode) {
   const cur = new Set(mode === 'disp' ? (a.assigned || []) : []);
-  PK = { id: a.id, mode, sel: new Set(cur) };
+  const ordered = mode === 'disp' && a.lead && cur.has(a.lead) ? [a.lead, ...[...cur].filter(i => i !== a.lead)] : [...cur];
+  PK = { id: a.id, mode, sel: new Set(ordered) };
   $('#pkTitle').textContent = `Auftrag ${a.nr}: ${mode === 'reko' ? 'Reko schicken' : a.status === 'bew' ? 'Mittel ändern' : 'Disponieren'}`;
   $('#pkMW').hidden = mode === 'reko'; $('#pkExtraL').hidden = mode === 'reko'; $('#pkPL').textContent = mode === 'reko' ? 'Wer macht die Reko?' : 'Personal';
   $('#fPick').elements.extra.value = mode === 'disp' ? (a.extra || '') : '';
@@ -585,8 +672,10 @@ function renderPick() {
   const a = A(PK.id), mine = id => (a.assigned || []).includes(id);
   const ps = personal().filter(p => resOf(p.id, 'p').status === 'verfuegbar' || (PK.mode === 'disp' && mine(p.id)));
   const ms = mittel().filter(m => resOf(m.id, 'm').status === 'verfuegbar' || (PK.mode === 'disp' && mine(m.id)));
-  $('#pkP').innerHTML = ps.map(p => `<button type="button" data-id="${p.id}" class="${PK.sel.has(p.id) ? 'on' : ''}">${esc(pShort(p))}${(p.fkt || (ciOf(p.id) || {}).masch) ? ` <span class="x">${esc(p.fkt || 'Maschinist')}</span>` : ''}</button>`).join('') || '<span class="hint">Niemand verfügbar. Personal unter «Personal & Mittel» einrücken.</span>';
+  const lead = pickLead([...PK.sel]);
+  $('#pkP').innerHTML = ps.map(p => `<button type="button" data-id="${p.id}" class="${PK.sel.has(p.id) ? 'on' : ''}">${p.id === lead ? '★ ' : ''}${esc(pName(p))}${ciOf(p.id) && ciOf(p.id).status === 'an' ? ' <span class="x">📱</span>' : ''}${(p.fkt || (ciOf(p.id) || {}).masch) ? ` <span class="x">${esc(p.fkt || 'Maschinist')}</span>` : ''}</button>`).join('') || '<span class="hint">Niemand verfügbar. Personal unter «Personal & Mittel» einrücken.</span>';
   $('#pkM').innerHTML = ms.map(m => `<button type="button" data-id="${m.id}" class="${PK.sel.has(m.id) ? 'on' : ''}">${esc(m.name)}</button>`).join('') || '<span class="hint">Keine Mittel verfügbar.</span>';
+  $('#pkLead').textContent = lead ? '★ Führung: ' + pName(personal().find(p => p.id === lead)) + ' – macht die Rückmeldungen auf dem Handy. Es führt der höchste Rang (Of vor Uof vor Soldat), bei gleichem Rang wer zuerst gewählt wurde.' : 'Es führt der höchste Rang (★).';
   const np = ps.filter(p => PK.sel.has(p.id)).length; $('#pkOk').textContent = PK.mode === 'reko' ? 'Reko schicken' : `Disponieren${np ? ' (' + np + ' AdF)' : ''}`;
 }
 for (const id of ['#pkP', '#pkM']) $(id).addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (!b) return; const i = b.dataset.id; PK.sel.has(i) ? PK.sel.delete(i) : PK.sel.add(i); renderPick(); });
@@ -596,12 +685,12 @@ $('#fPick').addEventListener('submit', e => {
   if (!ids.length && !(PK.mode === 'disp' && extra)) { e.preventDefault(); $('#pkErr').textContent = 'Bitte mindestens eine Person oder ein Mittel wählen.'; return; }
   if (PK.mode === 'reko') {
     ids.forEach(id => setRes(id, 'p', { status: 'einsatz', auftrag: a.id }));
-    const wer = ids.map(resName); a.status = 'reko'; a.reko = { ids, wer, t: now }; saveA(a); log(`Auftrag ${a.nr}: Reko durch ${wer.join(', ')}`); return;
+    const wer = ids.map(resName); a.status = 'reko'; a.reko = { ids, wer, t: now, lead: pickLead(ids) }; saveA(a); log(`Auftrag ${a.nr}: Reko durch ${wer.join(', ')}`); return;
   }
   const before = a.assigned || [], removed = before.filter(i => !ids.includes(i));
   release(a, removed);
   ids.forEach(id => setRes(id, personal().some(p => p.id === id) ? 'p' : 'm', { status: 'einsatz', auftrag: a.id }));
-  const wasBew = a.status === 'bew'; a.assigned = ids; a.extra = extra;
+  const wasBew = a.status === 'bew'; a.assigned = ids; a.extra = extra; a.lead = pickLead(ids);
   if (!wasBew) { a.status = 'bew'; a.sub = 'disp'; a.tDisp = now; }
   saveA(a); log(`Auftrag ${a.nr} ${wasBew ? 'Mittel geändert' : 'disponiert'}: ${assignedText(a) || '–'}`);
 });
@@ -677,8 +766,8 @@ function renderStamm() {
 $('#bSet').onclick = openSettings;
 $('#bAdm').onclick = () => { $('#sAdm').hidden = false; $('#bAdm').hidden = true; };
 $('#spAdd').onclick = () => { const v = $('#spV').value.trim(), n = $('#spN').value.trim(); if (!v || !n) return;
-  ST.personal.push({ id: uid(), vorname: v, name: n, rang: $('#spR').value.trim(), fkt: $('#spF').value.trim() }); ST.personal.sort((a, b) => (a.name + a.vorname).localeCompare(b.name + b.vorname, 'de'));
-  ['#spV', '#spN', '#spR', '#spF'].forEach(x => $(x).value = ''); $('#spV').focus(); renderStamm(); };
+  ST.personal.push({ id: uid(), vorname: v, name: n, rang: $('#spR').value, fkt: $('#spF').value.trim() }); ST.personal.sort((a, b) => (a.name + a.vorname).localeCompare(b.name + b.vorname, 'de'));
+  ['#spV', '#spN', '#spF'].forEach(x => $(x).value = ''); $('#spV').focus(); renderStamm(); };
 $('#smAdd').onclick = () => { const n = $('#smN').value.trim(); if (!n) return; ST.mittel.push({ id: uid(), name: n, gattung: $('#smG').value.trim() || n.replace(/\s*\d+$/, ''), info: $('#smI').value.trim() });
   ['#smN', '#smG', '#smI'].forEach(x => $(x).value = ''); $('#smN').focus(); renderStamm(); };
 $('#spList').addEventListener('click', e => { const b = e.target.closest('[data-dp]'); if (b) { ST.personal.splice(+b.dataset.dp, 1); renderStamm(); } });

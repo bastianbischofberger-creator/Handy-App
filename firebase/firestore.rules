@@ -33,6 +33,10 @@ service cloud.firestore {
       allow read, write: if staff();
       match /{sub}/{doc} { allow read, write: if staff(); }
 
+      // Auftrag fürs Handy: jede Person liest nur ihren eigenen Eintrag
+      match /inbox/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+      }
       // Anmeldung im Depot: jede Person nur ihren eigenen Eintrag, nur mit richtigem 4-stelligem Code
       match /checkin/{uid} {
         allow read: if request.auth != null && request.auth.uid == uid;

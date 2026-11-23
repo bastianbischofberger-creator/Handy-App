@@ -30,6 +30,15 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .done{text-align:center;padding:10px 0}.done .big{font:700 30px/1.1 "Barlow Condensed",sans-serif;color:var(--ok)}
 .done svg{width:72px;height:72px}
 .stack{display:flex;flex-direction:column;gap:10px}
+.auf{border:3px solid var(--red);border-radius:14px;padding:12px 14px;margin:4px 0 6px}
+.auf.reko{border-color:#7a3db8}.auf .rol{display:inline-block;font:700 15px Barlow,sans-serif;color:#fff;background:var(--red);padding:3px 10px;border-radius:6px}.auf.reko .rol{background:#7a3db8}
+.auf h3{font:700 26px/1.1 "Barlow Condensed",sans-serif;margin:8px 0 2px}.auf .adr{font-size:18px;font-weight:600;margin:0 0 8px}
+.auf dl{display:grid;grid-template-columns:95px 1fr;gap:3px 8px;font-size:15px;margin:8px 0}.auf dt{color:var(--mute)}.auf dd{margin:0}
+.abtn{display:flex;align-items:center;justify-content:center;font:600 18px Barlow,sans-serif;min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);text-decoration:none}
+.auf .btns{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{background:#7a3db8;border-color:#7a3db8;color:#fff}
+.step{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);border-radius:10px;padding:3px;margin:6px 0 12px}.step button{width:52px;min-height:46px;padding:0;border:0;font-size:24px}.step b{font:700 26px "Barlow Condensed",sans-serif;min-width:40px;text-align:center}
+.new{animation:pulse 1s ease-in-out 4}@keyframes pulse{50%{box-shadow:0 0 0 10px rgba(200,16,46,.25)}}
 </style>
 </head>
 <body>
@@ -65,12 +74,36 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
       <div class="done"><svg viewBox="0 0 24 24" fill="none" stroke="#1d7a46" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7 12.5l3.2 3.2L17 9"/></svg>
         <div class="big">Du bist angemeldet</div><div class="mute" id="since"></div></div>
       <p class="err" id="dErr"></p>
+      <div id="auftrag" hidden></div>
+      <div id="noAuftrag" class="mute" style="text-align:center">Noch kein Auftrag. Lass diese Seite offen – ein Auftrag erscheint hier automatisch.</div>
       <button id="bOut" type="button">Abmelden (ich gehe)</button>
     </div>
     <button class="link" id="bEdit" type="button">Angaben ändern</button>
   </section>
+
+  <!-- Rückmeldung -->
+  <section id="sRm" hidden>
+    <h2 id="rmTitle"></h2>
+    <div id="rmReko">
+      <label>Lagebeurteilung<textarea id="rmLage" rows="3" style="display:block;width:100%;font:500 17px Barlow,sans-serif;padding:10px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field)"></textarea></label>
+      <span class="mute">Benötigte AdF</span>
+      <div class="step"><button type="button" id="rmMinus" aria-label="weniger">−</button><b id="rmAdf">0</b><button type="button" id="rmPlus" aria-label="mehr">+</button></div>
+      <span class="mute">Benötigte Mittel</span><div class="chips" id="rmMittel"></div>
+      <span class="mute">Geschätzte Dauer</span><div class="chips" id="rmDauer"></div>
+    </div>
+    <div id="rmErl"><label>Bemerkung (optional)<input id="rmText" placeholder="z. B. Baum entfernt, Strasse frei"></label></div>
+    <span class="mute">Foto (optional)</span>
+    <div class="stack" style="margin:6px 0 12px"><img id="rmImg" alt="" hidden style="max-width:100%;border-radius:10px"><button type="button" id="rmFotoB">Foto aufnehmen</button></div>
+    <input type="file" id="rmFoto" accept="image/*" capture="environment" hidden>
+    <p class="err" id="rmErr"></p>
+    <div class="stack">
+      <button class="ok" id="rmSend" type="button">Senden</button>
+      <button id="rmNone" type="button" hidden>Kein Einsatz nötig</button>
+      <button class="link" id="rmCancel" type="button">Abbrechen</button>
+    </div>
+  </section>
 </main>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.2.1"></script>
+<script type="module" src="checkin.js?v=0.3.0"></script>
 </body>
 </html>

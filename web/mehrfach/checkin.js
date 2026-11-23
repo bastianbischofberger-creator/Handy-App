@@ -64,12 +64,87 @@ function showMain() {
   $('#evName').textContent = PUB.name || 'Ereignis'; $('#who').textContent = P.name;
   const inn = MY && MY.status === 'an';
   $('#inForm').hidden = inn; $('#inDone').hidden = !inn; $('#mErr').textContent = ''; $('#dErr').textContent = '';
-  if (inn) $('#since').textContent = 'seit ' + hm(MY.tIn || MY.t) + ' Uhr'; else setTimeout(() => $('#code').focus(), 50);
+  if (inn) { $('#since').textContent = 'seit ' + hm(MY.tIn || MY.t) + ' Uhr'; watchInbox(); } else { stopInbox(); setTimeout(() => $('#code').focus(), 50); }
 }
-async function write(status, code, keepTime) {
+
+/* ---------- Auftrag aufs Handy ---------- */
+let inbox = null, unsub = null, lastAid = null, RM = null;
+const DAUER = ['< 30 Min.', '1 h', '2 h', '> 2 h'];
+function watchInbox() {
+  if (unsub) return;
+  unsub = F.onSnapshot(F.doc(fs, 'mf_ereignisse', PUB.eid, 'inbox', uid), d => { inbox = d.exists() ? d.data() : null; renderAuftrag(); }, () => {});
+}
+function stopInbox() { if (unsub) { unsub(); unsub = null; } inbox = null; renderAuftrag(); }
+const navUrl = a => a.lat != null ? (/iPhone|iPad|Macintosh/.test(navigator.userAgent) ? `https://maps.apple.com/?daddr=${a.lat},${a.lng}` : `https://www.google.com/maps/dir/?api=1&destination=${a.lat},${a.lng}`)
+  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.adresse)}`;
+const sent = () => (MY && MY.rm && inbox && MY.rm.aid === inbox.aid) ? MY.rm : null;
+function renderAuftrag() {
+  const a = inbox && inbox.aid ? inbox : null, box = $('#auftrag');
+  $('#noAuftrag').hidden = !!a || !(MY && MY.status === 'an'); box.hidden = !a;
+  document.querySelector('#inDone .done').hidden = !!a;
+  if (!a) { lastAid = null; return; }
+  const reko = a.rolle === 'reko', last = sent();
+  const rows = [['Priorität', a.prio], ['Beschreibung', a.text], ['Meldung von', [a.melder, a.tel].filter(Boolean).join(' · ')], ['Führung', a.fuehrungName], ['Team', (a.team || []).join(', ')],
+    ['Mittel', (a.mittel || []).join(', ')], ['Lage (Reko)', !reko ? a.lageReko : ''], ['Anhänge', a.anh ? a.anh + ' im KP (nur auf dem iPad)' : '']].filter(r => r[1]);
+  let btns = '';
+  if (a.fuehrung) {
+    if (!a.vorOrt) btns += `<button class="blue" data-rm="vorort">Vor Ort</button>`;
+    btns += reko ? `<button class="reko" data-rm="rekoEnd">Reko abschliessen</button>` : `<button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
+  }
+  btns += `<a class="abtn" href="${navUrl(a)}" target="_blank" rel="noopener">Navigation öffnen</a>`;
+  if (a.tel) btns += `<a class="abtn" href="tel:${esc(a.tel.replace(/\s/g, ''))}">Meldende Person anrufen</a>`;
+  box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${a.vorOrt ? ' <span class="mute">· vor Ort</span>' : ''}
+    <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht die Führung (★).</p>' : ''}${last && last.typ !== 'vorort' ? '<p class="mute" style="color:var(--ok);font-weight:600">✓ Rückmeldung gesendet</p>' : ''}
+    <div class="btns">${btns}</div></div>`;
+  if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} }
+}
+$('#auftrag').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return;
+  if (b.dataset.rm === 'vorort') return reply({ typ: 'vorort' });
+  openRm(b.dataset.rm); });
+async function reply(extra) {
+  const rm = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), aid: inbox.aid, t: Date.now(), ...extra };
+  try { await write('an', P.code, true, rm); renderAuftrag(); return true; } catch (e) { alert(errText(e)); return false; }
+}
+function openRm(typ) {
+  RM = { typ, adf: 0, mittel: {}, dauer: '', foto: null };
+  $('#sMain').hidden = true; $('#sRm').hidden = false; window.scrollTo(0, 0);
+  $('#rmTitle').textContent = `Auftrag ${inbox.nr}: ${typ === 'rekoEnd' ? 'Reko abschliessen' : 'Auftrag erledigt'}`;
+  $('#rmReko').hidden = typ !== 'rekoEnd'; $('#rmErl').hidden = typ === 'rekoEnd'; $('#rmNone').hidden = typ !== 'rekoEnd';
+  $('#rmLage').value = ''; $('#rmText').value = ''; $('#rmImg').hidden = true; $('#rmErr').textContent = ''; renderRm();
+}
+function renderRm() {
+  $('#rmAdf').textContent = RM.adf;
+  $('#rmMittel').innerHTML = (inbox.gattungen || []).map(g => `<button type="button" data-g="${esc(g)}" class="${RM.mittel[g] ? 'on' : ''}">${RM.mittel[g] > 1 ? RM.mittel[g] + '× ' : ''}${esc(g)}</button>`).join('');
+  $('#rmDauer').innerHTML = DAUER.map(d => `<button type="button" data-d="${d}" class="${RM.dauer === d ? 'on' : ''}">${d}</button>`).join('');
+}
+$('#rmMinus').onclick = () => { RM.adf = Math.max(0, RM.adf - 1); renderRm(); };
+$('#rmPlus').onclick = () => { RM.adf++; renderRm(); };
+$('#rmMittel').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; const g = b.dataset.g, n = RM.mittel[g] || 0; RM.mittel[g] = n >= 3 ? 0 : n + 1; if (!RM.mittel[g]) delete RM.mittel[g]; renderRm(); });
+$('#rmDauer').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { RM.dauer = RM.dauer === b.dataset.d ? '' : b.dataset.d; renderRm(); } });
+$('#rmFotoB').onclick = () => $('#rmFoto').click();
+$('#rmFoto').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+    const sc = Math.min(1, 1024 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); let q = .6, d = c.toDataURL('image/jpeg', q); while (d.length > 600000 && q > .25) { q -= .1; d = c.toDataURL('image/jpeg', q); }
+    RM.foto = d; $('#rmImg').src = d; $('#rmImg').hidden = false; $('#rmFotoB').textContent = 'Anderes Foto';
+  } catch (err) { $('#rmErr').textContent = 'Foto konnte nicht gelesen werden.'; }
+});
+const closeRm = () => { $('#sRm').hidden = true; showMain(); };
+$('#rmCancel').onclick = closeRm;
+async function sendRm(keinEinsatz) {
+  const x = RM.typ === 'rekoEnd' ? { typ: 'rekoEnd', lage: $('#rmLage').value.trim(), adf: RM.adf, mittel: RM.mittel, dauer: RM.dauer, keinEinsatz: !!keinEinsatz } : { typ: 'erledigt', text: $('#rmText').value.trim() };
+  if (RM.foto) x.foto = RM.foto;
+  $('#rmSend').disabled = true; if (await reply(x)) closeRm(); $('#rmSend').disabled = false;
+}
+$('#rmSend').onclick = () => sendRm(false);
+$('#rmNone').onclick = () => { if (confirm('Kein Einsatz nötig – Auftrag abschliessen?')) sendRm(true); };
+async function write(status, code, keepTime, rm) {
   const now = Date.now();
   const doc = { name: P.name, vorname: P.vorname, nachname: P.nachname, rang: P.rang, masch: !!P.masch, tel: P.tel,
-    status, code, t: now, tIn: status === 'an' ? (keepTime && MY && MY.tIn ? MY.tIn : now) : (MY && MY.tIn) || null };
+    status, code, t: rm && MY ? MY.t : now, tIn: status === 'an' ? (keepTime && MY && MY.tIn ? MY.tIn : now) : (MY && MY.tIn) || null, rm: rm || (MY && MY.rm) || null };
   await withTimeout(F.setDoc(F.doc(fs, 'mf_ereignisse', PUB.eid, 'checkin', uid), doc), 12000);
   MY = doc;
 }
