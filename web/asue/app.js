@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.0.7';
+const VERSION = '1.1.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -552,10 +552,10 @@ function start() {
   BE.watchSettings(s => { S.settings = { ...DEF, ...s }; render(); });
   BE.watchList(l => {
     S.list = l; renderList();
-    if (!S.eid) { const open = l.find(e => !e.closed); if (open) openE(open.id); }
+    if (!S.eid) { const want = LP.get('eid'); const hit = l.find(e => e.id === want) || l.find(e => !e.closed); if (hit) openE(hit.id); }
   });
   const last = LP.get('eid');
-  if (last && (!BE.has || BE.has(last))) openE(last);
+  if (last && BE.has && BE.has(last)) openE(last);
   render();
 }
 $('#fLogin').addEventListener('submit', async e => {
