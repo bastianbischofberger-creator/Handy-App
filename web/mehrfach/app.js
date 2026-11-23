@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -213,7 +213,17 @@ function applyReply(c) {
   rmSeen.add(m.id);
   const who = c.name || 'Unbekannt', pid = ciPid(c);
   a.rms = [...(a.rms || []), m.id];
-  if (m.foto) a.fotos = [...(a.fotos || []), { t: m.t, data: m.foto, von: who }];
+  /* Fotos vom Handy als Anhang beim Auftrag speichern – damit sieht sie auch der nächste Trupp */
+  const fotos = (m.fotos || (m.foto ? [m.foto] : [])).filter(Boolean);
+  fotos.forEach((d, i) => {
+    const fid = 'r' + m.id + '_' + i; if ((a.anh || []).some(f => f.id === fid)) return;
+    const b64 = String(d).split(',')[1] || '', size = Math.round(b64.length * .75), name = `Foto ${hm(m.t)} ${who}${fotos.length > 1 ? ' ' + (i + 1) : ''}.jpg`;
+    a.anh = [...(a.anh || []), { id: fid, name, type: 'image/jpeg', size, cloud: true, von: who, t: m.t }];
+    const parts = []; for (let k = 0; k < b64.length; k += CHUNK) parts.push(b64.slice(k, k + CHUNK));
+    if (BE.putFile) BE.putFile(S.eid, fid, { name, type: 'image/jpeg', size, aid: a.id }, parts).catch(() => {});
+    FILES.put(fid, b64ToBlob(b64, 'image/jpeg')).catch(() => {});
+  });
+  if (fotos.length && m.typ !== 'foto') log(`Auftrag ${a.nr}: ${fotos.length} Foto${fotos.length > 1 ? 's' : ''} von ${who}`);
   if (m.typ === 'vorort') {
     if (a.status === 'reko') { if (a.reko) a.reko.vorOrt = m.t; log(`Auftrag ${a.nr}: Reko vor Ort (${who}, Handy)`); }
     else if (a.status === 'bew' && a.sub !== 'vorort') { a.sub = 'vorort'; a.tVorOrt = m.t; log(`Auftrag ${a.nr}: vor Ort tätig (${who}, Handy)`); }
@@ -225,6 +235,7 @@ function applyReply(c) {
   } else if (m.typ === 'erledigt' && a.status === 'bew') {
     release(a); a.status = 'abg'; a.tAbg = m.t; a.abschluss = m.text || ''; log(`Auftrag ${a.nr} erledigt gemeldet (${who}, Handy)${m.text ? ': ' + m.text : ''}`);
   } else if (m.typ === 'text') { log(`Auftrag ${a.nr}: Meldung von ${who}: ${m.text}`); }
+  else if (m.typ === 'foto') { log(`Auftrag ${a.nr}: ${fotos.length} Foto${fotos.length > 1 ? 's' : ''} von ${who}`); }
   else log(`Auftrag ${a.nr}: Meldung «${m.typ}» von ${who} nicht übernommen (Auftrag ist ${STL[a.status]})`);
   saveA(a);
 }
@@ -545,7 +556,8 @@ function cardHtml(a) {
   if (a.status === 'pendent') extra += a.rekoDone ? `<span class="tag s-reko">Reko erfolgt${a.reko ? ' · ' + esc(a.reko.wer.join(', ')) : ''}</span>` : '<span class="tag s-ohne">Ohne Reko</span>';
   if (a.status === 'bew') extra += st === 'vorort' ? `<span class="tag s-vorort">Vor Ort tätig · seit ${hm(a.tVorOrt)}</span>` : '<span class="tag s-disp">Disponiert</span>';
   let inf = '';
-  if (a.status === 'offen') inf = [a.quelle + (a.melder ? ' · ' + a.melder : ''), (a.anh || []).length ? (a.anh.length + ' Anhang' + (a.anh.length > 1 ? 'e' : '')) : ''].filter(Boolean).join(' · ');
+  if (a.status === 'offen') inf = [a.quelle + (a.melder ? ' · ' + a.melder : '')].join('');
+  const nA = (a.anh || []).length; if (nA) inf = [inf, '📎 ' + nA].filter(Boolean).join(' · ');
   if (a.status === 'pendent' && a.bedarf) inf = 'Benötigt: ' + (bedarfText(a.bedarf) || '–') + (a.dauer ? ' · ca. ' + a.dauer : '');
   if (a.status === 'bew') inf = assignedText(a);
   if (a.status === 'abg' && a.abschluss) inf = a.abschluss;

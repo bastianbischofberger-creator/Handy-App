@@ -35,6 +35,8 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .auf h3{font:700 26px/1.1 "Barlow Condensed",sans-serif;margin:8px 0 2px}.auf .adr{font-size:18px;font-weight:600;margin:0 0 8px}
 .auf dl{display:grid;grid-template-columns:95px 1fr;gap:3px 8px;font-size:15px;margin:8px 0}.auf dt{color:var(--mute)}.auf dd{margin:0}
 .abtn{display:flex;align-items:center;justify-content:center;font:600 18px Barlow,sans-serif;min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);text-decoration:none}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}.thumb{position:relative}.thumb img{width:96px;height:96px;object-fit:cover;border-radius:10px}
+.thumb button{position:absolute;top:-8px;right:-8px;width:32px;min-height:32px;padding:0;border-radius:50%;background:#16181a;color:#fff;font-size:18px;border:2px solid #fff}
 .files{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px}.files button{text-align:left;min-height:46px;font-size:16px;font-weight:500}.files small{color:var(--mute)}
 .auf .btns{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{background:#7a3db8;border-color:#7a3db8;color:#fff}
@@ -99,9 +101,10 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
       <span class="mute">Geschätzte Dauer</span><div class="chips" id="rmDauer"></div>
     </div>
     <div id="rmErl"><label>Bemerkung (optional)<input id="rmText" placeholder="z. B. Baum entfernt, Strasse frei"></label></div>
-    <span class="mute">Foto (optional)</span>
-    <div class="stack" style="margin:6px 0 12px"><img id="rmImg" alt="" hidden style="max-width:100%;border-radius:10px"><button type="button" id="rmFotoB">Foto aufnehmen</button></div>
+    <span class="mute">Fotos (bis 3) – werden beim Auftrag gespeichert</span>
+    <div class="stack" style="margin:6px 0 12px"><div id="rmThumbs" class="thumbs"></div><button type="button" id="rmFotoB">📷 Foto aufnehmen</button></div>
     <input type="file" id="rmFoto" accept="image/*" capture="environment" hidden>
+    <input type="file" id="qFoto" accept="image/*" capture="environment" hidden>
     <p class="err" id="rmErr"></p>
     <div class="stack">
       <button class="ok" id="rmSend" type="button">Senden</button>
@@ -110,7 +113,8 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
     </div>
   </section>
 </main>
+<div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.4.0"></script>
+<script type="module" src="checkin.js?v=0.5.0"></script>
 </body>
 </html>

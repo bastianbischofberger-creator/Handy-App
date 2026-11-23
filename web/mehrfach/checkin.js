@@ -92,11 +92,12 @@ function renderAuftrag() {
     if (!a.vorOrt) btns += `<button class="blue" data-rm="vorort">Vor Ort</button>`;
     btns += reko ? `<button class="reko" data-rm="rekoEnd">Reko abschliessen</button>` : `<button class="ok" data-rm="erledigt">Auftrag erledigt</button>`;
   }
+  btns += `<button type="button" data-cam="1">📷 Foto zum Auftrag</button>`;
   btns += `<a class="abtn" href="${navUrl(a)}" target="_blank" rel="noopener">Navigation öffnen</a>`;
   if (a.tel) btns += `<a class="abtn" href="tel:${esc(a.tel.replace(/\s/g, ''))}">Meldende Person anrufen</a>`;
   box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${a.vorOrt ? ' <span class="mute">· vor Ort</span>' : ''}
     <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    ${files.length ? `<div class="mute">Anhänge</div><div class="files">${files.map((f, i) => `<button type="button" data-f="${i}">📄 ${esc(f.name)} <small>${kbs(f.size)}</small></button>`).join('')}</div>` : ''}
+    ${files.length ? `<div class="mute">Anhänge</div><div class="files">${files.map((f, i) => `<button type="button" data-f="${i}">${(f.type || '').startsWith('image/') ? '🖼️' : '📄'} ${esc(f.name)} <small>${kbs(f.size)}</small></button>`).join('')}</div>` : ''}
     ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht die Führung (★).</p>' : ''}${last && last.typ !== 'vorort' ? '<p class="mute" style="color:var(--ok);font-weight:600">✓ Rückmeldung gesendet</p>' : ''}
     <div class="btns">${btns}</div></div>`;
   if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} }
@@ -117,7 +118,7 @@ async function openFile(f) {
   } catch (e) { $('#fvBody').innerHTML = `<p class="err">${e && e.code === 'permission-denied' ? 'Kein Zugriff auf den Anhang.' : 'Anhang konnte nicht geladen werden. Bitte nochmals versuchen.'}</p>`; }
 }
 $('#fvClose').onclick = () => { $('#fv').hidden = true; };
-$('#auftrag').addEventListener('click', e => { const fb = e.target.closest('[data-f]'); if (fb) return openFile(inbox.anh[+fb.dataset.f]); });
+$('#auftrag').addEventListener('click', e => { const fb = e.target.closest('[data-f]'); if (fb) return openFile(inbox.anh[+fb.dataset.f]); if (e.target.closest('[data-cam]')) $('#qFoto').click(); });
 $('#auftrag').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return;
   if (b.dataset.rm === 'vorort') return reply({ typ: 'vorort' });
   openRm(b.dataset.rm); });
@@ -126,11 +127,11 @@ async function reply(extra) {
   try { await write('an', P.code, true, rm); renderAuftrag(); return true; } catch (e) { alert(errText(e)); return false; }
 }
 function openRm(typ) {
-  RM = { typ, adf: 0, mittel: {}, dauer: '', foto: null };
+  RM = { typ, adf: 0, mittel: {}, dauer: '', fotos: [] };
   $('#sMain').hidden = true; $('#sRm').hidden = false; window.scrollTo(0, 0);
   $('#rmTitle').textContent = `Auftrag ${inbox.nr}: ${typ === 'rekoEnd' ? 'Reko abschliessen' : 'Auftrag erledigt'}`;
   $('#rmReko').hidden = typ !== 'rekoEnd'; $('#rmErl').hidden = typ === 'rekoEnd'; $('#rmNone').hidden = typ !== 'rekoEnd';
-  $('#rmLage').value = ''; $('#rmText').value = ''; $('#rmImg').hidden = true; $('#rmErr').textContent = ''; renderRm();
+  $('#rmLage').value = ''; $('#rmText').value = ''; $('#rmErr').textContent = ''; renderRm(); renderThumbs();
 }
 function renderRm() {
   $('#rmAdf').textContent = RM.adf;
@@ -141,21 +142,39 @@ $('#rmMinus').onclick = () => { RM.adf = Math.max(0, RM.adf - 1); renderRm(); };
 $('#rmPlus').onclick = () => { RM.adf++; renderRm(); };
 $('#rmMittel').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; const g = b.dataset.g, n = RM.mittel[g] || 0; RM.mittel[g] = n >= 3 ? 0 : n + 1; if (!RM.mittel[g]) delete RM.mittel[g]; renderRm(); });
 $('#rmDauer').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { RM.dauer = RM.dauer === b.dataset.d ? '' : b.dataset.d; renderRm(); } });
+/* Foto verkleinern (max. ~250 KB, damit bis 3 Fotos in eine Meldung passen) */
+async function shrink(f) {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+  const sc = Math.min(1, 1280 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); let q = .65, d = c.toDataURL('image/jpeg', q);
+  while (d.length > 330000 && q > .2) { q -= .08; d = c.toDataURL('image/jpeg', q); }
+  if (d.length > 330000) { const c2 = document.createElement('canvas'); c2.width = c.width / 2; c2.height = c.height / 2; c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height); d = c2.toDataURL('image/jpeg', .6); }
+  return d;
+}
+const MAXF = 3;
+function renderThumbs() {
+  $('#rmThumbs').innerHTML = RM.fotos.map((d, i) => `<span class="thumb"><img src="${d}" alt="Foto ${i + 1}"><button type="button" data-x="${i}" aria-label="Foto entfernen">×</button></span>`).join('');
+  $('#rmFotoB').hidden = RM.fotos.length >= MAXF; $('#rmFotoB').textContent = RM.fotos.length ? '📷 Weiteres Foto' : '📷 Foto aufnehmen';
+}
+$('#rmThumbs').addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) { RM.fotos.splice(+b.dataset.x, 1); renderThumbs(); } });
 $('#rmFotoB').onclick = () => $('#rmFoto').click();
 $('#rmFoto').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
-    const sc = Math.min(1, 1024 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); let q = .6, d = c.toDataURL('image/jpeg', q); while (d.length > 600000 && q > .25) { q -= .1; d = c.toDataURL('image/jpeg', q); }
-    RM.foto = d; $('#rmImg').src = d; $('#rmImg').hidden = false; $('#rmFotoB').textContent = 'Anderes Foto';
-  } catch (err) { $('#rmErr').textContent = 'Foto konnte nicht gelesen werden.'; }
+  try { RM.fotos.push(await shrink(f)); renderThumbs(); } catch (err) { $('#rmErr').textContent = 'Foto konnte nicht gelesen werden.'; }
 });
+/* Foto jederzeit zum Auftrag (alle im Team) */
+$('#qFoto').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f || !inbox || !inbox.aid) return;
+  toast('Foto wird gesendet …');
+  try { const d = await shrink(f); if (await reply({ typ: 'foto', fotos: [d] })) toast('✓ Foto beim Auftrag gespeichert'); } catch (err) { toast('Foto konnte nicht gesendet werden.'); }
+});
+let tT = null;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(tT); tT = setTimeout(() => el.hidden = true, 3500); }
 const closeRm = () => { $('#sRm').hidden = true; showMain(); };
 $('#rmCancel').onclick = closeRm;
 async function sendRm(keinEinsatz) {
   const x = RM.typ === 'rekoEnd' ? { typ: 'rekoEnd', lage: $('#rmLage').value.trim(), adf: RM.adf, mittel: RM.mittel, dauer: RM.dauer, keinEinsatz: !!keinEinsatz } : { typ: 'erledigt', text: $('#rmText').value.trim() };
-  if (RM.foto) x.foto = RM.foto;
+  if (RM.fotos.length) x.fotos = RM.fotos;
   $('#rmSend').disabled = true; if (await reply(x)) closeRm(); $('#rmSend').disabled = false;
 }
 $('#rmSend').onclick = () => sendRm(false);
