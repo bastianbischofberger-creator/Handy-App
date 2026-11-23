@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -155,17 +155,17 @@ const STL = { bereit: 'Bereit', innen: 'Im Einsatz', rueckzug: 'Rückzug', draus
 function card(T) {
   const mem = T.members.map((m, i) => `<tr id="m-${T.id}-${i}"><td>${esc(m.name)}</td><td class="n">${m.p0}</td><td class="n"><b id="p-${T.id}-${i}">${m.p0}</b></td><td class="n" id="r-${T.id}-${i}">–</td><td class="n" id="z-${T.id}-${i}">${rzOf(m)}</td></tr>`).join('');
   const B = {
-    bereit: `<button data-a="in" class="pri">Eingang – Trupp geht rein</button><button data-a="edit">Bearbeiten</button><button data-a="del" class="ghost">Entfernen</button>`,
-    innen: `<button data-a="druck" class="pri">Druck erfassen</button><button data-a="rz" class="warnb">Rückzug</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
-    rueckzug: `<button data-a="druck" class="pri">Druck erfassen</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
+    bereit: `<button data-a="in" class="pri" data-s="Eingang">Eingang – Trupp geht rein</button><button data-a="edit">Bearbeiten</button><button data-a="del" class="ghost">Entfernen</button>`,
+    innen: `<button data-a="druck" class="pri" data-s="Druck">Druck erfassen</button><button data-a="rz" class="warnb">Rückzug</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
+    rueckzug: `<button data-a="druck" class="pri" data-s="Druck">Druck erfassen</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
     draussen: `<button data-a="hide" class="ghost">Von der Tafel nehmen</button>`
   }[T.status];
   return `<article class="card" id="c-${T.id}" data-id="${T.id}">
   <header><div class="nr">${esc(T.nr)}</div><div class="hd">
-    <div class="row"><span class="kanal">Funk ${esc(T.kanal || '–')}</span><span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
+    <div class="row"><span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span><span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
     <div class="auftrag">${esc(T.auftrag || 'Kein Auftrag erfasst')}</div></div></header>
   <table class="mt"><thead><tr><th>Name</th><th>Start</th><th>Druck</th><th>bar/Min.</th><th>RZ-Druck</th></tr></thead><tbody>${mem}</tbody></table>
-  <div class="kpis"><div><span>Im Einsatz</span><b id="k1-${T.id}">–</b></div><div><span>Nächste Kontrolle</span><b id="k2-${T.id}">–</b></div><div><span>${T.status === 'draussen' ? 'Raus um' : 'Rückzug spätestens'}</span><b id="k3-${T.id}">–</b></div></div>
+  <div class="kpis"><div><span data-s="Einsatz">Im Einsatz</span><b id="k1-${T.id}">–</b></div><div><span data-s="Kontrolle">Nächste Kontrolle</span><b id="k2-${T.id}">–</b></div><div><span data-s="${T.status === 'draussen' ? 'Raus' : 'Rückzug'}">${T.status === 'draussen' ? 'Raus um' : 'Rückzug spätestens'}</span><b id="k3-${T.id}">–</b></div></div>
   <div class="btns">${B}</div></article>`;
 }
 function render() {
@@ -181,6 +181,7 @@ function render() {
   $('#bMute').innerHTML = LP.get('mute')
     ? SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'
     : SPK + '<path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/></svg>Ton an';
+  const cmp = LP.get('view') !== 'gross'; document.body.classList.toggle('compact', cmp); $('#bView').textContent = cmp ? 'Ansicht: Kompakt' : 'Ansicht: Gross';
   $('#bMute').title = LP.get('mute') ? 'Ton ist aus – tippen zum Einschalten' : 'Ton ist an – tippen zum Ausschalten';
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
@@ -381,6 +382,8 @@ $('#dQR').addEventListener('close', stopScan);
 /* ---------- Aktionen auf der Tafel ---------- */
 $('#grid').addEventListener('click', e => {
   if (e.target.closest('[data-g="add"]')) return openTeam();
+  const hd = e.target.closest('.card header');
+  if (hd && document.body.classList.contains('compact')) { const T0 = team(hd.closest('.card').dataset.id); if (T0 && T0.status !== 'draussen') openTeam(T0.id); return; }
   const b = e.target.closest('button[data-a]'); if (!b) return;
   const id = b.closest('.card').dataset.id, T = team(id), now = Date.now(), a = b.dataset.a;
   if (!T) return;
@@ -400,6 +403,7 @@ $('#grid').addEventListener('click', e => {
   else if (a === 'del') confirmBox('Trupp ' + T.nr + ' entfernen?', 'Der Trupp wird gelöscht, er war noch nicht im Einsatz.', () => { BE.delTeam(S.eid, id); log(`Trupp ${T.nr} gelöscht`); });
 });
 $('#bAdd').onclick = () => openTeam();
+$('#bView').onclick = () => { LP.set('view', LP.get('view') === 'gross' ? 'kompakt' : 'gross'); render(); };
 $('#bSet').onclick = openSettings;
 $('#bMute').onclick = () => { LP.set('mute', !LP.get('mute')); render(); if (!LP.get('mute')) { initAudio(); beep(1); } };
 let metaT = null;
