@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -151,7 +151,7 @@ function renderChips() { const v = $('#fTeam').elements.kanal.value.trim();
   $('#kChips').innerHTML = presets().map(k => `<button type="button" data-k="${esc(k)}" class="${k === v ? 'on' : ''}">${esc(k)}</button>`).join(''); }
 $('#kChips').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; $('#fTeam').elements.kanal.value = b.dataset.k; renderChips(); });
 $('#fTeam').elements.kanal.addEventListener('input', renderChips);
-const AXE = '<svg class="axe" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 21.8 2.2 20.4l10-10 1.4 1.4z" fill="currentColor"/><path d="M11.2 6.6 14.9 2.9c2.6.2 5 1.6 6.6 3.7l-3.9 3.9-2.2-.6-.8 2.9-3.6-3.6 2.9-.8z" fill="currentColor"/><path d="M11.2 6.6 9 4.4l1.8-.4z" fill="currentColor"/></svg>';
+const AXE = '<i class="axe" aria-hidden="true"></i>';
 const STL = { bereit: 'Bereit', innen: 'Im Einsatz', rueckzug: 'Rückzug', draussen: 'Draussen' };
 function card(T) {
   const mem = T.members.map((m, i) => `<tr id="m-${T.id}-${i}"><td>${esc(m.name)}</td><td class="n">${m.p0}</td><td class="n"><b id="p-${T.id}-${i}">${m.p0}</b></td><td class="n" id="r-${T.id}-${i}">–</td><td class="n" id="z-${T.id}-${i}">${rzOf(m)}</td></tr>`).join('');
