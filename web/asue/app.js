@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -330,6 +330,14 @@ $('#fTeam').addEventListener('submit', e => {
   const f = e.target, mem = [];
   for (let i = 0; i < 3; i++) { const n = f.elements['n' + i].value.trim(); if (n) mem.push({ name: n, p0: parseInt(f.elements['p' + i].value) || S.settings.defP0, readings: [], pArr: null }); }
   if (!mem.length) { e.preventDefault(); $('#tErr').textContent = 'Mindestens einen Namen erfassen.'; return; }
+  { const nr = f.elements.nr.value.trim(), act = S.teams.filter(t => t.id !== editId && !t.hidden && t.status !== 'draussen');
+    const norm = x => String(x || '').trim().toLowerCase();
+    const dupT = act.find(t => norm(t.nr) === norm(nr));
+    if (dupT) { e.preventDefault(); $('#tErr').textContent = `Trupp ${nr} ist bereits aktiv (${STL[dupT.status]}). Bitte eine andere Nummer wählen.`; return; }
+    const names = mem.map(m => norm(m.name)), dupN = names.find((n, i) => names.indexOf(n) !== i);
+    if (dupN) { e.preventDefault(); $('#tErr').textContent = `${mem.find(m => norm(m.name) === dupN).name} ist zweimal im Trupp erfasst.`; return; }
+    for (const m of mem) { const t = act.find(t => t.members.some(x => norm(x.name) === norm(m.name)));
+      if (t) { e.preventDefault(); $('#tErr').textContent = `${m.name} ist bereits in Trupp ${t.nr} (${STL[t.status]}).`; return; } } }
   const T = editId && team(editId), kanal = f.elements.kanal.value.trim(), auftrag = f.elements.auftrag.value.trim(), zusatz = f.elements.zusatz.hidden ? '' : f.elements.zusatz.value.trim(), stock = f.elements.stock.value.trim(), rett = f.elements.rett.checked;
   if (T) {
     const ch = []; if ((T.kanal || '') !== kanal) ch.push('Funk ' + (kanal || '–')); if ((T.auftrag || '') !== auftrag || (T.zusatz || '') !== zusatz) ch.push('Auftrag: ' + (aufText({ auftrag, zusatz }) || '–')); if ((T.stock || '') !== stock) ch.push('Stockwerk ' + (stock || '–')); if (!!T.rett !== rett) ch.push(rett ? 'als Rettungstrupp markiert' : 'nicht mehr Rettungstrupp');
