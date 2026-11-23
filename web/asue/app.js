@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.2.3';
+const VERSION = '2.2.4';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -319,7 +319,7 @@ $('#fImport').addEventListener('change', async e => {
     const n = BE.importAll(o); $('#eMsg').textContent = n + ' Einsatz/Einsätze eingelesen bzw. ergänzt.'; }
   catch (err) { $('#eMsg').textContent = 'Einlesen fehlgeschlagen: ' + err.message; }
 });
-$('#bClose').onclick = () => {
+$('#bClose').onclick = () => { $('#dE').close();
   const inside = S.teams.filter(t => t.status === 'innen' || t.status === 'rueckzug').length;
   confirmBox('Einsatz abschliessen?', inside ? `Achtung: ${inside} Trupp(s) sind noch nicht als draussen erfasst.` : 'Der Einsatz wird archiviert. Du kannst ihn unter «Einsätze» jederzeit wieder öffnen und das Protokoll exportieren.', () => {
     S.meta.closed = true; S.meta.end = Date.now(); saveMeta(); log('Einsatz abgeschlossen');

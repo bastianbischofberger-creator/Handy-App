@@ -112,6 +112,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .plist .pn{flex:1}.plist .pr{display:inline-block;min-width:42px;font-weight:700;color:var(--mute)}.plist .pnr{font-family:"Barlow Condensed",sans-serif;color:var(--mute);margin-left:6px}
 .plist button{min-height:36px;padding:4px 10px;font-size:14px}
 @media(max-width:600px){.pform{grid-template-columns:1fr 1fr}}
+.ecur{margin:-4px 0 10px}.ecur button{width:100%}
 .elist div{flex:1}.elist button{min-height:40px;padding:6px 12px}.elist b{display:block}.elist span{font-size:14px;color:var(--mute)}
 .tag{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--field);border:1px solid var(--line);white-space:nowrap}
 .btnlbl{display:inline-flex;align-items:center;font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;margin:0}
@@ -249,7 +250,7 @@ label select+input{margin-top:6px}
   <div class="banner" id="banner" hidden></div>
   <div class="board"><aside id="bau" class="bau"></aside><div class="grid" id="grid"></div></div>
   <section class="logp">
-    <div class="row"><h2>Protokoll</h2><span class="tag" id="eState"></span><button id="bClose" class="ghost">Einsatz abschliessen</button></div>
+    <div class="row"><h2>Protokoll</h2><span class="tag" id="eState"></span></div>
     <ul id="log"></ul>
   </section>
   <p class="foot">Hilfsmittel für den Atemschutzüberwacher – ersetzt weder dessen Verantwortung noch die regelmässige Druckabfrage per Funk. Die berechneten Zeiten sind Schätzungen aus dem gemessenen Verbrauch. Halte eine analoge Tafel als Rückfallebene bereit.</p>
@@ -346,6 +347,7 @@ label select+input{margin-top:6px}
 
 <dialog id="dE"><div class="dpad">
   <h3>Einsätze</h3>
+  <div class="ecur"><button id="bClose" class="warnb">Geöffneten Einsatz abschliessen</button></div>
   <ul class="elist" id="elist"></ul>
   <p class="hint" style="margin-top:12px">Die Daten liegen nur auf diesem Gerät. Sichere sie regelmässig als Datei – damit kannst du sie auch auf ein anderes Gerät übertragen.</p>
   <div class="row"><button id="bBackup">Daten sichern</button><label id="lImport" class="btnlbl">Daten laden<input type="file" id="fImport" accept=".json,application/json" hidden></label></div>
@@ -395,9 +397,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.2.3"></script>
+<script src="config.js?v=2.2.4"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.2.3"></script>
+<script src="app.js?v=2.2.4"></script>
 </body>
 </html>
