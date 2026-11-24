@@ -1,8 +1,8 @@
 /* Service Worker der Startseite: macht sie offline verfügbar.
    Nach jedem Update der Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'start-1.0.0';
+const CACHE = 'start-1.0.1';
 const SHELL = ['./', './index.html', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
-  '../asue/icon-192.png', '../mehrfach/icon-192.png', '../icon-192.png'];
+  '../asue/icon-192.png', '../mehrfach/icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))));
