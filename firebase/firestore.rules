@@ -5,13 +5,15 @@ rules_version = '2';
 // WICHTIG: Zuerst diese Regeln veröffentlichen, erst danach die anonyme Anmeldung einschalten.
 // «staff» = angemeldet mit E-Mail/Passwort (eure Konten). Anonyme Anmeldung (QR-Code im Depot)
 // darf nur das laufende Ereignis sehen und sich selbst an-/abmelden – sonst nichts.
-// Falls eure bisherigen Regeln nur bestimmte E-Mail-Adressen zulassen, diese Bedingung in staff() übernehmen.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Zugelassene Konten fürs KP (iPads/Notebooks) – weitere Adressen in die Liste aufnehmen
     function staff() {
-      return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.auth.token.email in ['bastian.bischofberger@bluewin.ch'];
     }
 
     // ---------- ASÜ-App ----------
