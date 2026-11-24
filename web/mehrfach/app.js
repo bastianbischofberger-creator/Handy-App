@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.9.0';
+const VERSION = '0.9.1';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -127,7 +127,7 @@ async function CloudBackend(fbConfig) {
       const st = { meta: {}, auftraege: [], res: [], log: [], checkin: [] }, p = {};
       const emit = () => { SY.pending = Object.values(p).some(Boolean); SY.error = ''; cb(st); renderSync(); };
       const o = { includeMetadataChanges: true };
-      subs.push(F.onSnapshot(F.doc(E, id), o, d => { st.meta = d.exists() ? d.data() : {}; p.m = d.metadata.hasPendingWrites; emit(); }, fail));
+      subs.push(F.onSnapshot(F.doc(E, id), o, d => { st.meta = d.exists() ? d.data() : {}; st.missing = !d.exists() && !d.metadata.fromCache; p.m = d.metadata.hasPendingWrites; emit(); }, fail));
       for (const c of COLLS) subs.push(F.onSnapshot(F.collection(E, id, c), o, q => { st[c] = q.docs.map(d => c === 'checkin' ? { ...d.data(), id: d.id } : d.data()); if (c === 'log') st.log.sort((a, b) => a.t - b.t); p[c] = q.metadata.hasPendingWrites; emit(); }, fail));
     },
     create(meta) { const id = uid(); w(F.setDoc(F.doc(E, id), clone(meta))); return id; },
@@ -173,7 +173,10 @@ async function openFile(f) {
 /* ---------- Ereignis & Daten ---------- */
 function openE(id) {
   S.eid = id; LP.set('eid', id);
-  BE.open(id, st => { S.meta = st.meta || {}; S.A = st.auftraege || []; S.res = {}; (st.res || []).forEach(r => S.res[r.id] = r);
+  BE.open(id, st => {
+    /* Ereignis gibt es nicht (mehr), z. B. alte Kennung aus einem Test ohne Synchronisation → zurück zum Start */
+    if (st.missing && S.eid === id) { S.eid = null; LP.set('eid', null); S.meta = {}; S.A = []; S.res = {}; S.ci = {}; S.log = []; go('start'); return; }
+    S.meta = st.meta || {}; S.A = st.auftraege || []; S.res = {}; (st.res || []).forEach(r => S.res[r.id] = r);
     S.ci = {}; (st.checkin || []).forEach(c => S.ci[c.id] = c); S.log = st.log || [];
     if (S.meta.created && !S.meta.closed && !S.meta.code) { S.meta.code = newCode(); saveMeta(); }
     processCheckins(); render(); publish(); syncInbox(); });
