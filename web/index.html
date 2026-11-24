@@ -23,12 +23,12 @@
 
     #top { position: absolute; z-index: 1000; left: 12px; right: 12px;
       top: calc(env(safe-area-inset-top) + 8px); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-    #topRow { display: flex; justify-content: flex-end; align-items: flex-start; }
+    #topRow { display: flex; justify-content: flex-start; align-items: flex-start; }
     #logo { width: 52px; height: 52px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
     /* Hinweis erscheint nur beim Einfügen */
     #hint { background: rgba(0,0,0,.7); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
     #hint:empty { display: none; }
-    #addrToast { flex: 1; min-width: 0; margin-right: 8px; background: #fff; color: #111; border-left: 6px solid #D32F2F; border-radius: 10px; padding: 9px 12px;
+    #addrToast { flex: 1; min-width: 0; margin-left: 8px; background: #fff; color: #111; border-left: 6px solid #D32F2F; border-radius: 10px; padding: 9px 12px;
       font-size: 15px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.3); transition: opacity .4s; }
     #addrToast small { display: block; font-weight: 400; color: #555; font-size: 12px; }
     #addrToast:empty { display: none; }
@@ -166,8 +166,8 @@
 
   <div id="top">
     <div id="topRow">
-      <div id="addrToast"></div>
       <img id="logo" src="logo.png" alt="Logo" />
+      <div id="addrToast"></div>
     </div>
     <div id="hint"></div>
   </div>
