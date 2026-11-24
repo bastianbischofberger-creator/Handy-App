@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'asue-2.3.2';
+const CACHE = 'asue-2.3.3';
 const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './vendor/jspdf.umd.min.js', './vendor/jsQR.js', './rettung.png'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];
@@ -15,7 +15,7 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('asue-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 const handled = u => u.origin === location.origin || u.hostname === 'cdnjs.cloudflare.com' || u.hostname === 'fonts.googleapis.com' ||
   u.hostname === 'fonts.gstatic.com' || (u.hostname === 'www.gstatic.com' && u.pathname.startsWith('/firebasejs/'));

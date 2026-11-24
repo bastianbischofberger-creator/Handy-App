@@ -75,7 +75,12 @@ Adresse: https://bastianbischofberger-creator.github.io/Handy-App/start/
 Im Ordner `web/journal` liegt das **Einsatzjournal**.
 Adresse: https://bastianbischofberger-creator.github.io/Handy-App/journal/
 
-- Journal eröffnen, dann Einträge schreiben oder mit «Sprechen» diktieren (Spracherkennung des Geräts).
+- Beim ersten Öffnen trägt jede Person auf ihrem Gerät ihren Namen ein; er steht bei jedem Eintrag.
+- Journal eröffnen (mit Journalführer), dann Einträge schreiben oder mit «Sprechen» diktieren.
 - Die Uhrzeit wird beim ersten Wort bzw. beim Drücken von «Sprechen» festgehalten und kann geändert werden.
-- Daten bleiben auf dem Gerät (noch keine Synchronisation). Export als PDF.
+- Mehrere Personen/Geräte arbeiten gleichzeitig am selben Journal: Synchronisation über Firebase
+  (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). Offline wird gespeichert und später gesendet.
+- Wechsel des Journalführers: «Bearbeiten» – die Übergabe wird automatisch im Journal festgehalten.
+- **Einmalig:** Firestore-Regeln aus `firebase/firestore.rules` in der Firebase-Konsole einfügen und veröffentlichen
+  (neu ist der Abschnitt «Einsatzjournal»). Weitere Konten in der Liste bei `staff()` eintragen.
 - Nach einer Änderung in `web/journal/sw.js` die Versionsnummer (`CACHE`) erhöhen.

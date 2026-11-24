@@ -73,6 +73,16 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
 .jl small{display:block;color:var(--mute)}
 .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px;background:var(--ok);color:#fff}
 .tag.c{background:var(--mute)}
+.sync{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#bbb;vertical-align:1px}
+.sync.ok::before{background:#5ee08f}.sync.warn::before{background:var(--warn)}.sync.err::before{background:#fff;outline:2px solid #000}
+.jf{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-left:6px solid #7a3db8;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.jf div{flex:1}.jf small{display:block;font-size:13px;color:var(--mute);font-weight:600}.jf b{font:700 22px/1.1 "Barlow Condensed",sans-serif}
+.who{font-size:14px;color:var(--mute);margin-bottom:8px}.who b{color:var(--ink)}
+.e .by{font-weight:600;color:var(--ink)}
+.e.mine .t{color:var(--red)}
+#login{position:fixed;inset:0;z-index:900;background:var(--red);display:grid;place-items:center;padding:20px}
+#login form{width:min(400px,100%);text-align:center}#login label{text-align:left}
 #msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
 #msg:empty{display:none}
 @media(max-width:520px){.top h1{font-size:20px}.tb button span{display:none}}
@@ -86,10 +96,34 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
     <button id="bJournals" title="Journale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Journale</span></button>
     <button id="bPdf" title="PDF exportieren"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg><span>PDF</span></button>
   </div>
+  <span class="sync" id="sync">Startet …</span>
   <div id="clock" class="bc">--:--</div>
 </header>
 
 <main>
+  <!-- Name auf diesem Gerät -->
+  <section id="vName" class="card" hidden>
+    <h2>Wer arbeitet auf diesem Gerät?</h2>
+    <p style="margin:0 0 12px;color:var(--mute)">Dein Name wird bei jedem Eintrag gespeichert, damit man sieht, wer was geschrieben hat. Er bleibt auf diesem Gerät gespeichert.</p>
+    <label>Dein Name *<input id="myName" placeholder="z. B. Kpl Muster" autocomplete="name"></label>
+    <button class="pri" id="bName">Weiter</button>
+  </section>
+
+  <!-- Journal bearbeiten -->
+  <section id="vEdit" class="card" hidden>
+    <h2>Journal bearbeiten</h2>
+    <div class="row">
+      <label>Ereignis *<input id="eTitle"></label>
+      <label>Einsatzort<input id="eOrt"></label>
+      <label>Einsatzleiter<input id="eEl"></label>
+      <label>Journalführer *<input id="eFu"></label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="pri" id="bEditSave">Speichern</button>
+      <button id="bEditCancel">Abbrechen</button>
+    </div>
+  </section>
+
   <!-- Journal eröffnen -->
   <section id="vNew" class="card" hidden>
     <h2>Neues Journal eröffnen</h2>
@@ -97,7 +131,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
       <label>Ereignis *<input id="nTitle" placeholder="z. B. Brand Wohnhaus Hauptstrasse"></label>
       <label>Einsatzort<input id="nOrt" placeholder="Adresse / Ort"></label>
       <label>Einsatzleiter<input id="nEl"></label>
-      <label>Journalführer<input id="nWho" placeholder="Wer schreibt?"></label>
+      <label>Journalführer *<input id="nFu" placeholder="Wer führt das Journal?"></label>
     </div>
     <button class="pri" id="bOpen">Journal eröffnen</button>
   </section>
@@ -110,10 +144,19 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
       <button class="pri" id="bNew">+ Neues Journal</button>
       <button id="bBack">Zurück</button>
     </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px;color:var(--mute)">
+      <span style="flex:1">Dieses Gerät: <b id="lName" style="color:var(--ink)"></b><span id="lUser"></span></span>
+      <button class="ghost" id="bChName">Name ändern</button>
+      <button class="ghost" id="bLogout" hidden>Abmelden</button>
+    </div>
   </section>
 
   <!-- Aktives Journal -->
   <section id="vJ" hidden>
+    <div class="jf">
+      <div><small>JOURNALFÜHRER</small><b id="jfName">–</b></div>
+      <button id="bEdit">Bearbeiten</button>
+    </div>
     <div class="meta" id="meta"></div>
 
     <div class="card comp" id="comp">
@@ -123,6 +166,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
         <span class="tnote" id="tNote">Zeit wird beim ersten Wort festgehalten</span>
         <button class="ghost" id="bTime" title="Zeit ändern">Zeit ändern</button>
       </div>
+      <div class="who">Eintrag von: <b id="cWho"></b> · <a href="#" id="aChName">ändern</a></div>
       <textarea id="txt" placeholder="Eintrag schreiben oder Mikrofon drücken und sprechen …"></textarea>
       <div id="interim"></div>
       <div class="cbtns">
@@ -144,271 +188,17 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
 </main>
 <div id="msg"></div>
 
+<div id="login" hidden><form id="fLogin" class="card">
+  <img src="logo.png" alt="" style="width:96px"><h2>Einsatzjournal</h2>
+  <p style="color:var(--mute);margin:0 0 12px">Anmelden mit dem Konto der Feuerwehr (gleich wie ASÜ und Mehrfachereignisse).</p>
+  <label>E-Mail<input name="email" type="email" autocomplete="username" required></label>
+  <label>Passwort<input name="pw" type="password" autocomplete="current-password" required></label>
+  <p id="lErr" style="color:var(--red);font-weight:600;min-height:1em;margin:0 0 8px"></p>
+  <button class="pri" style="width:100%">Anmelden</button>
+</form></div>
+
+<script src="config.js?v=1.1.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
-<script>
-'use strict';
-const $ = s => document.querySelector(s);
-const pad = n => String(n).padStart(2, '0');
-const hms = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
-const hm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-const dmy = t => { const d = new Date(t); return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`; };
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-const ICO_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-const ICO_KEY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>';
-
-/* ---------- Speicher (lokal auf dem Gerät) ---------- */
-const KEY = 'fwrtl-journal-v1';
-let S = { journals: [], cur: null, who: '' };
-try { const raw = localStorage.getItem(KEY); if (raw) S = { ...S, ...JSON.parse(raw) }; } catch (e) {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { msg('Speichern fehlgeschlagen – Speicher voll?'); } };
-const J = () => S.journals.find(j => j.id === S.cur);
-
-function msg(t) { const m = $('#msg'); m.textContent = t; clearTimeout(msg.t); msg.t = setTimeout(() => m.textContent = '', 3500); }
-
-/* ---------- Uhr ---------- */
-let draftT = null;   // festgehaltene Zeit des aktuellen Eintrags
-let timeManual = false;
-function tick() {
-  $('#clock').textContent = hm(Date.now());
-  if (!draftT) $('#tBadge').textContent = hms(Date.now());
-}
-tick(); setInterval(tick, 1000);
-
-function setDraftTime(t) {
-  draftT = t;
-  $('#tBadge').textContent = hms(t);
-  $('#tBadge').classList.toggle('live', !t);
-  $('#tNote').textContent = t ? (timeManual ? 'Zeit manuell gesetzt' : 'Zeit festgehalten') : 'Zeit wird beim ersten Wort festgehalten';
-}
-function resetDraft() {
-  $('#txt').value = ''; $('#interim').textContent = ''; timeManual = false;
-  $('#tEdit').hidden = true; $('#tBadge').hidden = false;
-  setDraftTime(null); tick();
-}
-
-/* ---------- Ansichten ---------- */
-function show(v) { ['vNew', 'vList', 'vJ'].forEach(id => $('#' + id).hidden = id !== v); }
-function render() {
-  const j = J();
-  if (!j || j.closed) {
-    S.cur = j && !j.closed ? j.id : null;
-    $('#hTitle').textContent = 'Feuerwehr RTL';
-    if (S.journals.length) { renderList(); show('vList'); } else { $('#nWho').value = S.who || ''; show('vNew'); }
-    return;
-  }
-  $('#hTitle').textContent = j.title;
-  $('#meta').innerHTML = [
-    ['Eröffnet', `${dmy(j.start)} ${hm(j.start)}`], ['Ort', j.ort], ['Einsatzleiter', j.el], ['Journalführer', j.who]
-  ].filter(x => x[1]).map(([k, v]) => `<span>${k}: <b>${esc(v)}</b></span>`).join('');
-  renderEntries();
-  show('vJ');
-}
-function renderEntries() {
-  const j = J(); if (!j) return;
-  const es = [...j.entries].sort((a, b) => b.t - a.t);
-  $('#cnt').textContent = es.length ? `(${es.length})` : '';
-  $('#list').innerHTML = es.length ? es.map(e => `
-    <li class="e" data-id="${e.id}">
-      <div class="t">${hm(e.t)}<small>${pad(new Date(e.t).getSeconds())} s</small></div>
-      <div class="x">${esc(e.text)}</div>
-      <div class="act">
-        <span class="src">${e.src === 'voice' ? ICO_MIC + 'gesprochen' : ICO_KEY + 'geschrieben'}${e.edited ? ' · bearbeitet' : ''}</span>
-        <button class="ghost" data-a="edit">Bearbeiten</button>
-        <button class="ghost" data-a="del">Löschen</button>
-      </div>
-    </li>`).join('') : '<li class="empty">Noch keine Einträge. Schreib oder sprich den ersten Eintrag.</li>';
-}
-function renderList() {
-  const js = [...S.journals].sort((a, b) => b.start - a.start);
-  $('#jList').innerHTML = js.length ? js.map(j => `
-    <div class="jl" data-id="${j.id}">
-      <div><b>${esc(j.title)}</b>${j.closed ? '<span class="tag c">abgeschlossen</span>' : '<span class="tag">offen</span>'}
-        <small>${dmy(j.start)} ${hm(j.start)} · ${j.entries.length} Einträge${j.ort ? ' · ' + esc(j.ort) : ''}</small></div>
-      <button data-a="open">${j.closed ? 'Ansehen' : 'Öffnen'}</button>
-      <button data-a="pdf" title="PDF">PDF</button>
-      <button class="ghost" data-a="del">Löschen</button>
-    </div>`).join('') : '<div class="empty">Noch keine Journale.</div>';
-  $('#bBack').hidden = !J() || J().closed;
-}
-
-/* ---------- Journal eröffnen / abschliessen ---------- */
-$('#bOpen').onclick = () => {
-  const title = $('#nTitle').value.trim();
-  if (!title) { $('#nTitle').focus(); return msg('Bitte ein Ereignis eintragen.'); }
-  const j = { id: uid(), title, ort: $('#nOrt').value.trim(), el: $('#nEl').value.trim(), who: $('#nWho').value.trim(), start: Date.now(), closed: false, entries: [] };
-  S.who = j.who; S.journals.push(j); S.cur = j.id; save();
-  ['#nTitle', '#nOrt', '#nEl'].forEach(s => $(s).value = '');
-  resetDraft(); render(); $('#txt').focus();
-};
-$('#bNew').onclick = () => { $('#nWho').value = S.who || ''; show('vNew'); $('#nTitle').focus(); };
-$('#bBack').onclick = () => render();
-$('#bJournals').onclick = () => { renderList(); show('vList'); };
-$('#bClose').onclick = () => {
-  const j = J(); if (!j) return;
-  if (!confirm(`Journal «${j.title}» abschliessen? Es bleibt gespeichert und kann als PDF exportiert werden.`)) return;
-  stopRec(); j.closed = true; j.end = Date.now(); S.cur = null; save(); render();
-};
-$('#jList').onclick = e => {
-  const b = e.target.closest('button'); if (!b) return;
-  const id = b.closest('.jl').dataset.id, j = S.journals.find(x => x.id === id);
-  if (b.dataset.a === 'open') {
-    if (j.closed) { if (!confirm('Dieses Journal ist abgeschlossen. Wieder öffnen, um weiterzuschreiben?')) return; j.closed = false; }
-    S.cur = id; save(); resetDraft(); render();
-  }
-  if (b.dataset.a === 'pdf') exportPdf(j);
-  if (b.dataset.a === 'del') {
-    if (!confirm(`Journal «${j.title}» mit ${j.entries.length} Einträgen endgültig löschen?`)) return;
-    S.journals = S.journals.filter(x => x.id !== id); if (S.cur === id) S.cur = null; save(); render();
-  }
-};
-
-/* ---------- Eintrag erfassen ---------- */
-let usedVoice = false;
-$('#txt').addEventListener('input', () => { if (!draftT && $('#txt').value.trim()) setDraftTime(Date.now()); if (!$('#txt').value.trim() && !timeManual && !recOn) setDraftTime(null); });
-function addEntry() {
-  const j = J(); if (!j) return;
-  stopRec();
-  const text = ($('#txt').value + ' ' + $('#interim').textContent).trim();
-  if (!text) return msg('Der Eintrag ist leer.');
-  j.entries.push({ id: uid(), t: draftT || Date.now(), text, src: usedVoice ? 'voice' : 'text' });
-  save(); usedVoice = false; resetDraft(); renderEntries(); msg('Eingetragen ✓');
-}
-$('#bAdd').onclick = addEntry;
-$('#txt').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addEntry(); } });
-
-/* Zeit manuell ändern */
-$('#bTime').onclick = () => {
-  const ed = $('#tEdit'), t = draftT || Date.now();
-  ed.value = hms(t); ed.hidden = false; $('#tBadge').hidden = true; ed.focus();
-};
-$('#tEdit').addEventListener('change', () => {
-  const v = $('#tEdit').value; if (!v) return;
-  const [h, m, s] = v.split(':').map(Number); const d = new Date(draftT || Date.now());
-  d.setHours(h, m, s || 0, 0); timeManual = true; setDraftTime(d.getTime());
-});
-$('#tEdit').addEventListener('blur', () => { $('#tEdit').hidden = true; $('#tBadge').hidden = false; });
-
-/* Einträge bearbeiten / löschen */
-$('#list').onclick = e => {
-  const b = e.target.closest('button'); if (!b) return;
-  const li = b.closest('.e'), j = J(), en = j.entries.find(x => x.id === li.dataset.id);
-  if (b.dataset.a === 'del') {
-    if (!confirm(`Eintrag von ${hms(en.t)} löschen?`)) return;
-    j.entries = j.entries.filter(x => x !== en); save(); renderEntries();
-  }
-  if (b.dataset.a === 'edit') {
-    li.querySelector('.x').innerHTML = `<input type="time" step="1" value="${hms(en.t)}" style="width:auto;margin-bottom:6px"><textarea>${esc(en.text)}</textarea>`;
-    li.querySelector('.act').innerHTML = '<span class="src"></span><button class="ghost" data-a="cancel">Abbrechen</button><button class="pri" data-a="save" style="min-height:36px">Speichern</button>';
-    li.querySelector('textarea').focus();
-  }
-  if (b.dataset.a === 'cancel') renderEntries();
-  if (b.dataset.a === 'save') {
-    const txt = li.querySelector('textarea').value.trim(); if (!txt) return msg('Text darf nicht leer sein.');
-    const [h, m, s] = li.querySelector('input').value.split(':').map(Number); const d = new Date(en.t);
-    if (!isNaN(h)) d.setHours(h, m, s || 0, 0);
-    if (txt !== en.text || d.getTime() !== en.t) { en.text = txt; en.t = d.getTime(); en.edited = Date.now(); save(); }
-    renderEntries();
-  }
-};
-
-/* ---------- Spracherkennung (Diktat) ---------- */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null, recOn = false, finalBase = '';
-function micHint(t) { const h = $('#micHint'); h.textContent = t; h.hidden = !t; }
-function startRec() {
-  if (!SR) {
-    micHint('Die Spracherkennung wird hier nicht unterstützt. Tipp ins Textfeld und benutze das Mikrofon auf der Tastatur (Diktieren).');
-    $('#txt').focus(); return;
-  }
-  if (!navigator.onLine) micHint('Offline: Die Spracherkennung braucht je nach Gerät Internet. Sonst das Mikrofon der Tastatur benutzen.');
-  else micHint('');
-  if (!draftT) setDraftTime(Date.now());
-  usedVoice = true; recOn = true;
-  finalBase = $('#txt').value.trim();
-  rec = new SR(); rec.lang = 'de-CH'; rec.continuous = true; rec.interimResults = true;
-  rec.onresult = ev => {
-    let fin = '', intr = '';
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      const r = ev.results[i]; if (r.isFinal) fin += r[0].transcript; else intr += r[0].transcript;
-    }
-    if (fin) { finalBase = (finalBase + ' ' + fin.trim()).trim(); $('#txt').value = cap(finalBase); }
-    $('#interim').textContent = intr;
-  };
-  rec.onerror = ev => {
-    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { micHint('Mikrofon nicht erlaubt. Bitte in den Einstellungen den Mikrofon-Zugriff für den Browser erlauben.'); recOn = false; }
-    else if (ev.error === 'network') { micHint('Keine Verbindung zur Spracherkennung. Mikrofon der Tastatur benutzen.'); recOn = false; }
-    else if (ev.error === 'language-not-supported') { rec.lang = 'de-DE'; }
-  };
-  rec.onend = () => {
-    if ($('#interim').textContent) { finalBase = (finalBase + ' ' + $('#interim').textContent.trim()).trim(); $('#txt').value = cap(finalBase); $('#interim').textContent = ''; }
-    if (recOn) { try { rec.start(); return; } catch (e) {} }   // iPhone beendet nach Pausen von selbst → weiter zuhören
-    recOn = false; micUi();
-  };
-  try { rec.start(); } catch (e) { recOn = false; }
-  micUi();
-}
-function stopRec() { if (!recOn) return; recOn = false; try { rec.stop(); } catch (e) {} micUi(); }
-const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-function micUi() { $('#bMic').classList.toggle('rec', recOn); $('#micLbl').textContent = recOn ? 'Stopp' : 'Sprechen'; }
-$('#bMic').onclick = () => recOn ? stopRec() : startRec();
-
-/* ---------- PDF ---------- */
-const clean = s => String(s ?? '').replace(/[–—−]/g, '-').replace(/[„“”]/g, '"').replace(/[‚‘’]/g, "'").replace(/…/g, '...').replace(/[^\x0A\x20-\x7E\xA0-\xFF]/g, '');
-function logoData() {
-  const img = $('#logo'); const c = document.createElement('canvas'); c.width = img.naturalWidth || 220; c.height = img.naturalHeight || 229;
-  c.getContext('2d').drawImage(img, 0, 0); return c.toDataURL('image/png');
-}
-async function exportPdf(j) {
-  j = j || J(); if (!j) return;
-  if (!window.jspdf) return msg('PDF-Modul nicht geladen. App einmal mit Internet öffnen.');
-  if (!j.entries.length) return msg('Noch keine Einträge.');
-  const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
-  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
-  let y = M;
-  try { doc.addImage(logoData(), 'PNG', W - M - 48, M - 6, 48, 50); } catch (e) {}
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor('#c8102e'); doc.text('Einsatzjournal', M, y, { baseline: 'top' });
-  y += 24; doc.setFontSize(13); doc.setTextColor('#16181a'); doc.text(doc.splitTextToSize(clean(j.title), W - 2 * M - 60), M, y, { baseline: 'top' });
-  y += 22; doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor('#5b6166');
-  const meta = [['Eröffnet', `${dmy(j.start)} ${hm(j.start)}`], ['Abgeschlossen', j.end ? `${dmy(j.end)} ${hm(j.end)}` : ''], ['Einsatzort', j.ort], ['Einsatzleiter', j.el], ['Journalführer', j.who]].filter(x => x[1]);
-  meta.forEach(([k, v]) => { doc.text(clean(`${k}: ${v}`), M, y, { baseline: 'top' }); y += 14; });
-  y += 8; doc.setDrawColor('#c8102e'); doc.setLineWidth(1.5); doc.line(M, y, W - M, y); y += 10;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#5b6166');
-  doc.text('ZEIT', M, y, { baseline: 'top' }); doc.text('EINTRAG', M + 70, y, { baseline: 'top' }); y += 16;
-  const es = [...j.entries].sort((a, b) => a.t - b.t);
-  let lastDay = dmy(j.start);
-  for (const e of es) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
-    const lines = doc.splitTextToSize(clean(e.text), W - 2 * M - 70);
-    const day = dmy(e.t), dayRow = day !== lastDay;
-    const h = lines.length * 13.5 + 10 + (dayRow ? 18 : 0);
-    if (y + h > H - M - 20) { doc.addPage(); y = M; }
-    if (dayRow) { doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor('#c8102e'); doc.text(day, M, y, { baseline: 'top' }); y += 18; lastDay = day; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor('#16181a'); doc.text(hms(e.t), M, y, { baseline: 'top' });
-    doc.setFont('helvetica', 'normal'); doc.text(lines, M + 70, y, { baseline: 'top', lineHeightFactor: 1.29 });
-    y += lines.length * 13.5 + 4;
-    doc.setDrawColor('#d8d4ce'); doc.setLineWidth(.5); doc.line(M, y, W - M, y); y += 6;
-  }
-  const n = doc.getNumberOfPages();
-  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor('#5b6166');
-    doc.text(clean(`Einsatzjournal - ${j.title} - Feuerwehr RTL`), M, H - 26); doc.text(`Seite ${i} / ${n}`, W - M, H - 26, { align: 'right' }); }
-  const d = new Date(j.start);
-  const slug = clean(j.title).replace(/[^A-Za-z0-9äöüÄÖÜ]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
-  const name = `Einsatzjournal_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${slug ? '_' + slug : ''}.pdf`;
-  const blob = new Blob([doc.output('arraybuffer')], { type: 'application/pdf' });
-  const file = new File([blob], name, { type: 'application/pdf' });
-  if (navigator.canShare && navigator.canShare({ files: [file] }) && 'ontouchend' in document) {
-    try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
-  }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
-  msg('PDF gespeichert.');
-}
-$('#bPdf').onclick = () => { const j = J(); if (j) exportPdf(j); else { renderList(); show('vList'); msg('Bitte ein Journal wählen.'); } };
-
-/* ---------- Start ---------- */
-render();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-</script>
+<script src="app.js?v=1.1.0"></script>
 </body>
 </html>
