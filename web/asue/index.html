@@ -21,7 +21,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system
 .top{position:sticky;top:0;z-index:5;background:var(--red);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
 .top h1{font:600 20px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1 1 180px;min-width:200px}
 .top h1 small{display:block;font:500 13.5px Barlow,sans-serif;opacity:.9;margin-top:2px}
-.logo{flex:none;width:58px;height:60px;display:grid;place-items:center}
+.logo{flex:none;width:58px;height:60px;display:grid;place-items:center;background:none !important;border:0 !important;padding:0;min-height:0;cursor:pointer}
 .logo img{filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
 .logo img{width:100%;height:100%;object-fit:contain}
 #clock{font-size:clamp(34px,6vw,52px);font-weight:700;line-height:1}
@@ -235,7 +235,7 @@ label select+input{margin-top:6px}
 </head>
 <body>
 <div class="top">
-  <span class="logo"><img id="logo" src="logo.png" alt="Logo Feuerwehr"></span>
+  <button class="logo" id="bHome" aria-label="Zur Startseite"><img id="logo" src="logo.png" alt="Logo Feuerwehr"></button>
   <h1>Atemschutzüberwachung<small id="sub"></small></h1>
   <div id="clock">--:--:--</div>
   <div class="ez">Einsatzzeit<b id="einsatz">00:00:00</b></div>
@@ -403,6 +403,6 @@ label select+input{margin-top:6px}
 <script src="config.js?v=2.3.2"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.3.2"></script>
+<script src="app.js?v=2.3.4"></script>
 </body>
 </html>

@@ -675,6 +675,7 @@ $('#bExp').onclick = () => { $('#msg').textContent = ''; $('#dX').showModal(); }
 $('#bXClose').onclick = () => $('#dX').close();
 for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
+$('#bHome').onclick = () => confirmBox('Zur Startseite wechseln?', 'Die Daten bleiben gespeichert. Solange die Atemschutzüberwachung nicht offen ist, gibt es aber keine Alarme für Druckkontrolle und Rückzug.', () => { location.href = '../start/'; });
 $('#muteInd').onclick = () => confirmBox('Ton wieder einschalten?', 'Alarme für Druckkontrolle und Rückzug sind dann wieder hörbar.', () => { LP.set('mute', false); render(); initAudio(); beep(1); });
 $('#fS').elements.ton.addEventListener('change', e => {
   if (e.target.value === 'an') { LP.set('mute', false); render(); initAudio(); beep(1); return; }

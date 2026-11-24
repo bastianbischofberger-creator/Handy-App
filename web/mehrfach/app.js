@@ -373,7 +373,8 @@ function go(v, opt) {
   if (v === 'erfassen') setTimeout(initErfMap, 30);
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
-$('#bHome').onclick = () => go(S.eid ? 'dash' : 'start');
+// Logo: in einer Funktion → Dashboard; im Dashboard bzw. Start → Startseite aller Apps
+$('#bHome').onclick = () => { if (S.view === 'dash' || S.view === 'start') location.href = '../start/'; else go(S.eid ? 'dash' : 'start'); };
 $('#bBack').onclick = () => go('dash');
 $('#bNewA').onclick = () => go('erfassen');
 

@@ -501,6 +501,8 @@ function start() {
     else if (S.view === 'vList') renderList();
   });
 }
+// Logo: im Journal → Übersicht der Journale; dort → Startseite aller Apps
+$('#aHome').onclick = e => { if (S.view === 'vJ' || S.view === 'vEdit' || S.view === 'vSet') { e.preventDefault(); stopRec(); renderList(); show('vList'); } };
 $('#bLogout').onclick = () => { if (confirm('Abmelden? Danach braucht dieses Gerät Internet, um sich wieder anzumelden.')) BE.logout(); };
 $('#fLogin').addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target; $('#lErr').textContent = '';
