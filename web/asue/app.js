@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.3.0';
+const VERSION = '2.3.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -200,7 +200,6 @@ function renderChips() {}
 const SV = (d, t) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="${t}" role="img"><title>${t}</title>${d}</svg>`;
 const EQUIP = [
   { k: 'wbk', l: 'Wärmebildkamera', s: 'WBK', d: '<rect x="4.5" y="2.5" width="15" height="11" rx="3"/><rect x="7.5" y="5" width="9" height="5" rx="1"/><path d="M10 13.5h4v6.5a2 2 0 0 1-4 0z"/>' },
-  { k: 'gas', l: 'Gasmessgerät', s: 'Gas', d: '<rect x="6" y="6" width="12" height="15" rx="2.5"/><path d="M9 6V3M9.5 10.5h5M9.5 14h5M9.5 17.5h3"/>' },
   { k: 'haube', l: 'Fluchthaube', s: 'Haube', d: '<path d="M5.5 21v-8.5a6.5 6.5 0 0 1 13 0V21"/><rect x="8.5" y="10.5" width="7" height="4.5" rx="1.8"/>' },
   { k: 'leine', l: 'Leine', s: 'Leine', d: '<circle cx="11" cy="12" r="8"/><circle cx="11" cy="12" r="4"/><path d="M19 12h3.5"/>' }
 ];
