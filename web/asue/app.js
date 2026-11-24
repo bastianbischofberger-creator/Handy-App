@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.3.1';
+const VERSION = '2.3.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -200,7 +200,7 @@ function renderChips() {}
 const SV = (d, t) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="${t}" role="img"><title>${t}</title>${d}</svg>`;
 const EQUIP = [
   { k: 'wbk', l: 'Wärmebildkamera', s: 'WBK', d: '<rect x="4.5" y="2.5" width="15" height="11" rx="3"/><rect x="7.5" y="5" width="9" height="5" rx="1"/><path d="M10 13.5h4v6.5a2 2 0 0 1-4 0z"/>' },
-  { k: 'haube', l: 'Fluchthaube', s: 'Haube', d: '<path d="M5.5 21v-8.5a6.5 6.5 0 0 1 13 0V21"/><rect x="8.5" y="10.5" width="7" height="4.5" rx="1.8"/>' },
+  { k: 'haube', l: 'Fluchthaube', s: 'Haube', d: '<path d="M3.5 20v-8a6 6 0 0 1 12 0v8z"/><rect x="6" y="11" width="7" height="4" rx="1.3"/><path d="M17 12h5M19.5 9.5 22 12l-2.5 2.5"/>' },
   { k: 'leine', l: 'Leine', s: 'Leine', d: '<circle cx="11" cy="12" r="8"/><circle cx="11" cy="12" r="4"/><path d="M19 12h3.5"/>' }
 ];
 const eqIcons = T => (T.equip || []).map(k => EQUIP.find(e => e.k === k)).filter(Boolean);
