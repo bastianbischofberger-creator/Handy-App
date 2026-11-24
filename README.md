@@ -69,3 +69,13 @@ Adresse: https://bastianbischofberger-creator.github.io/Handy-App/start/
 
 - Lässt sich wie die anderen Apps auf dem Home-Bildschirm installieren und läuft auch offline.
 - Nach einer Änderung in `web/start/sw.js` die Versionsnummer (`CACHE`) erhöhen.
+
+## Einsatzjournal (Web-App, Testversion)
+
+Im Ordner `web/journal` liegt das **Einsatzjournal**.
+Adresse: https://bastianbischofberger-creator.github.io/Handy-App/journal/
+
+- Journal eröffnen, dann Einträge schreiben oder mit «Sprechen» diktieren (Spracherkennung des Geräts).
+- Die Uhrzeit wird beim ersten Wort bzw. beim Drücken von «Sprechen» festgehalten und kann geändert werden.
+- Daten bleiben auf dem Gerät (noch keine Synchronisation). Export als PDF.
+- Nach einer Änderung in `web/journal/sw.js` die Versionsnummer (`CACHE`) erhöhen.

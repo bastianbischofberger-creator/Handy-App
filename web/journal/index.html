@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Einsatzjournal</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Journal">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a)}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.bc{font-family:"Barlow Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:5;background:var(--red);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1 1 160px}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#clock{font-size:clamp(30px,5.5vw,46px);font-weight:700;line-height:1}
+.tb{display:flex;gap:8px;flex-wrap:wrap}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.top button{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.ghost{background:none;border-color:transparent;color:var(--mute);min-height:36px;padding:4px 8px;font-size:14px}
+svg{width:22px;height:22px;flex:none}
+main{max-width:900px;margin:0 auto;padding:16px max(3vw,14px) calc(30px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font:700 22px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:10px}
+input,textarea{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+textarea{resize:vertical;min-height:110px;line-height:1.4}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:14px;color:var(--mute);margin-bottom:14px}
+.meta b{color:var(--ink);font-weight:600}
+/* Eingabe */
+.comp{border-top:6px solid var(--red)}
+.chead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tbadge{font:700 26px/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;background:var(--field);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.tbadge.live{color:var(--mute)}
+.tnote{font-size:13px;color:var(--mute);flex:1}
+#tEdit{width:auto;margin:0;font:700 20px "Barlow Condensed",sans-serif;padding:6px 8px}
+.cbtns{display:flex;gap:10px;margin-top:10px}
+#bMic{flex:1;min-height:56px;font-size:18px;background:var(--field)}
+#bMic.rec{background:var(--red);color:#fff;border-color:var(--red);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(200,16,46,.25)}}
+#bAdd{flex:1;min-height:56px;font-size:18px}
+#micHint{font-size:14px;color:var(--mute);margin-top:8px}
+#interim{color:var(--mute);font-style:italic;font-size:15px;margin-top:6px;min-height:0}
+/* Einträge */
+.list{list-style:none;margin:0;padding:0}
+.e{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.e:last-child{border-bottom:0}
+.e .t{font:700 22px/1.1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.e .t small{display:block;font:500 12px Barlow,sans-serif;color:var(--mute)}
+.e .x{white-space:pre-wrap;word-wrap:break-word}
+.e .act{grid-column:2;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--mute)}
+.e .act .src{margin-right:auto;display:inline-flex;align-items:center;gap:4px}
+.e .act svg{width:14px;height:14px}
+.e textarea{min-height:80px}
+.empty{color:var(--mute);text-align:center;padding:20px 0}
+.jl{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.jl:last-child{border-bottom:0}
+.jl div{flex:1}
+.jl small{display:block;color:var(--mute)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px;background:var(--ok);color:#fff}
+.tag.c{background:var(--mute)}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:520px){.top h1{font-size:20px}.tb button span{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img id="logo" src="logo.png" alt="FW RTL"></a>
+  <h1>Einsatzjournal<small id="hTitle">Feuerwehr RTL</small></h1>
+  <div class="tb">
+    <button id="bJournals" title="Journale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Journale</span></button>
+    <button id="bPdf" title="PDF exportieren"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg><span>PDF</span></button>
+  </div>
+  <div id="clock" class="bc">--:--</div>
+</header>
+
+<main>
+  <!-- Journal eröffnen -->
+  <section id="vNew" class="card" hidden>
+    <h2>Neues Journal eröffnen</h2>
+    <div class="row">
+      <label>Ereignis *<input id="nTitle" placeholder="z. B. Brand Wohnhaus Hauptstrasse"></label>
+      <label>Einsatzort<input id="nOrt" placeholder="Adresse / Ort"></label>
+      <label>Einsatzleiter<input id="nEl"></label>
+      <label>Journalführer<input id="nWho" placeholder="Wer schreibt?"></label>
+    </div>
+    <button class="pri" id="bOpen">Journal eröffnen</button>
+  </section>
+
+  <!-- Journal-Liste -->
+  <section id="vList" class="card" hidden>
+    <h2>Journale</h2>
+    <div id="jList"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="pri" id="bNew">+ Neues Journal</button>
+      <button id="bBack">Zurück</button>
+    </div>
+  </section>
+
+  <!-- Aktives Journal -->
+  <section id="vJ" hidden>
+    <div class="meta" id="meta"></div>
+
+    <div class="card comp" id="comp">
+      <div class="chead">
+        <span id="tBadge" class="tbadge live">--:--:--</span>
+        <input id="tEdit" type="time" step="1" hidden>
+        <span class="tnote" id="tNote">Zeit wird beim ersten Wort festgehalten</span>
+        <button class="ghost" id="bTime" title="Zeit ändern">Zeit ändern</button>
+      </div>
+      <textarea id="txt" placeholder="Eintrag schreiben oder Mikrofon drücken und sprechen …"></textarea>
+      <div id="interim"></div>
+      <div class="cbtns">
+        <button id="bMic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micLbl">Sprechen</span></button>
+        <button class="pri" id="bAdd">Eintragen</button>
+      </div>
+      <div id="micHint" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2>Einträge <span id="cnt" class="bc" style="color:var(--mute);font-size:18px"></span></h2>
+      <ul class="list" id="list"></ul>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="bClose">Journal abschliessen</button>
+    </div>
+  </section>
+</main>
+<div id="msg"></div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const hms = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const hm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const dmy = t => { const d = new Date(t); return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const ICO_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const ICO_KEY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>';
+
+/* ---------- Speicher (lokal auf dem Gerät) ---------- */
+const KEY = 'fwrtl-journal-v1';
+let S = { journals: [], cur: null, who: '' };
+try { const raw = localStorage.getItem(KEY); if (raw) S = { ...S, ...JSON.parse(raw) }; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { msg('Speichern fehlgeschlagen – Speicher voll?'); } };
+const J = () => S.journals.find(j => j.id === S.cur);
+
+function msg(t) { const m = $('#msg'); m.textContent = t; clearTimeout(msg.t); msg.t = setTimeout(() => m.textContent = '', 3500); }
+
+/* ---------- Uhr ---------- */
+let draftT = null;   // festgehaltene Zeit des aktuellen Eintrags
+let timeManual = false;
+function tick() {
+  $('#clock').textContent = hm(Date.now());
+  if (!draftT) $('#tBadge').textContent = hms(Date.now());
+}
+tick(); setInterval(tick, 1000);
+
+function setDraftTime(t) {
+  draftT = t;
+  $('#tBadge').textContent = hms(t);
+  $('#tBadge').classList.toggle('live', !t);
+  $('#tNote').textContent = t ? (timeManual ? 'Zeit manuell gesetzt' : 'Zeit festgehalten') : 'Zeit wird beim ersten Wort festgehalten';
+}
+function resetDraft() {
+  $('#txt').value = ''; $('#interim').textContent = ''; timeManual = false;
+  $('#tEdit').hidden = true; $('#tBadge').hidden = false;
+  setDraftTime(null); tick();
+}
+
+/* ---------- Ansichten ---------- */
+function show(v) { ['vNew', 'vList', 'vJ'].forEach(id => $('#' + id).hidden = id !== v); }
+function render() {
+  const j = J();
+  if (!j || j.closed) {
+    S.cur = j && !j.closed ? j.id : null;
+    $('#hTitle').textContent = 'Feuerwehr RTL';
+    if (S.journals.length) { renderList(); show('vList'); } else { $('#nWho').value = S.who || ''; show('vNew'); }
+    return;
+  }
+  $('#hTitle').textContent = j.title;
+  $('#meta').innerHTML = [
+    ['Eröffnet', `${dmy(j.start)} ${hm(j.start)}`], ['Ort', j.ort], ['Einsatzleiter', j.el], ['Journalführer', j.who]
+  ].filter(x => x[1]).map(([k, v]) => `<span>${k}: <b>${esc(v)}</b></span>`).join('');
+  renderEntries();
+  show('vJ');
+}
+function renderEntries() {
+  const j = J(); if (!j) return;
+  const es = [...j.entries].sort((a, b) => b.t - a.t);
+  $('#cnt').textContent = es.length ? `(${es.length})` : '';
+  $('#list').innerHTML = es.length ? es.map(e => `
+    <li class="e" data-id="${e.id}">
+      <div class="t">${hm(e.t)}<small>${pad(new Date(e.t).getSeconds())} s</small></div>
+      <div class="x">${esc(e.text)}</div>
+      <div class="act">
+        <span class="src">${e.src === 'voice' ? ICO_MIC + 'gesprochen' : ICO_KEY + 'geschrieben'}${e.edited ? ' · bearbeitet' : ''}</span>
+        <button class="ghost" data-a="edit">Bearbeiten</button>
+        <button class="ghost" data-a="del">Löschen</button>
+      </div>
+    </li>`).join('') : '<li class="empty">Noch keine Einträge. Schreib oder sprich den ersten Eintrag.</li>';
+}
+function renderList() {
+  const js = [...S.journals].sort((a, b) => b.start - a.start);
+  $('#jList').innerHTML = js.length ? js.map(j => `
+    <div class="jl" data-id="${j.id}">
+      <div><b>${esc(j.title)}</b>${j.closed ? '<span class="tag c">abgeschlossen</span>' : '<span class="tag">offen</span>'}
+        <small>${dmy(j.start)} ${hm(j.start)} · ${j.entries.length} Einträge${j.ort ? ' · ' + esc(j.ort) : ''}</small></div>
+      <button data-a="open">${j.closed ? 'Ansehen' : 'Öffnen'}</button>
+      <button data-a="pdf" title="PDF">PDF</button>
+      <button class="ghost" data-a="del">Löschen</button>
+    </div>`).join('') : '<div class="empty">Noch keine Journale.</div>';
+  $('#bBack').hidden = !J() || J().closed;
+}
+
+/* ---------- Journal eröffnen / abschliessen ---------- */
+$('#bOpen').onclick = () => {
+  const title = $('#nTitle').value.trim();
+  if (!title) { $('#nTitle').focus(); return msg('Bitte ein Ereignis eintragen.'); }
+  const j = { id: uid(), title, ort: $('#nOrt').value.trim(), el: $('#nEl').value.trim(), who: $('#nWho').value.trim(), start: Date.now(), closed: false, entries: [] };
+  S.who = j.who; S.journals.push(j); S.cur = j.id; save();
+  ['#nTitle', '#nOrt', '#nEl'].forEach(s => $(s).value = '');
+  resetDraft(); render(); $('#txt').focus();
+};
+$('#bNew').onclick = () => { $('#nWho').value = S.who || ''; show('vNew'); $('#nTitle').focus(); };
+$('#bBack').onclick = () => render();
+$('#bJournals').onclick = () => { renderList(); show('vList'); };
+$('#bClose').onclick = () => {
+  const j = J(); if (!j) return;
+  if (!confirm(`Journal «${j.title}» abschliessen? Es bleibt gespeichert und kann als PDF exportiert werden.`)) return;
+  stopRec(); j.closed = true; j.end = Date.now(); S.cur = null; save(); render();
+};
+$('#jList').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const id = b.closest('.jl').dataset.id, j = S.journals.find(x => x.id === id);
+  if (b.dataset.a === 'open') {
+    if (j.closed) { if (!confirm('Dieses Journal ist abgeschlossen. Wieder öffnen, um weiterzuschreiben?')) return; j.closed = false; }
+    S.cur = id; save(); resetDraft(); render();
+  }
+  if (b.dataset.a === 'pdf') exportPdf(j);
+  if (b.dataset.a === 'del') {
+    if (!confirm(`Journal «${j.title}» mit ${j.entries.length} Einträgen endgültig löschen?`)) return;
+    S.journals = S.journals.filter(x => x.id !== id); if (S.cur === id) S.cur = null; save(); render();
+  }
+};
+
+/* ---------- Eintrag erfassen ---------- */
+let usedVoice = false;
+$('#txt').addEventListener('input', () => { if (!draftT && $('#txt').value.trim()) setDraftTime(Date.now()); if (!$('#txt').value.trim() && !timeManual && !recOn) setDraftTime(null); });
+function addEntry() {
+  const j = J(); if (!j) return;
+  stopRec();
+  const text = ($('#txt').value + ' ' + $('#interim').textContent).trim();
+  if (!text) return msg('Der Eintrag ist leer.');
+  j.entries.push({ id: uid(), t: draftT || Date.now(), text, src: usedVoice ? 'voice' : 'text' });
+  save(); usedVoice = false; resetDraft(); renderEntries(); msg('Eingetragen ✓');
+}
+$('#bAdd').onclick = addEntry;
+$('#txt').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addEntry(); } });
+
+/* Zeit manuell ändern */
+$('#bTime').onclick = () => {
+  const ed = $('#tEdit'), t = draftT || Date.now();
+  ed.value = hms(t); ed.hidden = false; $('#tBadge').hidden = true; ed.focus();
+};
+$('#tEdit').addEventListener('change', () => {
+  const v = $('#tEdit').value; if (!v) return;
+  const [h, m, s] = v.split(':').map(Number); const d = new Date(draftT || Date.now());
+  d.setHours(h, m, s || 0, 0); timeManual = true; setDraftTime(d.getTime());
+});
+$('#tEdit').addEventListener('blur', () => { $('#tEdit').hidden = true; $('#tBadge').hidden = false; });
+
+/* Einträge bearbeiten / löschen */
+$('#list').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const li = b.closest('.e'), j = J(), en = j.entries.find(x => x.id === li.dataset.id);
+  if (b.dataset.a === 'del') {
+    if (!confirm(`Eintrag von ${hms(en.t)} löschen?`)) return;
+    j.entries = j.entries.filter(x => x !== en); save(); renderEntries();
+  }
+  if (b.dataset.a === 'edit') {
+    li.querySelector('.x').innerHTML = `<input type="time" step="1" value="${hms(en.t)}" style="width:auto;margin-bottom:6px"><textarea>${esc(en.text)}</textarea>`;
+    li.querySelector('.act').innerHTML = '<span class="src"></span><button class="ghost" data-a="cancel">Abbrechen</button><button class="pri" data-a="save" style="min-height:36px">Speichern</button>';
+    li.querySelector('textarea').focus();
+  }
+  if (b.dataset.a === 'cancel') renderEntries();
+  if (b.dataset.a === 'save') {
+    const txt = li.querySelector('textarea').value.trim(); if (!txt) return msg('Text darf nicht leer sein.');
+    const [h, m, s] = li.querySelector('input').value.split(':').map(Number); const d = new Date(en.t);
+    if (!isNaN(h)) d.setHours(h, m, s || 0, 0);
+    if (txt !== en.text || d.getTime() !== en.t) { en.text = txt; en.t = d.getTime(); en.edited = Date.now(); save(); }
+    renderEntries();
+  }
+};
+
+/* ---------- Spracherkennung (Diktat) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recOn = false, finalBase = '';
+function micHint(t) { const h = $('#micHint'); h.textContent = t; h.hidden = !t; }
+function startRec() {
+  if (!SR) {
+    micHint('Die Spracherkennung wird hier nicht unterstützt. Tipp ins Textfeld und benutze das Mikrofon auf der Tastatur (Diktieren).');
+    $('#txt').focus(); return;
+  }
+  if (!navigator.onLine) micHint('Offline: Die Spracherkennung braucht je nach Gerät Internet. Sonst das Mikrofon der Tastatur benutzen.');
+  else micHint('');
+  if (!draftT) setDraftTime(Date.now());
+  usedVoice = true; recOn = true;
+  finalBase = $('#txt').value.trim();
+  rec = new SR(); rec.lang = 'de-CH'; rec.continuous = true; rec.interimResults = true;
+  rec.onresult = ev => {
+    let fin = '', intr = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const r = ev.results[i]; if (r.isFinal) fin += r[0].transcript; else intr += r[0].transcript;
+    }
+    if (fin) { finalBase = (finalBase + ' ' + fin.trim()).trim(); $('#txt').value = cap(finalBase); }
+    $('#interim').textContent = intr;
+  };
+  rec.onerror = ev => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { micHint('Mikrofon nicht erlaubt. Bitte in den Einstellungen den Mikrofon-Zugriff für den Browser erlauben.'); recOn = false; }
+    else if (ev.error === 'network') { micHint('Keine Verbindung zur Spracherkennung. Mikrofon der Tastatur benutzen.'); recOn = false; }
+    else if (ev.error === 'language-not-supported') { rec.lang = 'de-DE'; }
+  };
+  rec.onend = () => {
+    if ($('#interim').textContent) { finalBase = (finalBase + ' ' + $('#interim').textContent.trim()).trim(); $('#txt').value = cap(finalBase); $('#interim').textContent = ''; }
+    if (recOn) { try { rec.start(); return; } catch (e) {} }   // iPhone beendet nach Pausen von selbst → weiter zuhören
+    recOn = false; micUi();
+  };
+  try { rec.start(); } catch (e) { recOn = false; }
+  micUi();
+}
+function stopRec() { if (!recOn) return; recOn = false; try { rec.stop(); } catch (e) {} micUi(); }
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function micUi() { $('#bMic').classList.toggle('rec', recOn); $('#micLbl').textContent = recOn ? 'Stopp' : 'Sprechen'; }
+$('#bMic').onclick = () => recOn ? stopRec() : startRec();
+
+/* ---------- PDF ---------- */
+const clean = s => String(s ?? '').replace(/[–—−]/g, '-').replace(/[„“”]/g, '"').replace(/[‚‘’]/g, "'").replace(/…/g, '...').replace(/[^\x0A\x20-\x7E\xA0-\xFF]/g, '');
+function logoData() {
+  const img = $('#logo'); const c = document.createElement('canvas'); c.width = img.naturalWidth || 220; c.height = img.naturalHeight || 229;
+  c.getContext('2d').drawImage(img, 0, 0); return c.toDataURL('image/png');
+}
+async function exportPdf(j) {
+  j = j || J(); if (!j) return;
+  if (!window.jspdf) return msg('PDF-Modul nicht geladen. App einmal mit Internet öffnen.');
+  if (!j.entries.length) return msg('Noch keine Einträge.');
+  const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
+  let y = M;
+  try { doc.addImage(logoData(), 'PNG', W - M - 48, M - 6, 48, 50); } catch (e) {}
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor('#c8102e'); doc.text('Einsatzjournal', M, y, { baseline: 'top' });
+  y += 24; doc.setFontSize(13); doc.setTextColor('#16181a'); doc.text(doc.splitTextToSize(clean(j.title), W - 2 * M - 60), M, y, { baseline: 'top' });
+  y += 22; doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor('#5b6166');
+  const meta = [['Eröffnet', `${dmy(j.start)} ${hm(j.start)}`], ['Abgeschlossen', j.end ? `${dmy(j.end)} ${hm(j.end)}` : ''], ['Einsatzort', j.ort], ['Einsatzleiter', j.el], ['Journalführer', j.who]].filter(x => x[1]);
+  meta.forEach(([k, v]) => { doc.text(clean(`${k}: ${v}`), M, y, { baseline: 'top' }); y += 14; });
+  y += 8; doc.setDrawColor('#c8102e'); doc.setLineWidth(1.5); doc.line(M, y, W - M, y); y += 10;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#5b6166');
+  doc.text('ZEIT', M, y, { baseline: 'top' }); doc.text('EINTRAG', M + 70, y, { baseline: 'top' }); y += 16;
+  const es = [...j.entries].sort((a, b) => a.t - b.t);
+  let lastDay = dmy(j.start);
+  for (const e of es) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+    const lines = doc.splitTextToSize(clean(e.text), W - 2 * M - 70);
+    const day = dmy(e.t), dayRow = day !== lastDay;
+    const h = lines.length * 13.5 + 10 + (dayRow ? 18 : 0);
+    if (y + h > H - M - 20) { doc.addPage(); y = M; }
+    if (dayRow) { doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor('#c8102e'); doc.text(day, M, y, { baseline: 'top' }); y += 18; lastDay = day; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor('#16181a'); doc.text(hms(e.t), M, y, { baseline: 'top' });
+    doc.setFont('helvetica', 'normal'); doc.text(lines, M + 70, y, { baseline: 'top', lineHeightFactor: 1.29 });
+    y += lines.length * 13.5 + 4;
+    doc.setDrawColor('#d8d4ce'); doc.setLineWidth(.5); doc.line(M, y, W - M, y); y += 6;
+  }
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor('#5b6166');
+    doc.text(clean(`Einsatzjournal - ${j.title} - Feuerwehr RTL`), M, H - 26); doc.text(`Seite ${i} / ${n}`, W - M, H - 26, { align: 'right' }); }
+  const d = new Date(j.start);
+  const slug = clean(j.title).replace(/[^A-Za-z0-9äöüÄÖÜ]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
+  const name = `Einsatzjournal_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${slug ? '_' + slug : ''}.pdf`;
+  const blob = new Blob([doc.output('arraybuffer')], { type: 'application/pdf' });
+  const file = new File([blob], name, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && 'ontouchend' in document) {
+    try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  msg('PDF gespeichert.');
+}
+$('#bPdf').onclick = () => { const j = J(); if (j) exportPdf(j); else { renderList(); show('vList'); msg('Bitte ein Journal wählen.'); } };
+
+/* ---------- Start ---------- */
+render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
