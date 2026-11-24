@@ -106,6 +106,8 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .sugg button:last-child{border-bottom:0}.sugg button.first{background:color-mix(in srgb,var(--red) 10%,transparent)}
 .sugg button.busy{opacity:.55}.sugg .sb{font-size:12.5px;color:var(--red);font-weight:600}
 .sugg .sr{min-width:40px;font-weight:700;color:var(--mute)}.sugg .snr{margin-left:auto;font-family:"Barlow Condensed",sans-serif;color:var(--mute)}
+.eqpick button{display:inline-flex;align-items:center;gap:6px}.eqpick button svg{width:22px;height:22px}
+.eqs{display:inline-flex;gap:3px;align-items:center}.eqs svg{width:17px;height:17px;display:block}.card.rett header .eqs{color:#fff}
 .pform{display:grid;grid-template-columns:1fr 1fr 80px 80px auto;gap:6px;margin-bottom:8px}.pform input{margin:0}.pform button{min-height:46px}
 .plist{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px}
 .plist li{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}.plist li:last-child{border:0}
@@ -273,6 +275,7 @@ label select+input{margin-top:6px}
     <div class="fld"><span class="lab">Funkkanal</span><div class="pick" id="kChips"></div><input name="kanal" placeholder="Kanal eingeben" hidden></div>
   </div>
   <label class="chk"><input type="checkbox" name="rett"> <i class="axe rt" aria-hidden="true"></i> Rettungstrupp (Sicherheitstrupp)</label>
+  <div class="fld"><span class="lab">Ausrüstung</span><div class="pick eqpick" id="eqPick"></div></div>
   <label>Auftrag<select name="aufSel"></select><input name="auftrag" placeholder="Auftrag eingeben" hidden><input name="zusatz" placeholder="Zusatzinfo (optional), z. B. Wohnung links, Person vermisst" hidden></label>
   <div class="fld"><span class="lab">Stockwerk</span><div class="pick" id="sChips"></div><input name="stock" placeholder="Ort eingeben, z. B. Treppenhaus" hidden></div>
   <div class="g3"><label>Name 1 (Truppführer)<span class="inq"><input name="n0" autocomplete="off" autocorrect="off" spellcheck="false"><div class="sugg" hidden></div><button type="button" class="qr" data-qr="n0" aria-label="QR-Code scannen" title="QR-Code scannen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 3h7v7H3zm2 2v3h3V5zM14 3h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z"/></svg></button></span></label><label>Anfangsdruck (leer = 300+)<input name="p0" type="number" inputmode="numeric"></label></div>
@@ -397,9 +400,9 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button value="cancel">Abbrechen</button><button class="pri" value="ok">Ja</button></div>
 </form></dialog>
 
-<script src="config.js?v=2.2.4"></script>
+<script src="config.js?v=2.3.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.2.4"></script>
+<script src="app.js?v=2.3.0"></script>
 </body>
 </html>
