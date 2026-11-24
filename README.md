@@ -61,3 +61,11 @@ Adresse: https://bastianbischofberger-creator.github.io/Handy-App/mehrfach/
   1. Firestore → Regeln: Inhalt von `firebase/firestore.rules` einfügen → Veröffentlichen.
   2. Erst danach: Authentication → Sign-in method → «Anonymous» aktivieren.
 - Nach Änderungen in `web/mehrfach/sw.js` die Versionsnummer (`CACHE`) erhöhen.
+
+## Startseite (alle Apps)
+
+Im Ordner `web/start` liegt die gemeinsame Startseite **FW RTL Einsatz** mit Kacheln für ASÜ, Mehrfachereignisse und Lagekarte.
+Adresse: https://bastianbischofberger-creator.github.io/Handy-App/start/
+
+- Lässt sich wie die anderen Apps auf dem Home-Bildschirm installieren und läuft auch offline.
+- Nach einer Änderung in `web/start/sw.js` die Versionsnummer (`CACHE`) erhöhen.

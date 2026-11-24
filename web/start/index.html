@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FW RTL Einsatz</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FW RTL">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--red:#c8102e;--warn:#f2b705}
+*{box-sizing:border-box;min-width:0}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif}
+.top{background:var(--red);color:#fff;display:flex;align-items:center;gap:16px;padding:calc(14px + env(safe-area-inset-top)) max(4vw,16px) 14px}
+.top img{width:58px;height:60px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 26px/1.05 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:3px}
+#clock{font:700 clamp(30px,6vw,46px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.net{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.net::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#5ee08f;vertical-align:1px}
+.net.off::before{background:var(--warn)}
+main{max-width:1100px;margin:0 auto;padding:22px max(4vw,16px) calc(24px + env(safe-area-inset-bottom))}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+a.tile{display:flex;flex-direction:column;gap:12px;background:var(--card);color:inherit;text-decoration:none;border:1px solid var(--line);border-top:6px solid var(--c);border-radius:12px;padding:20px;min-height:200px;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:transform .12s,box-shadow .12s}
+a.tile:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+a.tile:active{transform:scale(.98)}
+a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.tile .head{display:flex;align-items:center;gap:14px}
+.tile .head img{width:60px;height:60px;border-radius:14px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tile h2{font:700 26px/1.05 "Barlow Condensed",sans-serif;margin:0}
+.tile h2 small{display:block;font:500 14px Barlow,sans-serif;color:var(--mute);margin-top:3px}
+.tile p{margin:0;color:var(--mute);flex:1}
+.tile .go{align-self:flex-start;font-weight:600;color:#fff;background:var(--c);padding:8px 16px;border-radius:8px}
+.tag{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--warn);color:#1a1a1a;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:3px}
+.hint{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;color:var(--mute);font-size:15px}
+.hint b{color:var(--ink)}
+@media(max-width:480px){.top{gap:10px}.top img{width:44px;height:46px}.top h1{font-size:22px}.top h1 small{display:none}}
+footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<header class="top">
+  <img src="logo.png" alt="Feuerwehr RTL">
+  <h1>FW RTL Einsatz<small>Feuerwehr Rheineck-Thal-Lutzenberg</small></h1>
+  <span id="net" class="net">Online</span>
+  <div id="clock">--:--</div>
+</header>
+
+<main>
+  <div class="grid">
+    <a class="tile" href="../asue/" style="--c:#c8102e">
+      <div class="head">
+        <img src="../asue/icon-192.png" alt="">
+        <h2>Atemschutz&shy;überwachung<small>ASÜ</small></h2>
+      </div>
+      <p>Atemschutztrupps registrieren, Einsatzzeiten und Druck überwachen, Protokoll als PDF.</p>
+      <span class="go">Öffnen →</span>
+    </a>
+
+    <a class="tile" href="../mehrfach/" style="--c:#1557c0">
+      <div class="head">
+        <img src="../mehrfach/icon-192.png" alt="">
+        <h2>Mehrfach&shy;ereignisse<span class="tag">Test</span><small>Aufträge &amp; Ereignisbewältigung</small></h2>
+      </div>
+      <p>Ereignis eröffnen, Aufträge erfassen, Status verfolgen, Personal und Mittel disponieren.</p>
+      <span class="go">Öffnen →</span>
+    </a>
+
+    <a class="tile" href="../" style="--c:#1d7a46">
+      <div class="head">
+        <img src="../icon-192.png" alt="">
+        <h2>Lagekarte<small>Lageskizzen auf der Landeskarte</small></h2>
+      </div>
+      <p>Symbole setzen, Rettungsachse, Sperrzone und Umleitung einzeichnen, swisstopo-Karte und Luftbild.</p>
+      <span class="go">Öffnen →</span>
+    </a>
+  </div>
+
+  <div class="hint" id="installHint">
+    <b>Als App installieren:</b> iPhone/iPad: in Safari «Teilen» → «Zum Home-Bildschirm».
+    Android: Chrome-Menü ⋮ → «App installieren». Die einzelnen Apps zuerst einmal mit Internet öffnen,
+    damit sie auch offline laufen.
+  </div>
+
+  <footer>Feuerwehr RTL · Startseite v1.0</footer>
+</main>
+
+<script>
+// Uhr
+const clock = document.getElementById('clock');
+const tick = () => { clock.textContent = new Date().toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' }); };
+tick(); setInterval(tick, 10000);
+
+// Online/Offline-Anzeige
+const net = document.getElementById('net');
+const upd = () => { const on = navigator.onLine; net.textContent = on ? 'Online' : 'Offline'; net.classList.toggle('off', !on); };
+addEventListener('online', upd); addEventListener('offline', upd); upd();
+
+// Installations-Hinweis ausblenden, wenn bereits als App geöffnet
+if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) document.getElementById('installHint').hidden = true;
+
+// Offline-Fähigkeit der Startseite
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
