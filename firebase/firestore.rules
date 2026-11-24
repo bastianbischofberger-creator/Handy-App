@@ -17,14 +17,14 @@ service cloud.firestore {
     // ---------- ASÜ-App ----------
     match /einsaetze/{eid} {
       allow read, write: if staff();
-      match /{sub}/{doc} { allow read, write: if staff(); }
+      match /{path=**} { allow read, write: if staff(); }
     }
     match /config/{doc} {
       allow read, write: if staff();
     }
 
     // ---------- Mehrfachereignisse ----------
-    // Laufendes Ereignis + Namensliste für die Anmeldeseite
+    // Laufendes Ereignis für die Anmeldeseite
     match /mf_public/{doc} {
       allow read: if request.auth != null;
       allow write: if staff();
