@@ -157,11 +157,78 @@
     /* rote Nadel der gesuchten Adresse, Spitze genau auf dem Ort */
     .pin { position: relative; width: 0; height: 0; }
     .pin svg { position: absolute; left: -17px; top: -44px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+    /* ---------- Dashboard (Startansicht der Lagekarte) ---------- */
+    #logo { pointer-events: auto; cursor: pointer; }
+    #dash { position: fixed; inset: 0; z-index: 1500; background: #efedea; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #16181a; display: none; }
+    #dash.open { display: block; }
+    .dTop { position: sticky; top: 0; z-index: 2; background: #c8102e; color: #fff; display: flex; align-items: center; gap: 12px;
+      padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; }
+    .dTop a { flex: none; width: 52px; height: 54px; display: grid; place-items: center; }
+    .dTop a img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
+    .dTop h1 { flex: 1; margin: 0; font-size: 22px; line-height: 1.1; }
+    .dTop h1 small { display: block; font-size: 13px; font-weight: 500; opacity: .9; margin-top: 2px; }
+    .dTop .clk { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .dMain { max-width: 900px; margin: 0 auto; padding: 16px 16px calc(env(safe-area-inset-bottom) + 24px); }
+    .dGrid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 640px) { .dGrid { grid-template-columns: 1fr 1fr; } }
+    .dTile { display: flex; flex-direction: column; gap: 6px; text-align: left; background: #fff; border: 1px solid #d8d4ce;
+      border-top: 6px solid var(--c, #1d7a46); border-radius: 12px; padding: 16px; font: inherit; color: inherit; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .dTile:active { transform: scale(.98); }
+    .dTile b { font-size: 21px; }
+    .dTile span { color: #5b6166; font-size: 14px; }
+    .dTile.big { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 14px; }
+    .dTile.big .ic { font-size: 34px; }
+    .dTile.big div { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .dTile[disabled] { opacity: .45; cursor: default; }
+    .dCard { background: #fff; border: 1px solid #d8d4ce; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+    .dCard h2 { margin: 0 0 8px; font-size: 19px; }
+    .dCard label { display: block; font-size: 14px; font-weight: 600; color: #5b6166; margin-bottom: 10px; }
+    .dCard input { display: block; width: 100%; margin-top: 4px; font-size: 16px; padding: 10px 12px; border: 1px solid #d8d4ce;
+      border-radius: 8px; background: #f7f6f4; color: #16181a; }
+    .dBtns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dBtn { font: 600 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; min-height: 42px; padding: 8px 14px;
+      border-radius: 8px; border: 1px solid #d8d4ce; background: #f7f6f4; color: #16181a; cursor: pointer; }
+    .dBtn.pri { background: #1d7a46; border-color: #1d7a46; color: #fff; }
+    .dBtn.ghost { background: none; border-color: transparent; color: #5b6166; min-height: 34px; padding: 4px 8px; font-size: 14px; }
+    .dRow { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #ebe7e1; }
+    .dRow:last-child { border-bottom: 0; }
+    .dRow div { flex: 1; min-width: 0; }
+    .dRow div b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dRow div small { color: #5b6166; }
+    .dRow.act b::after { content: "aktiv"; margin-left: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      background: #1d7a46; color: #fff; border-radius: 4px; padding: 1px 5px; vertical-align: 2px; }
+    @media (max-width: 520px) { .dRow { flex-wrap: wrap; } .dRow div { flex-basis: 100%; } }
+    .dEmpty { color: #5b6166; text-align: center; padding: 12px 0; }
+    .tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; background: #f2b705; color: #1a1a1a;
+      border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 3px; }
     .pin span { position: absolute; left: 0; bottom: 48px; transform: translateX(-50%); background: #fff; border: 2px solid #D32F2F;
       border-radius: 8px; padding: 3px 8px; font-size: 14px; font-weight: 700; color: #222; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
   </style>
 </head>
 <body>
+  <div id="dash">
+    <header class="dTop">
+      <a href="start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL" /></a>
+      <h1>Lagekarte<span class="tag">Test</span><small>Lageskizzen auf der Landeskarte</small></h1>
+      <div class="clk" id="dClock">--:--</div>
+    </header>
+    <main class="dMain">
+      <div class="dGrid" id="dTiles"></div>
+      <section class="dCard" id="dNew" hidden>
+        <h2>Neue Lageskizze</h2>
+        <label>Bezeichnung *<input id="dName" placeholder="z. B. Brand Wohnhaus Hauptstrasse" autocomplete="off" /></label>
+        <label>Adresse / Ort (optional, die Karte springt dorthin)<input id="dOrt" placeholder="Strasse Nr., Ort" autocomplete="off" /></label>
+        <div class="dBtns"><button class="dBtn pri" id="dCreate">Skizze starten</button><button class="dBtn" id="dCancel">Abbrechen</button></div>
+      </section>
+      <section class="dCard">
+        <h2>Gespeicherte Skizzen</h2>
+        <div id="dList"></div>
+      </section>
+    </main>
+  </div>
+
   <div id="map"></div>
 
   <div id="top">
@@ -342,7 +409,53 @@
     function save() {
       if (viewOnly) return;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {}
+      saveSketch();
     }
+
+    // ---------- Mehrere Skizzen ----------
+    // Jede Skizze liegt unter einem eigenen Schlüssel; STORAGE_KEY ist die Arbeitskopie der aktiven Skizze.
+    const IDX_KEY = 'einsatzkarte.skizzen.v1', ACT_KEY = 'einsatzkarte.aktiv';
+    const SK = (id) => 'einsatzkarte.skizze.' + id;
+    const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const nE = (n) => (n || 0) + ((n || 0) === 1 ? ' Eintrag' : ' Einträge');
+    const countOf = (d) => d.symbols.length + d.lines.length + (d.pin ? 1 : 0);
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const fmtDT = (t) => { const d = new Date(t); return pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+    let sketches = lsGet(IDX_KEY, null);
+    let activeId = lsGet(ACT_KEY, null);
+    const findSketch = (id) => sketches.find((x) => x.id === id);
+    function saveIndex() { lsSet(IDX_KEY, sketches); lsSet(ACT_KEY, activeId); }
+    function saveSketch() {
+      if (viewOnly) return;
+      if (!activeId) {
+        // auf der Karte ohne Skizze gezeichnet: automatisch als neue Skizze speichern
+        if (!countOf(drawing)) return;
+        const id = newId();
+        sketches.push({ id, name: 'Lageskizze vom ' + fmtDT(Date.now()), ort: '', created: Date.now(), updated: Date.now(), n: 0 });
+        activeId = id;
+      }
+      const sk = findSketch(activeId); if (!sk) return;
+      lsSet(SK(activeId), drawing);
+      sk.updated = Date.now(); sk.n = countOf(drawing); saveIndex();
+    }
+    function normalize(d) {
+      if (!d || !Array.isArray(d.symbols) || !Array.isArray(d.lines)) return { symbols: [], lines: [] };
+      d.symbols = d.symbols.filter((x) => ITEM_TYPES.some((t) => t.id === x.typeId));
+      if (d.pin && !(typeof d.pin.latitude === 'number' && typeof d.pin.longitude === 'number')) delete d.pin;
+      return d;
+    }
+    // Erste Verwendung: bisherige Zeichnung wird zur ersten gespeicherten Skizze
+    if (!Array.isArray(sketches)) {
+      sketches = []; activeId = null;
+      if (countOf(drawing)) {
+        const id = newId();
+        sketches.push({ id, name: 'Lageskizze vom ' + fmtDT(Date.now()), ort: '', created: Date.now(), updated: Date.now(), n: countOf(drawing) });
+        lsSet(SK(id), drawing); activeId = id;
+      }
+      saveIndex();
+    }
+    if (activeId && !findSketch(activeId)) { activeId = null; saveIndex(); }
 
     // ---------- Karte ----------
     const map = L.map('map', {
@@ -358,6 +471,13 @@
       rotateControl: false,
       bearing: 0,
     }).setView([46.8, 8.23], 8);
+
+    // Kartenausschnitt der aktiven Skizze merken
+    map.on('moveend', () => {
+      if (viewOnly || !activeId) return;
+      const sk = findSketch(activeId); if (!sk) return;
+      const c = map.getCenter(); sk.view = [c.lat, c.lng, map.getZoom()]; saveIndex();
+    });
 
     // Drehung der Karte in Grad (0 = Norden oben)
     const bearingDeg = () => (map.getBearing ? map.getBearing() : 0);
@@ -1652,6 +1772,7 @@
         // bei «Nur ansehen» gibt es nur das Bild
         { label: '📤  Teilen', primary: true, onClick: viewOnly ? shareSnapshot : shareMenu },
         { label: '🔍  Adresse suchen', primary: true, onClick: searchAddress },
+        ...(viewOnly ? [] : [{ label: '🏠  Dashboard (Skizzen)', primary: true, onClick: showDash }]),
       ], true);
       const box = document.getElementById('dialogButtons');
       box.classList.add('stack');
@@ -1684,7 +1805,7 @@
       d.innerHTML = String(html).replace(/([^>\s])\s+<b>/, '$1, <b>');
       return d.textContent.replace(/\s+/g, ' ').trim();
     };
-    function searchAddress() {
+    function searchAddress(prefill) {
       dialog('🔍 Adresse suchen', '', [], true);
       const extra = document.getElementById('dialogExtra');
       const input = document.createElement('input');
@@ -1723,6 +1844,7 @@
       input.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 300); };
       input.onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(timer); run(); input.blur(); } };
       input.focus();
+      if (typeof prefill === 'string' && prefill) { input.value = prefill; run(); }
     }
     function placePin(lat, lng, label, origin) {
       document.getElementById('dialog').classList.remove('open');
@@ -1833,6 +1955,7 @@
       firstFix = false; // nicht gleich zum eigenen Standort springen
       map.setView(lage.center, lage.zoom, { animate: false });
       const take = () => {
+        createSketch('Übernommene Lage ' + fmtDT(Date.now()), '');
         drawing = lage.drawing;
         save();
         renderDrawing();
@@ -1841,8 +1964,8 @@
       if (!lage.editable) {
         viewOnly = true;
         drawing = lage.drawing;
-      } else if (drawing.symbols.length || drawing.lines.length) {
-        dialog('Geteilte Lage übernehmen?', 'Du kannst diese Lagekarte nur für dich verändern. Deine eigene Zeichnung auf diesem Gerät wird dabei ersetzt.', [
+      } else if (false) {
+        dialog('Geteilte Lage übernehmen?', '', [
           { label: 'Abbrechen' },
           { label: 'Übernehmen', primary: true, onClick: take },
         ]);
@@ -1854,6 +1977,7 @@
       viewOnly = false;
       drawing = load();
       setMode({ kind: 'ansehen' });
+      showDash();
     }
 
     // Beim Teilen wählen: so wie jetzt auf dem Bildschirm, oder so, dass alle Einträge drauf sind
@@ -2104,9 +2228,111 @@
       if (e.touches.length > 1 && !e.target.closest('#map')) e.preventDefault();
     }, { passive: false });
 
+    // ---------- Dashboard ----------
+    const dash = document.getElementById('dash');
+    function dClock() { const d = new Date(); document.getElementById('dClock').textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+    setInterval(dClock, 10000); dClock();
+    function showDash() {
+      document.getElementById('dialog').classList.remove('open');
+      document.getElementById('dNew').hidden = true;
+      renderDash(); dash.classList.add('open'); dash.scrollTop = 0;
+    }
+    function hideDash() { dash.classList.remove('open'); }
+    function tile(ic, title, sub, color, onClick, big, disabled) {
+      const b = document.createElement('button');
+      b.className = 'dTile' + (big ? ' big' : ''); b.style.setProperty('--c', color);
+      b.innerHTML = (big ? '<span class="ic">' + ic + '</span><div>' : '') + '<b>' + (big ? '' : ic + ' ') + esc(title) + '</b><span>' + esc(sub) + '</span>' + (big ? '</div>' : '');
+      if (disabled) b.disabled = true; else b.onclick = onClick;
+      return b;
+    }
+    function renderDash() {
+      const act = activeId && findSketch(activeId);
+      const tiles = document.getElementById('dTiles'); tiles.innerHTML = '';
+      if (act) tiles.appendChild(tile('▶️', 'Weiterarbeiten', act.name + ' · ' + nE(act.n) + ' · geändert ' + fmtDT(act.updated), '#1d7a46', () => openSketch(act.id), true));
+      tiles.appendChild(tile('➕', 'Neue Lageskizze', 'Leere Karte für ein neues Ereignis', '#c8102e', newSketchForm, !act));
+      tiles.appendChild(tile('📤', 'Teilen / Export', act ? 'Aktive Skizze als Foto, Link oder QR-Code' : 'Zuerst eine Skizze öffnen', '#1557c0', () => { openSketch(act.id); shareMenu(); }, false, !act));
+      tiles.appendChild(tile('🗺️', 'Nur Karte ansehen', 'Karte ohne Skizze öffnen, z. B. zum Nachschauen', '#5b6166', () => { if (!act) { firstFix = true; if (myPos) map.flyTo(myPos, 17, { duration: 0.8 }); } hideDash(); }));
+      const list = document.getElementById('dList');
+      const ss = [...sketches].sort((a, b) => b.updated - a.updated);
+      list.innerHTML = ss.length ? '' : '<div class="dEmpty">Noch keine Skizzen gespeichert.</div>';
+      ss.forEach((x) => {
+        const r = document.createElement('div');
+        r.className = 'dRow' + (x.id === activeId ? ' act' : '');
+        r.innerHTML = '<div><b>' + esc(x.name) + '</b><small>' + (x.ort ? esc(x.ort) + ' · ' : '') + nE(x.n) + ' · ' + fmtDT(x.updated) + '</small></div>';
+        const o = document.createElement('button'); o.className = 'dBtn pri'; o.textContent = 'Öffnen'; o.onclick = () => openSketch(x.id);
+        const rn = document.createElement('button'); rn.className = 'dBtn ghost'; rn.textContent = 'Umbenennen'; rn.onclick = () => renameSketch(x.id);
+        const del = document.createElement('button'); del.className = 'dBtn ghost'; del.textContent = 'Löschen'; del.onclick = () => deleteSketch(x.id);
+        r.append(o, rn, del); list.appendChild(r);
+      });
+    }
+    function newSketchForm() {
+      const f = document.getElementById('dNew');
+      document.getElementById('dName').value = ''; document.getElementById('dOrt').value = '';
+      f.hidden = false; f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => document.getElementById('dName').focus(), 250);
+    }
+    document.getElementById('dCancel').onclick = () => { document.getElementById('dNew').hidden = true; };
+    document.getElementById('dCreate').onclick = () => {
+      const name = document.getElementById('dName').value.trim(), ort = document.getElementById('dOrt').value.trim();
+      if (!name) { document.getElementById('dName').focus(); return; }
+      createSketch(name, ort);
+      setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();
+      if (ort) searchAddress(ort);
+      else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
+    };
+    document.getElementById('dName').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('dOrt').focus(); };
+    document.getElementById('dOrt').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('dCreate').click(); };
+    function createSketch(name, ort) {
+      const id = newId(), now = Date.now();
+      sketches.push({ id, name, ort, created: now, updated: now, n: 0 });
+      activeId = id; drawing = { symbols: [], lines: [] };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {}
+      lsSet(SK(id), drawing); saveIndex();
+    }
+    function openSketch(id) {
+      const sk = findSketch(id); if (!sk) return;
+      viewOnly = false; activeId = id; saveIndex();
+      drawing = normalize(lsGet(SK(id), null));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {}
+      setMode({ kind: 'ansehen' }); renderDrawing();
+      if (sk.view) { firstFix = false; map.setView([sk.view[0], sk.view[1]], sk.view[2], { animate: false }); }
+      else if (drawing.pin) { firstFix = false; map.setView([drawing.pin.latitude, drawing.pin.longitude], 17, { animate: false }); }
+      hideDash();
+    }
+    function renameSketch(id) {
+      const sk = findSketch(id); if (!sk) return;
+      dialog('Umbenennen', '', [{ label: 'Speichern', primary: true, onClick: () => {
+        const v = inp.value.trim(), o = inpO.value.trim(); if (v) sk.name = v; sk.ort = o; saveIndex(); renderDash();
+      } }], true);
+      const extra = document.getElementById('dialogExtra');
+      const inp = document.createElement('input'); inp.className = 'searchInput'; inp.value = sk.name; inp.placeholder = 'Bezeichnung';
+      const inpO = document.createElement('input'); inpO.className = 'searchInput'; inpO.value = sk.ort || ''; inpO.placeholder = 'Adresse / Ort'; inpO.style.marginTop = '8px';
+      extra.append(inp, inpO); inp.focus();
+    }
+    function deleteSketch(id) {
+      const sk = findSketch(id); if (!sk) return;
+      dialog('Skizze löschen?', '«' + sk.name + '» (' + nE(sk.n) + ') wird auf diesem Gerät endgültig gelöscht.', [
+        { label: 'Abbrechen' },
+        { label: 'Löschen', danger: true, onClick: () => {
+          sketches = sketches.filter((x) => x.id !== id);
+          try { localStorage.removeItem(SK(id)); } catch (e) {}
+          if (activeId === id) { activeId = null; drawing = { symbols: [], lines: [] }; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {} renderDrawing(); }
+          saveIndex(); renderDash();
+        } },
+      ]);
+    }
+    document.getElementById('logo').onclick = () => { if (viewOnly) return; showDash(); };
+
     // ---------- Start ----------
     setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'luftbild'; } catch (e) { return 'luftbild'; } })());
+    const hadLink = /^#lage=/.test(location.hash);
     openLageLink();
+    if (!hadLink) {
+      // mit gespeichertem Ausschnitt der aktiven Skizze starten
+      const act = activeId && findSketch(activeId);
+      if (act && act.view) { firstFix = false; map.setView([act.view[0], act.view[1]], act.view[2], { animate: false }); }
+      showDash();
+    }
     renderDrawing();
     renderUI();
     window.addEventListener('resize', renderUI);

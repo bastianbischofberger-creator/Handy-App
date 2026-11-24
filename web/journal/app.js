@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -45,8 +45,11 @@ function LocalBackend() {
   const emitCur = () => { if (!curCb) return; const j = db.journale[cur];
     curCb(j ? { meta: clone(j.meta), entries: clone(Object.values(j.eintraege)), missing: false } : { meta: null, entries: [], missing: true }); };
   const ch = () => { persist(); emitCur(); emitList(); };
+  let setCb = null;
   return {
     mode: 'local',
+    watchSettings(cb) { setCb = cb; cb(clone(db.settings || {})); },
+    putSettings(o) { db.settings = clone(o); persist(); setCb && setCb(clone(o)); },
     watchList(cb) { listCb = cb; emitList(); },
     open(id, cb) { cur = id; curCb = cb; emitCur(); },
     close() { cur = null; curCb = null; },
@@ -76,6 +79,8 @@ async function CloudBackend(fbConfig) {
     onUser: cb => Au.onAuthStateChanged(auth, cb),
     login: (e, p) => Au.signInWithEmailAndPassword(auth, e, p),
     logout: () => Au.signOut(auth),
+    watchSettings(cb) { F.onSnapshot(F.doc(fs, 'config', 'journal'), d => cb(d.exists() ? d.data() : {}), fail); },
+    putSettings(o) { w(F.setDoc(F.doc(fs, 'config', 'journal'), clone(o))); },
     watchList(cb) { F.onSnapshot(F.query(J, F.orderBy('start', 'desc'), F.limit(60)), q => cb(q.docs.map(d => ({ id: d.id, ...d.data() }))), fail); },
     open(id, cb) {
       subs.forEach(u => u()); subs = [];
@@ -137,7 +142,7 @@ function resetDraft() {
 }
 
 /* ---------- Ansichten ---------- */
-const VIEWS = ['vName', 'vNew', 'vList', 'vJ', 'vEdit'];
+const VIEWS = ['vName', 'vNew', 'vList', 'vJ', 'vEdit', 'vSet'];
 function show(v) { S.view = v; VIEWS.forEach(id => $('#' + id).hidden = id !== v); scrollTo(0, 0); }
 const myName = () => LP.get('name') || '';
 
@@ -277,7 +282,8 @@ $('#txt').addEventListener('input', () => {
 function addEntry() {
   if (!S.jid || !S.meta || S.meta.closed) return;
   stopRec();
-  const text = ($('#txt').value + ' ' + $('#interim').textContent).trim();
+  const it = $('#interim').textContent.trim();
+  const text = tidy(($('#txt').value + (it ? ' ' + applyDict(it) : '')).trim());
   if (!text) return msg('Der Eintrag ist leer.');
   const now = Date.now();
   BE.putEntry(S.jid, { id: uid(), t: draftT || now, text, src: usedVoice ? 'voice' : 'text', who: myName(), dev: LP.get('dev'), created: now });
@@ -318,6 +324,79 @@ $('#list').onclick = e => {
   }
 };
 
+/* ---------- Diktat: Fachbegriffe und Satzzeichen ---------- */
+const DEF_WORDS = [
+  'te el ef | t l f | tee el eff | tlf = TLF',
+  'em te ef | m t f | mtf = MTF',
+  'a de ef | a d f | adf | ah de ef = AdF',
+  'a s ü | asü | a es ü = ASÜ',
+  'ka po | kapo | kappo = KAPO',
+  'reco | recco | rekko | rekko | reko = Reko',
+  'ka pe | k p = KP',
+  'be em a | b m a | bma = BMA',
+  'atemschutz trupp = Atemschutztrupp',
+  'atemschutz geräte träger | atemschutz geräteträger = Atemschutzgeräteträger',
+  'einsatz leiter = Einsatzleiter',
+  'rettungs achse = Rettungsachse',
+  'pionier fahrzeug = Pionierfahrzeug',
+  'tank lösch fahrzeug = Tanklöschfahrzeug',
+  'strahl rohr = Strahlrohr',
+  'schlauch leitung = Schlauchleitung',
+  'öl wehr = Ölwehr',
+  'chemie wehr = Chemiewehr',
+  'verkehrs dienst = Verkehrsdienst',
+  'ab sperrung = Absperrung'
+].join('\n');
+const PUNCT = [
+  ['neue zeile|neuer absatz|nächste zeile', '\n'],
+  ['doppelpunkt', ':'], ['fragezeichen', '?'], ['ausrufezeichen', '!'],
+  ['bindestrich', '-'], ['komma', ','], ['punkt', '.']
+];
+const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const L_ = '\\p{L}\\p{N}';
+const wordRe = alt => new RegExp(`(^|[^${L_}])(${alt})(?=$|[^${L_}])`, 'giu');
+let DICT = [];
+function buildDict(txt) {
+  DICT = [];
+  for (const line of String(txt || '').split('\n')) {
+    const i = line.lastIndexOf('='); if (i < 1) continue;
+    const to = line.slice(i + 1).trim(); if (!to) continue;
+    const alts = line.slice(0, i).split('|').map(a => a.trim()).filter(Boolean)
+      .map(a => a.split(/\s+/).map(reEsc).join('[\\s.\\-]*'));
+    if (alts.length) DICT.push([wordRe(alts.join('|')), to]);
+  }
+}
+const PUNCT_RE = PUNCT.map(([a, to]) => [wordRe(a.split('|').map(x => x.split(' ').map(reEsc).join('\\s+')).join('|')), to]);
+function applyDict(t) {
+  for (const [re, to] of DICT) t = t.replace(re, (m, pre) => pre + to);
+  for (const [re, to] of PUNCT_RE) t = t.replace(re, (m, pre) => pre + to);
+  return t;
+}
+function tidy(t) {
+  return t.replace(/[ \t]+([.,:;?!])/g, '$1')
+    .replace(/[ \t]*\n[ \t]*/g, '\n')
+    .replace(/([.,:;?!])(?=[^\s.,:;?!\d])/g, '$1 ')
+    .replace(/(^|[.?!]\s+|\n)(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase())
+    .replace(/[ \t]{2,}/g, ' ');
+}
+const SETT = { words: DEF_WORDS };
+buildDict(SETT.words);
+
+$('#aSet').onclick = e => {
+  e.preventDefault(); stopRec();
+  $('#sLang').value = LP.get('lang') || 'de-CH';
+  $('#sWords').value = SETT.words;
+  show('vSet');
+};
+$('#bSetCancel').onclick = () => renderJ();
+$('#bSetReset').onclick = () => { if (confirm('Standardliste laden? Eigene Ergänzungen in der Liste gehen dabei verloren (erst beim Speichern).')) $('#sWords').value = DEF_WORDS; };
+$('#bSetSave').onclick = () => {
+  LP.set('lang', $('#sLang').value);
+  const w = $('#sWords').value.replace(/\r/g, '').trim();
+  if (w !== SETT.words) BE.putSettings({ words: w, by: myName(), t: Date.now() });
+  SETT.words = w; buildDict(w); msg('Gespeichert ✓'); renderJ();
+};
+
 /* ---------- Spracherkennung (Diktat) ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, recOn = false, finalBase = '';
@@ -329,11 +408,11 @@ function startRec() {
   micHint(navigator.onLine ? '' : 'Offline: Die Spracherkennung braucht je nach Gerät Internet. Sonst das Mikrofon der Tastatur benutzen.');
   if (!draftT) setDraftTime(Date.now());
   usedVoice = true; recOn = true; finalBase = $('#txt').value.trim();
-  rec = new SR(); rec.lang = 'de-CH'; rec.continuous = true; rec.interimResults = true;
+  rec = new SR(); rec.lang = LP.get('lang') || 'de-CH'; rec.continuous = true; rec.interimResults = true;
   rec.onresult = ev => {
     let fin = '', intr = '';
     for (let i = ev.resultIndex; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) fin += r[0].transcript; else intr += r[0].transcript; }
-    if (fin) { finalBase = (finalBase + ' ' + fin.trim()).trim(); $('#txt').value = cap(finalBase); }
+    if (fin) { finalBase = tidy((finalBase + ' ' + applyDict(fin.trim())).trim()); $('#txt').value = cap(finalBase); }
     $('#interim').textContent = intr;
   };
   rec.onerror = ev => {
@@ -342,7 +421,7 @@ function startRec() {
     else if (ev.error === 'language-not-supported') rec.lang = 'de-DE';
   };
   rec.onend = () => {
-    if ($('#interim').textContent) { finalBase = (finalBase + ' ' + $('#interim').textContent.trim()).trim(); $('#txt').value = cap(finalBase); $('#interim').textContent = ''; }
+    if ($('#interim').textContent) { finalBase = tidy((finalBase + ' ' + applyDict($('#interim').textContent.trim())).trim()); $('#txt').value = cap(finalBase); $('#interim').textContent = ''; }
     if (recOn) { try { rec.start(); return; } catch (e) {} }
     recOn = false; micUi();
   };
@@ -414,6 +493,7 @@ let started = false;
 function start() {
   if (started) return; started = true;
   migrateV1();
+  BE.watchSettings(o => { if (o && typeof o.words === 'string') { SETT.words = o.words; buildDict(o.words); } });
   let first = true;
   BE.watchList(l => {
     S.list = l;

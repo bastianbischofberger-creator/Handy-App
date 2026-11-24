@@ -16,6 +16,9 @@ iPhone und Computer müssen im gleichen WLAN sein. Klappt das nicht, `npx expo s
 
 ## Bedienung
 
+- **Dashboard**: Beim Öffnen erscheint das Dashboard mit «Weiterarbeiten», «Neue Lageskizze», «Teilen / Export» und allen
+  gespeicherten Skizzen. Auf der Karte führt ein Tipp aufs Logo (oben links) zurück zum Dashboard.
+
 - **Symbol setzen**: Symbol unten auswählen, dann auf die Karte tippen. Mehrere hintereinander sind möglich.
 - **Linie zeichnen**: Art der Linie wählen, dann Punkt für Punkt auf die Karte tippen und «Linie fertig» drücken.
   Die Sperrzone wird als geschlossene Fläche gezeichnet.
@@ -80,6 +83,8 @@ Adresse: https://bastianbischofberger-creator.github.io/Handy-App/journal/
 - Die Uhrzeit wird beim ersten Wort bzw. beim Drücken von «Sprechen» festgehalten und kann geändert werden.
 - Mehrere Personen/Geräte arbeiten gleichzeitig am selben Journal: Synchronisation über Firebase
   (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). Offline wird gespeichert und später gesendet.
+- Diktat: «Diktat-Einstellungen & Fachbegriffe» – Sprache (de-CH/de-DE) pro Gerät, Korrekturliste für Fachbegriffe
+  (für alle Geräte gemeinsam), gesprochene Satzzeichen («Punkt», «Komma», «neue Zeile» …).
 - Wechsel des Journalführers: «Bearbeiten» – die Übergabe wird automatisch im Journal festgehalten.
 - **Einmalig:** Firestore-Regeln aus `firebase/firestore.rules` in der Firebase-Konsole einfügen und veröffentlichen
   (neu ist der Abschnitt «Einsatzjournal»). Weitere Konten in der Liste bei `staff()` eintragen.

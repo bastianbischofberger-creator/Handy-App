@@ -109,6 +109,29 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
     <button class="pri" id="bName">Weiter</button>
   </section>
 
+  <!-- Diktat-Einstellungen -->
+  <section id="vSet" class="card" hidden>
+    <h2>Diktat-Einstellungen</h2>
+    <label>Sprache der Spracherkennung (nur dieses Gerät)
+      <select id="sLang" style="display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink)">
+        <option value="de-CH">Deutsch (Schweiz)</option>
+        <option value="de-DE">Deutsch (Deutschland)</option>
+        <option value="de-AT">Deutsch (Österreich)</option>
+      </select>
+    </label>
+    <p style="font-size:14px;color:var(--mute);margin:0 0 14px">Tipp: Hochdeutsch, ruhig und in kurzen Sätzen sprechen. Mundart wird nur teilweise erkannt. Probier aus, ob «Schweiz» oder «Deutschland» auf deinem Gerät besser klappt.</p>
+    <label>Fachbegriffe korrigieren (für alle Geräte)
+      <textarea id="sWords" style="min-height:220px;font-family:ui-monospace,Menlo,monospace;font-size:14px" spellcheck="false"></textarea>
+    </label>
+    <p style="font-size:14px;color:var(--mute);margin:-4px 0 14px">Pro Zeile: <b>erkannt = richtig</b>, z. B. <code>te el ef = TLF</code>. Mehrere Schreibweisen mit «|» trennen: <code>reco | recco = Reko</code>. Gross-/Kleinschreibung links spielt keine Rolle.</p>
+    <p style="font-size:14px;color:var(--mute);margin:0 0 14px"><b>Gesprochene Satzzeichen:</b> «Punkt», «Komma», «Doppelpunkt», «Fragezeichen», «Ausrufezeichen», «Bindestrich», «neue Zeile».</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="pri" id="bSetSave">Speichern</button>
+      <button id="bSetReset">Standardliste</button>
+      <button id="bSetCancel">Zurück</button>
+    </div>
+  </section>
+
   <!-- Journal bearbeiten -->
   <section id="vEdit" class="card" hidden>
     <h2>Journal bearbeiten</h2>
@@ -174,6 +197,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
         <button class="pri" id="bAdd">Eintragen</button>
       </div>
       <div id="micHint" hidden></div>
+      <div style="margin-top:8px;font-size:14px"><a href="#" id="aSet">Diktat-Einstellungen &amp; Fachbegriffe</a></div>
     </div>
 
     <div class="card">
@@ -197,8 +221,8 @@ textarea{resize:vertical;min-height:110px;line-height:1.4}
   <button class="pri" style="width:100%">Anmelden</button>
 </form></div>
 
-<script src="config.js?v=1.1.0"></script>
+<script src="config.js?v=1.2.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
-<script src="app.js?v=1.1.0"></script>
+<script src="app.js?v=1.2.0"></script>
 </body>
 </html>
