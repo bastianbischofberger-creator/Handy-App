@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.8.0';
+const VERSION = '0.9.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -44,7 +44,9 @@ const DEF = {
   mittel: MUSTER_M.map(([n, g, info], i) => ({ id: 'mm' + i, name: n, gattung: g, info, muster: true }))
 };
 const QUELLEN = ['Anruf', 'E-Mail', 'Alarm', 'Andere'];
-const PRIOS = [['P1', 'P1 · sofort'], ['P2', 'P2 · dringend'], ['P3', 'P3 · später']];
+const PRIOS = [['D', 'Dringlicher Einsatz'], ['P1', 'Prio 1'], ['P2', 'Prio 2'], ['P3', 'Prio 3']];
+const PRIO_L = { D: 'DRINGEND', P1: 'Prio 1', P2: 'Prio 2', P3: 'Prio 3' };
+const PRIO_R = { D: 0, P1: 1, P2: 2, P3: 3 };
 const DAUER = ['< 30 Min.', '1 h', '2 h', '> 2 h'];
 const COLS = [['offen', 'Offen', '#c8102e'], ['reko', 'Reko', '#7a3db8'], ['pendent', 'Pendent', '#f2b705'], ['bew', 'In Bewältigung', '#1557c0'], ['nach', 'Nacharbeiten', '#0f766e'], ['abg', 'Abgeschlossen', '#8f969c']];
 const STL = { offen: 'Offen', reko: 'Reko', pendent: 'Pendent', bew: 'In Bewältigung', nach: 'Nacharbeiten', abg: 'Abgeschlossen' };
@@ -292,7 +294,7 @@ function syncInbox() {
       const rolle = a.status === 'reko' ? 'reko' : 'disp', ids = rolle === 'reko' ? (a.reko ? a.reko.ids : []) : (a.assigned || []).filter(i => personal().some(p => p.id === i));
       const lead = rolle === 'reko' ? (a.reko && a.reko.lead) || ids[0] : a.lead || ids[0];
       const leadP = personal().find(p => p.id === lead);
-      doc = { aid: a.id, nr: a.nr, art: a.art, adresse: a.adresse, lat: a.lat ?? null, lng: a.lng ?? null, prio: a.prio, text: a.text || '', melder: a.melder || '', tel: a.tel || '',
+      doc = { aid: a.id, nr: a.nr, art: a.art, adresse: a.adresse, lat: a.lat ?? null, lng: a.lng ?? null, dringend: a.prio === 'D', sosi: a.prio === 'D' && !!a.sosi, text: a.text || '', melder: a.melder || '', tel: a.tel || '',
         rolle, fuehrung: lead === pid, fuehrungName: leadP ? pName(leadP) : '', team: [...ids].sort((x, y) => (y === lead) - (x === lead)).map(i => { const p = personal().find(x => x.id === i); return { v: p ? p.vorname : '?', n: p ? p.name : '', lead: i === lead }; }),
         mittel: rolle === 'disp' ? (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(resName).concat(a.extra ? [a.extra] : []) : [],
         bedarf: a.bedarf ? bedarfText(a.bedarf) : '', lageReko: a.lageReko || '', vorOrt: rolle === 'reko' ? !!(a.reko && a.reko.vorOrt) : a.sub === 'vorort',
@@ -344,8 +346,15 @@ function isReady(a) {
 function release(a, ids) { (ids || a.assigned || []).forEach(id => { const k = personal().some(p => p.id === id) ? 'p' : 'm'; const r = resOf(id, k); if (r.auftrag === a.id) setRes(id, k, { status: 'verfuegbar', auftrag: null }); }); }
 function nextNr() { return S.A.reduce((m, a) => Math.max(m, a.nr || 0), 0) + 1; }
 const subOf = a => a.status === 'bew' ? (a.sub === 'vorort' ? 'vorort' : 'disp') : a.status;
-const prioCls = p => ({ P1: 'p1', P2: 'p2', P3: 'p3' }[p] || 'p3');
-const sortA = (x, y) => (x.prio || 'P3').localeCompare(y.prio || 'P3') || x.tEin - y.tEin;
+const prioCls = p => ({ D: 'pd', P1: 'p1', P2: 'p2', P3: 'p3' }[p] || 'p0');
+const prioTag = (a, kurz) => `<span class="tag ${prioCls(a.prio)}">${PRIO_L[a.prio] || 'ohne Prio'}</span>${a.prio === 'D' && a.sosi ? (kurz ? '<span class="tag sosi" title="Sondersignal" aria-label="Sondersignal" style="padding:2px 5px"><i class="bl"></i></span>' : '<span class="tag sosi"><i class="bl"></i>Sondersignal</span>') : ''}`;
+const sortA = (x, y) => (PRIO_R[x.prio] ?? 4) - (PRIO_R[y.prio] ?? 4) || x.tEin - y.tEin;
+/* Dringliche Aufträge blinken, bis sie disponiert sind oder die Reko unterwegs ist */
+const blinkt = a => a.prio === 'D' && ['offen', 'pendent', 'nach'].includes(a.status);
+function setPrio(a, p, von) {
+  if (a.prio === p) return; const alt = PRIO_L[a.prio] || 'ohne Prio'; a.prio = p || null; if (p !== 'D') a.sosi = false;
+  log(`Auftrag ${a.nr}: Priorität ${alt} → ${PRIO_L[p] || 'ohne Prio'}${von ? ' (' + von + ')' : ''}`);
+}
 
 /* ---------- Navigation ---------- */
 const VIEWS = { start: 'vStart', dash: 'vDash', erfassen: 'vErf', lage: 'vLage', karte: 'vKarte', mittel: 'vMittel' };
@@ -430,7 +439,7 @@ function renderDash() {
   const k = [['Offen', c('offen'), '#c8102e'], ['Reko', c('reko'), '#7a3db8'], ['Pendent', c('pendent'), '#f2b705'], ['In Bewältigung', c('bew'), '#1557c0'], ['Nacharbeiten', c('nach'), '#0f766e'], ['Abgeschlossen', c('abg'), '#8f969c'], ['AdF verfügbar', freeP().length + ' / ' + ein, '#1d7a46']];
   $('#kpis').innerHTML = k.map(([l, v, col]) => `<div class="kpi" style="--c:${col}"><span>${l}</span><b>${v}</b></div>`).join('');
   const u = S.A.filter(a => a.status === 'offen' || a.status === 'pendent').sort(sortA).slice(0, 8);
-  $('#urg').innerHTML = u.length ? u.map(a => `<li data-a="${a.id}"><span class="nr">${a.nr}</span><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><span><b>${esc(a.art)}</b> · ${esc(a.adresse)} <span class="tag s-${a.status}">${STL[a.status]}</span></span><span class="since" data-since="${a.tEin}"></span></li>`).join('')
+  $('#urg').innerHTML = u.length ? u.map(a => `<li data-a="${a.id}" class="${blinkt(a) ? 'blink' : ''}"><span class="nr">${a.nr}</span><span>${prioTag(a)}</span><span><b>${esc(a.art)}</b> · ${esc(a.adresse)} <span class="tag s-${a.status}">${STL[a.status]}</span></span><span class="since" data-since="${a.tEin}"></span></li>`).join('')
     : '<li class="empty" style="display:block;cursor:default">Keine offenen oder pendenten Aufträge.</li>';
   const nci = Object.values(S.ci).filter(c => c.status === 'an').length;
   $('#ciBox').innerHTML = `<div><span class="flab">Anmeldung im Depot · Code</span><b class="bc" style="display:block;font-size:42px;line-height:1;letter-spacing:4px">${esc(S.meta.code || '----')}</b>
@@ -441,14 +450,14 @@ $('#urg').addEventListener('click', e => { const li = e.target.closest('[data-a]
 $('#fJournal').addEventListener('submit', e => { e.preventDefault(); const i = e.target.elements.t, v = i.value.trim(); if (!v) return; log(v); i.value = ''; });
 
 /* ---------- 2 Auftragserfassung ---------- */
-const ERF = { quelle: 'Anruf', art: '', prio: 'P2', lat: null, lng: null, anh: [], edit: null, adrPicked: '' };
+const ERF = { quelle: 'Anruf', art: '', dringend: false, lat: null, lng: null, anh: [], edit: null, adrPicked: '' };
 function erfReset(editId) {
   const f = $('#fErf'); f.reset(); $('#erfErr').textContent = ''; $('#sugg').hidden = true;
   const a = editId && A(editId);
-  Object.assign(ERF, { quelle: 'Anruf', art: '', prio: 'P2', lat: null, lng: null, anh: [], edit: a ? a.id : null, adrPicked: '' });
+  Object.assign(ERF, { quelle: 'Anruf', art: '', dringend: false, lat: null, lng: null, anh: [], edit: a ? a.id : null, adrPicked: '' });
   f.elements.tEin.value = hm(Date.now()); f.elements.artFrei.hidden = true;
   if (a) {
-    Object.assign(ERF, { quelle: a.quelle, prio: a.prio, lat: a.lat, lng: a.lng, anh: clone(a.anh || []) });
+    Object.assign(ERF, { quelle: a.quelle, dringend: a.prio === 'D', lat: a.lat, lng: a.lng, anh: clone(a.anh || []) });
     if (arten().includes(a.art)) ERF.art = a.art; else { ERF.art = '__other'; f.elements.artFrei.hidden = false; f.elements.artFrei.value = a.art; }
     f.elements.tEin.value = hm(a.tEin); f.elements.adresse.value = a.adresse; f.elements.melder.value = a.melder || ''; f.elements.tel.value = a.tel || ''; f.elements.text.value = a.text || '';
   }
@@ -458,7 +467,7 @@ function chipRow(id, list, cur) { $(id).innerHTML = list.map(([v, l]) => `<butto
 function renderErf() {
   chipRow('#cQuelle', QUELLEN.map(q => [q, q]), ERF.quelle);
   chipRow('#cArt', [...arten().map(a => [a, a]), ['__other', 'Andere …']], ERF.art);
-  chipRow('#cPrio', PRIOS, ERF.prio);
+  chipRow('#cPrio', [['0', 'Einsatz'], ['1', 'Dringlicher Einsatz']], ERF.dringend ? '1' : '0');
   $('#erfTitle').textContent = ERF.edit ? 'Auftrag bearbeiten' : 'Neuer Auftrag';
   $('#erfNr').textContent = 'Auftrag Nr. ' + (ERF.edit ? A(ERF.edit).nr : nextNr());
   $('#erfNext').hidden = !!ERF.edit;
@@ -469,8 +478,8 @@ function renderErf() {
   $('#recent').innerHTML = r.length ? r.map(a => `<li data-a="${a.id}"><b>${a.nr}</b><span style="flex:1">${esc(a.art)} · ${esc(a.adresse)}</span><span class="bc" style="color:var(--mute)">${hm(a.tEin)}</span></li>`).join('') : '<li class="empty">Noch keine Aufträge.</li>';
 }
 $('#recent').addEventListener('click', e => { const li = e.target.closest('[data-a]'); if (li) openDetail(li.dataset.a); });
-for (const [id, key] of [['#cQuelle', 'quelle'], ['#cArt', 'art'], ['#cPrio', 'prio']]) $(id).addEventListener('click', e => {
-  const b = e.target.closest('[data-v]'); if (!b) return; ERF[key] = b.dataset.v;
+for (const [id, key] of [['#cQuelle', 'quelle'], ['#cArt', 'art'], ['#cPrio', 'dringend']]) $(id).addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b) return; ERF[key] = key === 'dringend' ? b.dataset.v === '1' : b.dataset.v;
   if (key === 'art') { const i = $('#fErf').elements.artFrei; i.hidden = ERF.art !== '__other'; if (!i.hidden) i.focus(); }
   renderErf();
 });
@@ -506,11 +515,12 @@ $('#fErf').addEventListener('submit', e => {
   if (!art) { $('#erfErr').textContent = 'Bitte die Art des Auftrags wählen.'; return; }
   if (!adresse) { $('#erfErr').textContent = 'Bitte Adresse oder Ort eintragen.'; f.elements.adresse.focus(); return; }
   const anh = ERF.anh.map(({ neu, ...x }) => x), upl = ERF.anh.filter(x => x.neu && x.cloud);
-  const fields = { quelle: ERF.quelle, art, prio: ERF.prio, adresse, lat: ERF.lat, lng: ERF.lng, melder: f.elements.melder.value.trim(), tel: f.elements.tel.value.trim(), text: f.elements.text.value.trim(), anh };
-  if (ERF.edit) { const a = A(ERF.edit); Object.assign(a, fields, { tEin: parseTime(f.elements.tEin.value, a.tEin) }); saveA(a); upl.forEach(x => uploadFile(x, a.id)); log(`Auftrag ${a.nr} geändert`); ERF.anh.forEach(x => x.neu = false); go('lage'); return; }
-  const a = { id: uid(), nr: nextNr(), tEin: parseTime(f.elements.tEin.value, Date.now()), ...fields, status: 'offen', sub: null, assigned: [] };
+  const fields = { quelle: ERF.quelle, art, adresse, lat: ERF.lat, lng: ERF.lng, melder: f.elements.melder.value.trim(), tel: f.elements.tel.value.trim(), text: f.elements.text.value.trim(), anh };
+  if (ERF.edit) { const a = A(ERF.edit); Object.assign(a, fields, { tEin: parseTime(f.elements.tEin.value, a.tEin) });
+    if (ERF.dringend && a.prio !== 'D') setPrio(a, 'D', 'Erfassung'); if (!ERF.dringend && a.prio === 'D') setPrio(a, null, 'Erfassung'); saveA(a); upl.forEach(x => uploadFile(x, a.id)); log(`Auftrag ${a.nr} geändert`); ERF.anh.forEach(x => x.neu = false); go('lage'); return; }
+  const a = { id: uid(), nr: nextNr(), tEin: parseTime(f.elements.tEin.value, Date.now()), ...fields, prio: ERF.dringend ? 'D' : null, sosi: false, status: 'offen', sub: null, assigned: [] };
   saveA(a); upl.forEach(x => uploadFile(x, a.id));
-  log(`Auftrag ${a.nr} erfasst (${a.quelle}, ${a.prio}): ${a.art} · ${a.adresse}${anh.length ? ` · ${anh.length} Anhang` + (anh.length > 1 ? 'e' : '') : ''}`);
+  log(`Auftrag ${a.nr} erfasst (${a.quelle}${a.prio === 'D' ? ', DRINGLICHER EINSATZ' : ''}): ${a.art} · ${a.adresse}${anh.length ? ` · ${anh.length} Anhang` + (anh.length > 1 ? 'e' : '') : ''}`);
   ERF.anh = [];
   if (mode === 'next') { erfReset(); f.elements.adresse.focus(); $('#erfErr').style.color = 'var(--ok)'; $('#erfErr').textContent = `Auftrag ${a.nr} gespeichert.`; setTimeout(() => { $('#erfErr').textContent = ''; $('#erfErr').style.color = ''; }, 3000); }
   else go('dash');
@@ -564,7 +574,7 @@ function placeErfMarker(center) {
   else if (center) erfMap.setView([KS.lat, KS.lng], KS.zoom);
   $('#erfMapHint').textContent = ERF.lat != null ? 'Punkt gesetzt. Zum Korrigieren auf die Karte tippen.' : 'Noch kein Punkt: Adresse aus den Vorschlägen wählen oder auf die Karte tippen.';
 }
-function pinIcon(st, nr, sel) { return L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: `<div class="pin${sel ? ' sel' : ''}" style="background:${PINC[st]};${st === 'pendent' ? 'color:#1a1a1a' : ''}">${esc(nr)}</div>` }); }
+function pinIcon(st, nr, sel, bl) { return L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: `<div class="pin${sel ? ' sel' : ''}${bl ? ' blink' : ''}" style="background:${PINC[st]};${st === 'pendent' ? 'color:#1a1a1a' : ''}">${esc(nr)}</div>` }); }
 let lageMap = null, lageLayer = null, baseK = null, baseL = null;
 function initLageMap() {
   if (!window.L) { $('#lageMap').innerHTML = '<p class="empty">Karte nicht geladen (App einmal mit Internet öffnen).</p>'; return; }
@@ -588,7 +598,7 @@ function drawPins() {
   if (!lageMap) return; lageLayer.clearLayers();
   const pts = [];
   for (const a of filtA()) { if (a.lat == null) continue; pts.push([a.lat, a.lng]);
-    L.marker([a.lat, a.lng], { icon: pinIcon(subOf(a), a.nr, a.id === S.sel), zIndexOffset: a.id === S.sel ? 1000 : 0, title: `${a.nr} ${a.art}` }).on('click', () => openDetail(a.id)).addTo(lageLayer); }
+    L.marker([a.lat, a.lng], { icon: pinIcon(subOf(a), a.nr, a.id === S.sel, blinkt(a)), zIndexOffset: a.id === S.sel ? 1000 : 0, title: `${a.nr} ${a.art}` }).on('click', () => openDetail(a.id)).addTo(lageLayer); }
   if (!lageMap._fitted && pts.length) { lageMap.fitBounds(pts, { padding: [40, 40], maxZoom: 16 }); lageMap._fitted = true; }
 }
 
@@ -608,8 +618,8 @@ function cardHtml(a) {
   if (a.status === 'abg' && a.folgeNr) extra += `<span class="tag s-nach">→ Folgeauftrag ${a.folgeNr}</span>`;
   if (a.status === 'abg' && a.abschluss) inf = a.abschluss;
   const ready = isReady(a);
-  return `<button type="button" class="acard${ready ? ' ready' : ''}${a.id === S.sel ? ' sel' : ''}" data-a="${a.id}" id="c-${a.id}">
-    <span class="h"><span class="nr">${a.nr}</span><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><time>${hm(a.tEin)}</time></span>
+  return `<button type="button" class="acard${ready ? ' ready' : ''}${a.prio === 'D' ? ' drg' : ''}${blinkt(a) ? ' blink' : ''}${a.id === S.sel ? ' sel' : ''}" data-a="${a.id}" id="c-${a.id}">
+    <span class="h"><span class="nr">${a.nr}</span>${prioTag(a, true)}<time>${hm(a.tEin)}</time></span>
     <b>${esc(a.art)}</b><span class="ad">${esc(a.adresse)}</span>${extra ? `<span class="row" style="gap:4px">${extra}</span>` : ''}
     ${inf ? `<span class="inf">${esc(inf)}</span>` : ''}${a.status === 'bew' && a.nachf ? `<span class="go" style="background:var(--warn);color:#1a1a1a">Nachforderung: ${esc(bedarfText(a.nachf))}</span>` : ''}${ready ? '<span class="go">Mittel verfügbar – disponieren</span>' : ''}</button>`;
 }
@@ -699,7 +709,9 @@ function renderDetail() {
     nach: [B('disp', 'Disponieren', 'blue'), B('abg', 'Ohne Einsatz abschliessen', 'ghost')],
     abg: [B('reopen', 'Wieder öffnen')]
   }[a.status];
-  $('#dABody').innerHTML = `<div class="dh"><span class="nr">${a.nr}</span><div style="flex:1"><h3>${esc(a.art)}</h3><p>${esc(a.adresse)}</p></div><span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span><span class="tag s-${st}">${stTxt}</span></div>
+  $('#dABody').innerHTML = `<div class="dh"><span class="nr">${a.nr}</span><div style="flex:1"><h3>${esc(a.art)}</h3><p>${esc(a.adresse)}</p></div>${prioTag(a)}<span class="tag s-${st}">${stTxt}</span></div>
+    ${a.status !== 'abg' ? `<div class="prow"><span class="flab">Priorität</span><div class="chips pr">${PRIOS.map(([k, l]) => `<button type="button" data-prio="${k}" class="${a.prio === k ? 'on ' + prioCls(k) : ''}">${l}</button>`).join('')}</div>
+      ${a.prio === 'D' ? `<div class="chips"><button type="button" data-sosi="1" class="${a.sosi ? 'on sosib' : ''}"><i class="bl"></i>Mit Sondersignal</button><button type="button" data-sosi="0" class="${!a.sosi ? 'on' : ''}">Ohne Sondersignal</button></div>` : ''}</div>` : ''}
     <dl class="dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd style="white-space:pre-line">${esc(v)}</dd>`).join('')}</dl>
     ${a.parent ? `<p>Folgeauftrag von <button class="ghost" data-act="goA" data-id="${a.parent}">Auftrag ${a.parentNr}</button></p>` : ''}${a.folge ? `<p>Folgeauftrag: <button class="ghost" data-act="goA" data-id="${a.folge}">Auftrag ${a.folgeNr}</button></p>` : ''}
     ${(a.anh || []).length ? `<span class="flab">Anhänge</span><div class="anh">${a.anh.map((f, i) => `<button class="file" data-file="${i}">${SVGF}${esc(f.name)} <small>${kb(f.size)}</small></button>`).join('')}</div>` : ''}
@@ -711,6 +723,8 @@ function renderDetail() {
 $('#dABody').addEventListener('click', e => {
   const fb = e.target.closest('[data-file]'); if (fb) return openFile(A(S.sel).anh[+fb.dataset.file]);
   const fo = e.target.closest('[data-foto]'); if (fo) { const w = window.open(); if (w) w.document.write(`<img src="${A(S.sel).fotos[+fo.dataset.foto].data}" style="max-width:100%">`); return; }
+  const pb = e.target.closest('[data-prio]'); if (pb) { const a = A(S.sel); setPrio(a, a.prio === pb.dataset.prio ? null : pb.dataset.prio, 'KP'); saveA(a); return; }
+  const sb = e.target.closest('[data-sosi]'); if (sb) { const a = A(S.sel), v = sb.dataset.sosi === '1'; if (!!a.sosi !== v) { a.sosi = v; log(`Auftrag ${a.nr}: ${v ? 'mit' : 'ohne'} Sondersignal`); saveA(a); } return; }
   const b = e.target.closest('[data-act]'); if (!b) return; const a = A(S.sel), act = b.dataset.act, now = Date.now();
   if (act === 'close') return $('#dA').close();
   if (act === 'edit') { $('#dA').close(); return go('erfassen', { edit: a.id }); }
@@ -744,7 +758,7 @@ function openZu(pid) {
     const st = subOf(a), lab = a.status === 'bew' ? (st === 'vorort' ? 'Vor Ort tätig' : 'Disponiert') : STL[a.status];
     const btns = a.status === 'offen' ? `<button data-zu="reko" data-a="${a.id}" class="rekob">Als Reko</button><button data-zu="disp" data-a="${a.id}" class="blue">Disponieren</button>`
       : a.status === 'reko' ? `<button data-zu="reko" data-a="${a.id}" class="rekob">Zur Reko dazu</button>` : `<button data-zu="disp" data-a="${a.id}" class="blue">${a.status === 'bew' ? 'Dazu disponieren' : 'Disponieren'}</button>`;
-    return `<li><div><b>${a.nr} · ${esc(a.art)}</b> <span class="tag ${prioCls(a.prio)}">${esc(a.prio)}</span> <span class="tag s-${st}">${lab}</span><br><span>${esc(a.adresse)}${a.bedarf ? ' · Benötigt: ' + esc(bedarfText(a.bedarf)) : ''}</span></div><span class="row">${btns}</span></li>`;
+    return `<li><div><b>${a.nr} · ${esc(a.art)}</b> ${prioTag(a)} <span class="tag s-${st}">${lab}</span><br><span>${esc(a.adresse)}${a.bedarf ? ' · Benötigt: ' + esc(bedarfText(a.bedarf)) : ''}</span></div><span class="row">${btns}</span></li>`;
   }).join('') || '<li><span>Keine offenen Aufträge.</span></li>';
   $('#dZu').showModal();
 }
@@ -819,7 +833,7 @@ function renderBed() {
   $('#adfN').textContent = BD.adf;
   $('#bdM').innerHTML = gattungen().map(g => { const n = BD.m[g] || 0, tot = mittel().filter(m => (m.gattung || m.name) === g).length;
     return `<button type="button" data-g="${esc(g)}" class="${n ? 'on' : ''}">${n > 1 ? n + '× ' : ''}${esc(g)}</button>`; }).join('');
-  chipRow('#bdD', DAUER.map(d => [d, d]), BD.dauer); chipRow('#bdP', PRIOS.map(([p]) => [p, p]), BD.prio);
+  chipRow('#bdD', DAUER.map(d => [d, d]), BD.dauer); chipRow('#bdP', PRIOS.map(([p]) => [p, PRIO_L[p]]), BD.prio);
   const fake = { status: 'pendent', bedarf: { adf: BD.adf, m: BD.m } }, note = $('#bdNote');
   const hasNeed = BD.adf || Object.values(BD.m).some(Boolean);
   note.hidden = !hasNeed || BD.mode === 'edit';
@@ -831,12 +845,12 @@ $('#adfPlus').onclick = () => { BD.adf++; renderBed(); };
 $('#bdM').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; const g = b.dataset.g, tot = mittel().filter(m => (m.gattung || m.name) === g).length;
   const n = BD.m[g] || 0; BD.m[g] = n >= Math.max(1, tot) ? 0 : n + 1; renderBed(); });
 $('#bdD').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { BD.dauer = BD.dauer === b.dataset.v ? '' : b.dataset.v; renderBed(); } });
-$('#bdP').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { BD.prio = b.dataset.v; renderBed(); } });
+$('#bdP').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { BD.prio = BD.prio === b.dataset.v ? null : b.dataset.v; renderBed(); } });
 $('#fBed').addEventListener('submit', e => {
   const v = e.submitter && e.submitter.value; if (!v || v === 'cancel') return;
   const a = A(BD.id), now = Date.now(), lage = e.target.elements.lage.value.trim();
   Object.keys(BD.m).forEach(k => { if (!BD.m[k]) delete BD.m[k]; });
-  a.bedarf = { adf: BD.adf, m: BD.m }; a.dauer = BD.dauer; if (a.prio !== BD.prio) log(`Auftrag ${a.nr}: Dringlichkeit ${a.prio} → ${BD.prio}`); a.prio = BD.prio; a.lageReko = lage;
+  a.bedarf = { adf: BD.adf, m: BD.m }; a.dauer = BD.dauer; setPrio(a, BD.prio, 'KP'); a.lageReko = lage;
   if (BD.mode === 'lage') { a.lageT = now; saveA(a); log(`Auftrag ${a.nr}: Lagebeurteilung: ${lage || '–'} · Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}`); return; }
   if (BD.mode === 'edit') { saveA(a); log(`Auftrag ${a.nr}: benötigte Mittel ${bedarfText(a.bedarf) || '–'}`); return; }
   if (BD.mode === 'reko') { a.lageT = a.lageT || now; rekoFertig(a, now, v === 'none', 'KP'); saveA(a); if (v === 'disp') setTimeout(() => openPick(a, 'disp'), 50); return; }
@@ -974,11 +988,11 @@ function demo() {
     mk(1, 90, 'Wasser im Gebäude', 'Demo: Rheineck Zentrum', 47.4668, 9.5899, 'P2', 'abg', { tAbg: now - 40 * m, abschluss: 'Keller ausgepumpt' }),
     mk(2, 70, 'Baum / Äste', 'Demo: Thal', 47.4672, 9.5668, 'P2', 'pendent', { rekoDone: false, ohneReko: true, bedarf: { adf: 4, m: { Pionier: 1, Motorsäge: 1 } }, dauer: '1 h' }),
     mk(3, 60, 'Strasse blockiert', 'Demo: Rheineck Rheinstrasse', 47.4642, 9.5948, 'P2', 'bew', { sub: 'vorort', tDisp: now - 50 * m, tVorOrt: now - 42 * m, assigned: [mid('Wassersauger 1'), mid('MTF 1'), pid(4), pid(5)] }),
-    mk(4, 45, 'Baum / Äste', 'Demo: Lutzenberg', 47.4612, 9.5795, 'P1', 'bew', { sub: 'disp', tDisp: now - 10 * m, assigned: [mid('Pionier'), mid('Motorsäge 1'), pid(2), pid(3)] }),
+    mk(4, 45, 'Baum / Äste', 'Demo: Lutzenberg', 47.4612, 9.5795, 'D', 'bew', { sosi: true, sub: 'disp', tDisp: now - 10 * m, assigned: [mid('Pionier'), mid('Motorsäge 1'), pid(2), pid(3)] }),
     mk(5, 35, 'Wasser im Gebäude', 'Demo: Staad', 47.4795, 9.5462, 'P1', 'pendent', { rekoDone: true, reko: { ids: [], wer: ['Kpl Brunner'], t: now - 30 * m, tEnd: now - 20 * m }, bedarf: { adf: 2, m: { Wassersauger: 1 } }, dauer: '2 h' }),
     mk(6, 20, 'Dach / Fassade', 'Demo: Thal Dorf', 47.4688, 9.5702, 'P2', 'reko', { reko: { ids: [pid(6)], wer: [P[6] ? pShort(P[6]) : 'Reko'], t: now - 15 * m } }),
-    mk(7, 8, 'Wasser im Gebäude', 'Demo: Rheineck Bahnhof', 47.4677, 9.5937, 'P1', 'offen'),
-    mk(8, 3, 'Ölspur', 'Demo: Thal Hauptstrasse', 47.4661, 9.5751, 'P3', 'offen')
+    mk(7, 8, 'Wasser im Gebäude', 'Demo: Rheineck Bahnhof', 47.4677, 9.5937, 'D', 'offen'),
+    mk(8, 3, 'Ölspur', 'Demo: Thal Hauptstrasse', 47.4661, 9.5751, null, 'offen')
   ];
   list.forEach(a => { saveA(a); (a.assigned || []).forEach(rid => rid && setRes(rid, P.some(p => p.id === rid) ? 'p' : 'm', { status: 'einsatz', auftrag: a.id })); if (a.status === 'reko') a.reko.ids.forEach(rid => rid && setRes(rid, 'p', { status: 'einsatz', auftrag: a.id })); });
   log('Demo-Ereignis erstellt'); go('dash');
@@ -1008,7 +1022,7 @@ function makePdf() {
   head();
   for (const a of [...S.A].sort((p, q) => p.nr - q.nr)) {
     const st = a.status === 'bew' ? (a.sub === 'vorort' ? 'Vor Ort tätig' : 'Disponiert') : STL[a.status];
-    const cells = [[String(a.nr)], [hm(a.tEin) + ' ' + (a.quelle || '')], [a.art + ' - ' + a.adresse + (a.text ? ' - ' + a.text : '')], [a.prio], [st],
+    const cells = [[String(a.nr)], [hm(a.tEin) + ' ' + (a.quelle || '')], [a.art + ' - ' + a.adresse + (a.text ? ' - ' + a.text : '')], [(PRIO_L[a.prio] || '-') + (a.sosi ? ' SoSi' : '')], [st],
       [[a.reko ? 'Reko ' + a.reko.wer.join(', ') : (a.ohneReko ? 'ohne Reko' : ''), a.lageReko, a.bedarf ? 'Benötigt: ' + bedarfText(a.bedarf) : ''].filter(Boolean).join(' - ') || '-'],
       [assignedText(a) || '-'], [a.status === 'abg' ? hm(a.tAbg) + (a.abschluss ? ' ' + a.abschluss : '') : '-']].map((v, i) => wrap(v[0], cols[i][1] - 6, 8.5, i === 0));
     const h = Math.max(...cells.map(l => l.length)) * 10.5 + 6; if (need(h)) head();

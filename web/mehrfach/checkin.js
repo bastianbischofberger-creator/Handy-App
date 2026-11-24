@@ -113,14 +113,15 @@ function renderAuftrag() {
   if (a.fuehrung && vor) btns += `<button type="button" data-cam="1">📷 Foto machen</button>`;
   btns += `<a class="abtn" href="${navUrl(a)}" target="_blank" rel="noopener">Navigation öffnen</a>`;
   if (a.tel) btns += `<a class="abtn" href="tel:${esc(a.tel.replace(/\s/g, ''))}">Meldende Person anrufen</a>`;
-  box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${lastAid !== a.aid ? ' new' : ''}"><span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${vor ? ' <span class="mute">· vor Ort</span>' : ''}
+  const drg = a.dringend ? (a.sosi ? `<div class="sosibar"><span class="beacon"><i></i></span><span>Fahrt mit Sondersignal<small>Dringlicher Einsatz</small></span><span class="beacon"><i></i></span></div>` : '<div class="drgbar">Dringlicher Einsatz</div>') : '';
+  box.innerHTML = `<div class="auf ${reko ? 'reko' : ''}${a.dringend ? ' drg' : ''}${lastAid !== a.aid ? ' new' : ''}">${drg}<span class="rol">${reko ? 'Reko-Auftrag' : 'Einsatzauftrag'}</span>${vor ? ' <span class="mute">· vor Ort</span>' : ''}
     <h3>${a.nr} · ${esc(a.art)}</h3><p class="adr">${esc(a.adresse)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
     ${a.anhLokal ? `<p class="mute">${a.anhLokal} weitere Anhänge nur im KP</p>` : ''}
     ${reko && a.lageT ? `<p class="mute" style="color:var(--ok);font-weight:600">✓ Lage gemeldet ${hm(a.lageT)}</p>` : ''}${!reko && a.zwN ? `<p class="mute">${a.zwN} Zwischenmeldung${a.zwN > 1 ? 'en' : ''} gesendet</p>` : ''}
     ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht der Teamchef (fett).</p>' : ''}
     <div class="btns">${btns}</div></div>`;
   if (!$('#fl').hidden) renderFiles();
-  if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} }
+  if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate(a.dringend ? [500, 150, 500, 150, 500] : [300, 150, 300]); } catch (e) {} }
 }
 const kbs = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 function b64ToBlob(b64, type) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || 'application/octet-stream' }); }

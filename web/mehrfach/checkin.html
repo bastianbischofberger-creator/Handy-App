@@ -46,6 +46,14 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}button.ok{ba
 .anhb{position:relative}.anhb:disabled{opacity:1;background:#ebe9e6;color:#8a8f94;border-color:#e0ddd8;cursor:default}
 .dot{position:absolute;top:-7px;right:-7px;background:var(--red);color:#fff;font:700 12px Barlow,sans-serif;padding:3px 8px;border-radius:12px;border:2px solid #fff}
 .files{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px}.files button{text-align:left;min-height:46px;font-size:16px;font-weight:500}.files small{color:var(--mute)}
+.auf.drg{border-color:var(--red)}
+.drgbar{margin:-12px -14px 10px;padding:9px 14px;background:var(--red);color:#fff;font:700 19px Barlow,sans-serif;letter-spacing:.5px;text-transform:uppercase;border-radius:10px 10px 0 0;text-align:center}
+.sosibar{display:flex;align-items:center;justify-content:center;gap:14px;margin:-12px -14px 10px;padding:10px 12px;background:#0a1f44;color:#fff;border-radius:10px 10px 0 0;text-align:center;font:700 19px/1.15 Barlow,sans-serif}
+.sosibar small{display:block;font:600 13px Barlow,sans-serif;color:#ff8a9a;text-transform:uppercase;letter-spacing:.5px}
+.beacon{position:relative;width:44px;height:44px;flex:none;border-radius:50%;background:radial-gradient(circle,#bfe0ff 0 22%,#1f7bff 23% 55%,#0b3c99 56%);overflow:hidden;box-shadow:0 0 18px 4px rgba(40,130,255,.75)}
+.beacon i{position:absolute;inset:-30%;background:conic-gradient(from 0deg,rgba(255,255,255,.95) 0deg,rgba(255,255,255,0) 50deg,rgba(255,255,255,0) 180deg,rgba(255,255,255,.95) 180deg,rgba(255,255,255,0) 230deg,rgba(255,255,255,0) 360deg);animation:spin .7s linear infinite;mix-blend-mode:screen}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.beacon i{animation-duration:2.5s}}
 .auf .btns{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{background:#7a3db8;border-color:#7a3db8;color:#fff}
 .step{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);border-radius:10px;padding:3px;margin:6px 0 12px}.step button{width:52px;min-height:46px;padding:0;border:0;font-size:24px}.step b{font:700 26px "Barlow Condensed",sans-serif;min-width:40px;text-align:center}
@@ -140,6 +148,6 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 </main>
 <div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.8.0"></script>
+<script type="module" src="checkin.js?v=0.9.0"></script>
 </body>
 </html>
