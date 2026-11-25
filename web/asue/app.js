@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.9.0';
+const VERSION = '3.0.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -97,6 +97,8 @@ async function CloudBackend(fbConfig) {
     putTeam(eid, T) { w(F.setDoc(F.doc(E, eid, 'teams', T.id), clone(T))); },
     delTeam(eid, id) { w(F.deleteDoc(F.doc(E, eid, 'teams', id))); },
     addLog(eid, id, e) { w(F.setDoc(F.doc(E, eid, 'log', id), clone(e))); },
+    putPublic(k, d) { w(F.setDoc(F.doc(fs, 'asue_public', k), clone(d))); },
+    delPublic(k) { w(F.deleteDoc(F.doc(fs, 'asue_public', k))); },
     async delEinsatz(eid) {
       for (const sub of ['teams', 'log']) { const q = await F.getDocs(F.collection(E, eid, sub)); await Promise.all(q.docs.map(d => F.deleteDoc(d.ref))); }
       await F.deleteDoc(F.doc(E, eid));
@@ -229,7 +231,7 @@ function card(T) {
 function render() {
   const vis = S.teams.filter(t => !t.hidden);
   set('sub', [S.settings.org, S.meta.ereignis].filter(Boolean).join(' · '));
-  renderFw(); if (isDash()) renderDash();
+  renderFw(); if (isDash()) renderDash(); publishLage();
   for (const i of document.querySelectorAll('[data-m]')) if (document.activeElement !== i) i.value = S.meta[i.dataset.m] || '';
   const g = $('#grid');
   if (!vis.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch kein Trupp auf der Tafel</h2><p>Erfasse Trupp-Nummer, Funkkanal, Auftrag und die Namen mit Anfangsdruck. Beim Eingang startet die Überwachung.</p><div class="row"><button class="pri" data-g="add">+ Trupp erfassen</button></div></div>`;
@@ -672,7 +674,31 @@ $('#grid').addEventListener('click', e => {
   else if (a === 'del') confirmBox('Trupp ' + T.nr + ' entfernen?', 'Der Trupp wird gelöscht, er war noch nicht im Einsatz.', () => { BE.delTeam(S.eid, id); log(`Trupp ${T.nr} gelöscht`); });
 });
 $('#bAdd').onclick = () => openTeam();
-$('#bExp').onclick = () => { $('#msg').textContent = ''; $('#dX').showModal(); };
+/* Teilen: nur noch Lage per QR-Code (Gebäude mit Trupps und ihren Standorten, ohne Namen) */
+const shareUrl = k => new URL('lage.html?k=' + encodeURIComponent(k), location.href).href;
+const qrSvg = (t, c) => { const q = window.qrcode(0, 'M'); q.addData(t); q.make(); return q.createSvgTag(c || 7, 2); };
+$('#bExp').onclick = () => {
+  if (!S.eid) return msg2('Zuerst einen Einsatz öffnen.');
+  if (!BE.putPublic) return msg2('Teilen per QR-Code geht nur mit Synchronisation.');
+  if (!S.meta.shareK) { S.meta.shareK = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 20); saveMeta(); log('Lage per QR-Code geteilt'); }
+  lastPub = ''; publishLage();
+  const u = shareUrl(S.meta.shareK);
+  $('#shQR').innerHTML = window.qrcode ? qrSvg(u) : '<p class="err">QR-Modul nicht geladen.</p>';
+  $('#shUrl').textContent = u; $('#dShare').showModal();
+};
+const msg2 = t => { const m = $('#banner'); m.textContent = t; m.hidden = false; setTimeout(() => m.hidden = true, 4000); };
+$('#shX').onclick = () => $('#dShare').close();
+$('#shCopy').onclick = async () => { try { await navigator.clipboard.writeText(shareUrl(S.meta.shareK)); $('#shCopy').textContent = 'Kopiert ✓'; setTimeout(() => $('#shCopy').textContent = 'Link kopieren', 2000); } catch (e) {} };
+$('#shStop').onclick = () => { const k = S.meta.shareK; if (!k) return $('#dShare').close(); BE.delPublic(k); delete S.meta.shareK; saveMeta(); log('Teilen der Lage beendet'); $('#dShare').close(); };
+/* öffentliche Lage nachführen, solange geteilt wird */
+let lastPub = '', pubT = null;
+function publishLage() {
+  const k = S.meta.shareK; if (!k || !BE.putPublic || !S.eid) return;
+  const d = { title: S.meta.ereignis || '', ort: S.meta.ort || '', floors: floors(), closed: !!S.meta.closed,
+    teams: S.teams.filter(t => !t.hidden && t.status !== 'draussen').map(t => ({ nr: String(t.nr || ''), stock: t.stock || '', status: t.status, rett: !!t.rett, tIn: t.tIn || null })) };
+  const js = JSON.stringify(d); if (js === lastPub) return; lastPub = js;
+  clearTimeout(pubT); pubT = setTimeout(() => BE.putPublic(k, { ...d, upd: Date.now() }), 400);
+}
 $('#bXClose').onclick = () => $('#dX').close();
 for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
@@ -846,15 +872,17 @@ function renderDash() {
   $('#dRun').innerHTML = run.length ? run.map(e => `<div class="rc${fwKey && e.fw === fwKey ? ' fwe' : ''}" data-open="${esc(e.id)}">
       <small>Laufender Einsatz${fwKey && e.fw === fwKey ? ' · aktiver Einsatz' : ''}</small><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b>
       <div class="info">${[e.ort && esc(e.ort), e.el && 'EL ' + esc(e.el), 'seit ' + dt(e.start || e.created), e.id === S.eid ? (inside ? inside + ' Trupp(s) drin' : 'kein Trupp drin') : ''].filter(Boolean).join(' · ')}</div>
-      <div class="bb"><button data-open="${esc(e.id)}">Zum Einsatztableau →</button><button class="sec" data-close="${esc(e.id)}">Abschliessen</button></div></div>`).join('')
+      <div class="bb"><button data-open="${esc(e.id)}">Zum Einsatztableau →</button><button class="sec" data-pdf="${esc(e.id)}">Einsatzdaten &amp; PDF</button><button class="sec" data-close="${esc(e.id)}">Abschliessen</button></div></div>`).join('')
     : '<div class="rcempty">Kein laufender Einsatz. Links einen neuen Einsatz eröffnen oder auf der Startseite einen Einsatz generieren.</div>';
   $('#dBackup').hidden = !(BE && BE.exportAll); $('#dImport').hidden = !(BE && BE.importAll);
   $('#dList').innerHTML = done.length ? done.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
-    <span class="tag">Abgeschlossen</span><button data-open="${esc(e.id)}">Öffnen</button></li>`).join('') : '<li><span>Noch keine abgeschlossenen Einsätze.</span></li>';
+    <span class="tag">Abgeschlossen</span><button data-pdf="${esc(e.id)}">PDF</button><button data-open="${esc(e.id)}">Öffnen</button></li>`).join('') : '<li><span>Noch keine abgeschlossenen Einsätze.</span></li>';
 }
 $('#dRun').addEventListener('click', e => dashClick(e));
 $('#dList').addEventListener('click', e => dashClick(e));
 function dashClick(e) {
+  const pd = e.target.closest('[data-pdf]');
+  if (pd) { e.stopPropagation(); if (pd.dataset.pdf !== S.eid) openE(pd.dataset.pdf); $('#msg').textContent = ''; setTimeout(() => $('#dX').showModal(), 150); return; }
   const c = e.target.closest('[data-close]');
   if (c) {
     if (c.dataset.close === S.eid) return $('#bClose').click();

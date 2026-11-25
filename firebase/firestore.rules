@@ -24,6 +24,11 @@ service cloud.firestore {
     match /config/{doc} {
       allow read, write: if staff();
     }
+    // Geteilte Lage (QR-Code im Tableau): nur Gebäude + Trupps, ohne Namen; lesen mit Link (anonym)
+    match /asue_public/{k} {
+      allow read: if request.auth != null;
+      allow write: if staff();
+    }
 
     // ---------- Einsatzjournal ----------
     match /journale/{jid} {

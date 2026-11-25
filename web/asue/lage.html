@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atemschutz – Lage</title>
+<meta name="theme-color" content="#c8102e">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c8102e;--ink:#16181a;--mute:#5b6166;--line:#d8d4ce}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;background:#efedea;color:var(--ink);font:16px/1.4 Barlow,system-ui,sans-serif}
+.top{background:var(--red);color:#fff;display:flex;align-items:center;gap:12px;padding:max(10px,env(safe-area-inset-top)) 14px 10px}
+.top img{width:46px;height:48px;object-fit:contain}
+.top h1{font:600 21px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}.top h1 small{display:block;font:500 13px Barlow,sans-serif;opacity:.9}
+#clock{font:700 30px "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:560px;margin:0 auto;padding:14px}
+.msg{background:#fff;border-radius:12px;padding:16px;text-align:center;color:var(--mute);font-weight:600}
+.ev{font:700 24px/1.1 "Barlow Condensed",sans-serif}.ev small{display:block;font:500 15px Barlow,sans-serif;color:var(--mute)}
+.upd{font-size:13px;color:var(--mute);margin:4px 0 12px}
+.upd.old{color:var(--red);font-weight:700}
+.bau{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.roof{height:30px;background:#9aa1a7;clip-path:polygon(50% 0,100% 100%,0 100%);margin:0 4px}
+.fl{display:grid;grid-template-columns:64px 1fr;min-height:54px;border:2px solid #4a5056;border-top-width:0;background:#f7f6f4}
+.fl.top1{border-top-width:2px}
+.fl.ug{background:#d9dcdf}
+.fl .fn{display:grid;place-items:center;font:700 15px "Barlow Condensed",sans-serif;border-right:1px dashed #9aa1a7;text-align:center;padding:2px}
+.fl .tm{display:flex;flex-wrap:wrap;gap:6px;padding:6px;align-items:center}
+.ground{height:8px;background:repeating-linear-gradient(-45deg,#6b4f2a 0 6px,#3a2a14 6px 12px);margin:0 -6px}
+.t{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:4px 10px;font:700 18px "Barlow Condensed",sans-serif;color:#fff;background:var(--red)}
+.t small{font:600 12px Barlow,sans-serif;opacity:.9}
+.t.rueckzug{background:#f2b705;color:#16181a}
+.t.bereit{background:#5b6166}
+.t.rett{background:#1d7a46}
+.zone{margin-top:10px;border:1px dashed #9aa1a7;border-radius:10px;padding:8px 10px;font-weight:600;color:var(--mute)}
+.zone .tm{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:12px}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<header class="top"><img src="logo.png" alt="FW RTL"><h1>Atemschutz – Lage<small>nur ansehen</small></h1><div id="clock">--:--</div></header>
+<main>
+  <div class="msg" id="msg">Lädt …</div>
+  <section id="view" hidden>
+    <div class="ev" id="ev"></div>
+    <div class="upd" id="upd"></div>
+    <div class="bau" id="bau"></div>
+    <div class="leg"><span><i style="background:#c8102e"></i>im Einsatz</span><span><i style="background:#f2b705"></i>Rückzug</span><span><i style="background:#5b6166"></i>bereit</span><span><i style="background:#1d7a46"></i>Rettungstrupp</span></div>
+  </section>
+</main>
+<script src="config.js"></script>
+<script type="module">
+const CFG = window.ASUE_CONFIG || window.CONFIG || {};
+const fb = CFG.firebase || (window.ASUE && window.ASUE.firebase);
+const $ = s => document.querySelector(s), pad = n => String(n).padStart(2, '0');
+const hm = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const k = new URLSearchParams(location.search).get('k');
+let D = null;
+setInterval(() => { $('#clock').textContent = hm(Date.now()); if (D) render(); }, 15000); $('#clock').textContent = hm(Date.now());
+const msg = t => { $('#msg').textContent = t; $('#msg').hidden = !t; };
+const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
+function chip(t) {
+  const cls = t.status === 'rueckzug' ? 'rueckzug' : t.status === 'bereit' ? (t.rett ? 'rett' : 'bereit') : '';
+  const min = t.status === 'innen' || t.status === 'rueckzug' ? (t.tIn ? Math.floor((Date.now() - t.tIn) / 60000) + ' min' : '') : '';
+  return `<span class="t ${cls}">${t.rett ? '⛑ ' : ''}Trupp ${esc(t.nr)}${min ? `<small>${min}</small>` : ''}${t.status === 'rueckzug' ? '<small>Rückzug</small>' : ''}</span>`;
+}
+function render() {
+  $('#view').hidden = false; msg(D.closed ? 'Einsatz abgeschlossen.' : '');
+  $('#ev').innerHTML = `${esc(D.title || 'Einsatz')}<small>${esc(D.ort || '')}</small>`;
+  const age = Date.now() - (D.upd || 0);
+  $('#upd').textContent = 'Stand ' + hm(D.upd || Date.now()) + (age > 5 * 60000 ? ' – seit über 5 Minuten keine Änderung' : '');
+  $('#upd').classList.toggle('old', age > 5 * 60000);
+  const fl = D.floors || [], teams = D.teams || [], inside = teams.filter(t => t.status === 'innen' || t.status === 'rueckzug');
+  const byNr = (a, b) => String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true });
+  const egI = fl.findIndex(isEG);
+  let h = '<div class="roof"></div>';
+  for (let i = fl.length - 1; i >= 0; i--) {
+    const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
+    h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}${i === fl.length - 1 ? ' top1' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(chip).join('')}</div></div>`;
+    if (i === egI) h += '<div class="ground"></div>';
+  }
+  const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = teams.filter(t => t.status === 'bereit').sort(byNr);
+  if (other.length) h += `<div class="zone">Anderer Ort<div class="tm">${other.map(t => chip(t) + ` <small>${esc(t.stock)}</small>`).join('')}</div></div>`;
+  if (none.length) h += `<div class="zone">Ohne Stockwerk<div class="tm">${none.map(chip).join('')}</div></div>`;
+  if (ready.length) h += `<div class="zone">Bereit<div class="tm">${ready.map(chip).join('')}</div></div>`;
+  if (!teams.length) h += '<div class="zone">Kein Trupp im Einsatz.</div>';
+  $('#bau').innerHTML = h;
+}
+(async () => {
+  if (!k) return msg('Ungültiger Link – bitte den QR-Code nochmals scannen.');
+  if (!fb) return msg('Konfiguration fehlt.');
+  try {
+    const B = 'https://www.gstatic.com/firebasejs/10.12.2/';
+    const [appM, Au, F] = await Promise.all([import(B + 'firebase-app.js'), import(B + 'firebase-auth.js'), import(B + 'firebase-firestore.js')]);
+    const app = appM.initializeApp(fb, 'asue-lage'), auth = Au.getAuth(app);
+    await new Promise(r => { const u = Au.onAuthStateChanged(auth, () => { u(); r(); }); });
+    if (!auth.currentUser) await Au.signInAnonymously(auth);
+    F.onSnapshot(F.doc(F.getFirestore(app), 'asue_public', k), d => {
+      if (!d.exists()) { D = null; $('#view').hidden = true; return msg('Das Teilen wurde beendet.'); }
+      D = d.data(); render();
+    }, () => { $('#view').hidden = true; msg('Kein Zugriff – das Teilen wurde beendet oder ist noch nicht freigegeben.'); });
+  } catch (e) { msg(navigator.onLine ? 'Verbindung fehlgeschlagen.' : 'Keine Internetverbindung.'); }
+})();
+</script>
+</body>
+</html>
