@@ -41,6 +41,7 @@ button.pri{background:var(--red);border-color:var(--red);color:#fff}
 button.warnb{background:var(--warn);border-color:var(--warn);color:#1a1a1a}
 button.ghost{background:transparent}
 main{padding:18px max(3vw,14px) 30px;max-width:1500px;margin:0 auto}
+.fwbar{background:#16181a;color:#fff;padding:6px max(3vw,14px);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fwbar::before{content:"EINSATZ";font-size:11px;font-weight:700;letter-spacing:.06em;background:var(--red,#c8102e);color:#fff;border-radius:4px;padding:1px 6px;margin-right:8px;vertical-align:1px}
 .banner{background:var(--warn);color:#1a1a1a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:500}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:16px}
 .card{background:var(--card);border:2px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
@@ -248,6 +249,7 @@ label select+input{margin-top:6px}
     <button id="bExp" class="icob" title="Einsatzdaten &amp; Export" aria-label="Export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
   </div>
 </div>
+<div class="fwbar" id="fwbar" hidden></div>
 <main>
   <div class="banner" id="banner" hidden></div>
   <div class="board"><aside id="bau" class="bau"></aside><div class="grid" id="grid"></div></div>
@@ -403,6 +405,6 @@ label select+input{margin-top:6px}
 <script src="config.js?v=2.3.2"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.3.4"></script>
+<script src="app.js?v=2.4.0"></script>
 </body>
 </html>

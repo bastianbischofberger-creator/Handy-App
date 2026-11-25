@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.3.2';
+const VERSION = '2.4.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -229,6 +229,7 @@ function card(T) {
 function render() {
   const vis = S.teams.filter(t => !t.hidden);
   set('sub', [S.settings.org, S.meta.ereignis].filter(Boolean).join(' · '));
+  renderFw();
   for (const i of document.querySelectorAll('[data-m]')) if (document.activeElement !== i) i.value = S.meta[i.dataset.m] || '';
   const g = $('#grid');
   if (!vis.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch kein Trupp auf der Tafel</h2><p>Erfasse Trupp-Nummer, Funkkanal, Auftrag und die Namen mit Anfangsdruck. Beim Eingang startet die Überwachung.</p><div class="row"><button class="pri" data-g="add">+ Trupp erfassen</button></div></div>`;
@@ -827,17 +828,40 @@ $('#bPdf').onclick = () => exportAs('pdf');
 
 
 
+/* ================= Einsatz von der Startseite ================= */
+function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
+let fwSynced = false;
+function renderFw() {
+  const el = $('#fwbar'), FW = fwRead(), on = FW && S.meta.fw === 'fw-' + FW.t;
+  el.hidden = !on; if (!on) return;
+  el.innerHTML = `<b>${esc(FW.bez)}</b> · ${esc(FW.adr)} · EL ${esc(FW.el)}`;
+  // Änderungen auf der Startseite übernehmen (einmal pro Start)
+  if (!fwSynced && S.meta.created) { fwSynced = true;
+    if (S.meta.ereignis !== FW.bez || S.meta.ort !== FW.adr || S.meta.el !== FW.el) { S.meta.ereignis = FW.bez; S.meta.ort = FW.adr; S.meta.el = FW.el; saveMeta(); } }
+}
+
 /* ================= Start ================= */
 let started = false;
 function start() {
   if (started) return; started = true;
   BE.watchSettings(s => { S.settings = { ...DEF, ...s }; render(); });
+  const FW = fwRead(), key = FW && 'fw-' + FW.t;
+  let linked = !FW, dashShown = false;
+  // Einsatz von der Startseite: passenden ASÜ-Einsatz öffnen oder einmalig anlegen
+  const link = (l, final) => {
+    if (linked) return;
+    const hit = l.find(e => e.fw === key);
+    if (hit) { linked = true; if (S.eid !== hit.id) openE(hit.id); return; }
+    if (final) { linked = true; openE(BE.create({ ...newMeta(), ereignis: FW.bez, ort: FW.adr, el: FW.el, fw: key })); log('Einsatz von der Startseite übernommen'); }
+  };
   BE.watchList(l => {
     S.list = l; renderList();
-    if (!S.eid) { const want = LP.get('eid'); const hit = l.find(e => e.id === want) || l.find(e => !e.closed); if (hit) openE(hit.id); }
+    if (FW) { link(l, SY.mode === 'local'); return; }
+    if (!S.eid) { const want = LP.get('eid'); const hit = l.find(e => e.id === want && !e.closed) || l.find(e => !e.closed); if (hit) openE(hit.id); }
+    // Kein Einsatz auf der Startseite: Zwischenfenster (Einsätze) zeigen
+    if (!dashShown && !$('#login').classList.contains('show')) { dashShown = true; if (!document.querySelector('dialog[open]')) $('#bList').click(); }
   });
-  const last = LP.get('eid');
-  if (last && BE.has && BE.has(last)) openE(last);
+  if (FW) setTimeout(() => link(S.list || [], true), 2500);
   render();
 }
 $('#fLogin').addEventListener('submit', async e => {
