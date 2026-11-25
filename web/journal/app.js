@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -188,10 +188,14 @@ function renderEntries() {
     </li>`).join('') : '<li class="empty">Noch keine Einträge. Schreib oder sprich den ersten Eintrag.</li>';
 }
 function renderList() {
+  const FW = fwRead(), fj = FW && S.list.find(x => x.id === fwId(FW));
+  $('#fwCard').hidden = !FW;
+  if (FW) $('#fwCard').innerHTML = `<small>Einsatz von der Startseite</small><b>${esc(FW.bez)}</b><div>${esc(FW.adr || '')}${FW.el ? ' · EL ' + esc(FW.el) : ''}${fj ? ' · Journal ' + (fj.closed ? 'abgeschlossen' : 'offen') : ''}</div>
+    <div class="bb"><button id="bFw">${fj ? 'Journal öffnen →' : 'Journal für diesen Einsatz eröffnen →'}</button></div>`;
   const js = [...S.list].sort((a, b) => b.start - a.start);
   $('#jList').innerHTML = js.length ? js.map(j => `
     <div class="jl" data-id="${esc(j.id)}">
-      <div><b>${esc(j.title)}</b>${j.closed ? '<span class="tag c">abgeschlossen</span>' : '<span class="tag">offen</span>'}
+      <div><b>${FW && j.id === fwId(FW) ? '<span class="tag fwt">Einsatz</span>' : ''}${esc(j.title)}</b>${j.closed ? '<span class="tag c">abgeschlossen</span>' : '<span class="tag">offen</span>'}
         <small>${dmy(j.start)} ${hm(j.start)}${j.fu ? ' · Journalführer: ' + esc(j.fu) : ''}${j.ort ? ' · ' + esc(j.ort) : ''}</small></div>
       <button data-a="open">${j.closed ? 'Ansehen' : 'Öffnen'}</button>
       <button class="ghost" data-a="del">Löschen</button>
@@ -201,8 +205,18 @@ function renderList() {
   $('#lUser').textContent = SY.user && SY.user.email ? ` · angemeldet als ${SY.user.email}` : (SY.mode === 'local' ? ' · nur lokal gespeichert' : '');
   $('#bLogout').hidden = SY.mode !== 'cloud';
 }
+/* Einsatz von der Startseite: passendes Journal öffnen oder einmalig anlegen (feste ID, damit keine Doppel entstehen) */
+function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
+const fwId = FW => 'fw' + FW.t;
+function openFw(FW) {
+  const id = fwId(FW);
+  if (!S.list.some(j => j.id === id)) BE.create(id, { title: FW.bez, ort: FW.adr || '', el: FW.el || '', fu: myName(), start: FW.t || Date.now(), end: null, closed: false, createdBy: myName(), fw: 'fw-' + FW.t });
+  S.view = null; openJ(id); setTimeout(() => { const t = $('#txt'); if (t) t.focus(); }, 50);
+}
 function goHome() {
   if (!myName()) { $('#myName').value = ''; show('vName'); return; }
+  const FW = fwRead();
+  if (FW) { const j = S.list.find(x => x.id === fwId(FW)); if (!j || !j.closed) return openFw(FW); }
   const cur = LP.get('cur');
   if (cur) return openJ(cur);
   const open = S.list.filter(j => !j.closed);
@@ -235,6 +249,7 @@ $('#bOpen').onclick = () => {
   S.view = null; openJ(id); setTimeout(() => $('#txt').focus(), 50);
 };
 $('#bNew').onclick = prepNew;
+$('#fwCard').addEventListener('click', e => { if (e.target.closest('#bFw')) { const FW = fwRead(); if (FW) openFw(FW); } });
 $('#bBack').onclick = () => renderJ();
 $('#bJournals').onclick = () => { stopRec(); renderList(); show('vList'); };
 $('#bClose').onclick = () => {
