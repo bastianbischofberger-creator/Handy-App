@@ -867,7 +867,6 @@ $('#dNew').onclick = () => {
   if (S.teams.some(t => t.status === 'innen' || t.status === 'rueckzug')) confirmBox('Neuen Einsatz starten?', 'Im geöffneten Einsatz sind noch Trupps drin. Der Einsatz bleibt gespeichert und ist im Dashboard weiter erreichbar.', go);
   else go();
 };
-$('#dDemo').onclick = () => { demo(); showBoard(); };
 $('#dBackup').onclick = async () => { $('#eMsg').textContent = ''; await $('#bBackup').onclick(); $('#dMsg').textContent = $('#eMsg').textContent; };
 $('#dImport').onclick = () => $('#fImport').click();
 $('#fImport').addEventListener('change', () => setTimeout(() => { $('#dMsg').textContent = $('#eMsg').textContent; }, 300));
