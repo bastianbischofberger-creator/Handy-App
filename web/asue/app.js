@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.2.0';
+const VERSION = '3.2.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -97,8 +97,9 @@ async function CloudBackend(fbConfig) {
     putTeam(eid, T) { w(F.setDoc(F.doc(E, eid, 'teams', T.id), clone(T))); },
     delTeam(eid, id) { w(F.deleteDoc(F.doc(E, eid, 'teams', id))); },
     addLog(eid, id, e) { w(F.setDoc(F.doc(E, eid, 'log', id), clone(e))); },
-    putPublic(k, d) { w(F.setDoc(F.doc(fs, 'asue_public', k), clone(d))); },
-    delPublic(k) { w(F.deleteDoc(F.doc(fs, 'asue_public', k))); },
+    // geteilte Lage: Fehler hier stören die normale Synchronisation nicht
+    putPublic(k, d) { return F.setDoc(F.doc(fs, 'asue_public', k), clone(d)).then(() => { SY.shareErr = ''; renderShareErr(); }, e => { SY.shareErr = e && e.code === 'permission-denied' ? 'Teilen nicht freigegeben: Firestore-Regeln (Abschnitt «Geteilte Lage») veröffentlichen.' : 'Lage konnte nicht geteilt werden.'; renderShareErr(); }); },
+    delPublic(k) { F.deleteDoc(F.doc(fs, 'asue_public', k)).catch(() => {}); },
     async delEinsatz(eid) {
       for (const sub of ['teams', 'log']) { const q = await F.getDocs(F.collection(E, eid, sub)); await Promise.all(q.docs.map(d => F.deleteDoc(d.ref))); }
       await F.deleteDoc(F.doc(E, eid));
@@ -688,6 +689,7 @@ $('#bExp').onclick = () => {
   $('#shQR').innerHTML = window.qrcode ? qrSvg(u) : '<p class="err">QR-Modul nicht geladen.</p>';
   $('#shUrl').textContent = u; $('#dShare').showModal();
 };
+function renderShareErr() { const el = document.getElementById('shErr'); if (el) el.textContent = SY.shareErr || ''; if (SY.shareErr && !document.getElementById('dShare').open) msg2(SY.shareErr); }
 const msg2 = t => { const m = $('#banner'); m.textContent = t; m.hidden = false; setTimeout(() => m.hidden = true, 4000); };
 $('#shX').onclick = () => $('#dShare').close();
 $('#shCopy').onclick = async () => { try { await navigator.clipboard.writeText(shareUrl(S.meta.shareK)); $('#shCopy').textContent = 'Kopiert ✓'; setTimeout(() => $('#shCopy').textContent = 'Link kopieren', 2000); } catch (e) {} };
