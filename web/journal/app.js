@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -189,12 +189,12 @@ function renderEntries() {
   const es = [...S.entries].sort((a, b) => b.t - a.t), me = myName();
   $('#cnt').textContent = es.length ? `(${es.length})` : '';
   $('#list').innerHTML = es.length ? es.map(e => `
-    <li class="e${e.who && e.who === me ? ' mine' : ''}" data-id="${esc(e.id)}">
+    <li class="e${e.who && e.who === me ? ' mine' : ''}${e.prio ? ' prio' : ''}" data-id="${esc(e.id)}">
       <div class="t">${hm(e.t)}<small>:${pad(new Date(e.t).getSeconds())}</small></div>
-      <div class="x">${esc(e.text)}</div>
+      <div class="x">${e.prio ? `<span class="hl">${esc(e.text)}</span>` : esc(e.text)}</div>
       <div class="act">
         <span class="src" title="${e.src === 'voice' ? 'gesprochen' : 'geschrieben'}${e.edited ? ' · bearbeitet' + (e.editedBy && e.editedBy !== e.who ? ' von ' + esc(e.editedBy) : '') : ''}">${e.src === 'voice' ? ICO_MIC : ''}<span class="by">${esc(e.who || 'unbekannt')}</span>${e.edited ? ' ✎' : ''}</span>
-        ${S.meta && S.meta.closed ? '' : '<button class="ib" data-a="edit" title="Bearbeiten" aria-label="Bearbeiten">✏️</button><button class="ib" data-a="del" title="Löschen" aria-label="Löschen">🗑</button>'}
+        ${S.meta && S.meta.closed ? '' : `<button class="ib${e.prio ? ' on' : ''}" data-a="prio" title="${e.prio ? 'Prio-Markierung entfernen' : 'Als Prio-Meldung markieren'}" aria-label="Prio">🖍️</button><button class="ib" data-a="edit" title="Bearbeiten" aria-label="Bearbeiten">✏️</button><button class="ib" data-a="del" title="Löschen" aria-label="Löschen">🗑</button>`}
       </div>
     </li>`).join('') : '<li class="empty">Noch keine Einträge. Schreib oder sprich den ersten Eintrag.</li>';
 }
@@ -320,10 +320,14 @@ function addEntry() {
   const text = tidy(($('#txt').value + (it ? ' ' + applyDict(it) : '')).trim());
   if (!text) return msg('Der Eintrag ist leer.');
   const now = Date.now();
-  BE.putEntry(S.jid, { id: uid(), t: draftT || now, text, src: usedVoice ? 'voice' : 'text', who: myName(), dev: LP.get('dev'), created: now });
-  resetDraft(); msg('Eingetragen ✓');
+  BE.putEntry(S.jid, { id: uid(), t: draftT || now, text, src: usedVoice ? 'voice' : 'text', who: myName(), dev: LP.get('dev'), created: now, ...(prioNext ? { prio: true } : {}) });
+  resetDraft(); setPrio(false); msg('Eingetragen ✓');
 }
 $('#bAdd').onclick = addEntry;
+/* Prio-Meldung: Eintrag wird wie mit gelbem Leuchtstift markiert */
+let prioNext = false;
+function setPrio(v) { prioNext = v; $('#bPrio').classList.toggle('on', v); $('#bPrio').setAttribute('aria-pressed', v); $('#txt').classList.toggle('prio', v); }
+$('#bPrio').onclick = () => setPrio(!prioNext);
 $('#txt').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addEntry(); } });
 
 $('#bTime').onclick = () => {
@@ -349,6 +353,7 @@ $('#list').onclick = e => {
     li.querySelector('.act').innerHTML = '<span class="src"></span><button class="ghost" data-a="cancel">Abbrechen</button><button class="pri" data-a="save" style="min-height:36px">Speichern</button>';
     li.querySelector('textarea').focus();
   }
+  if (b.dataset.a === 'prio') { BE.putEntry(S.jid, { ...en, prio: !en.prio, edited: Date.now(), editedBy: myName() }); return; }
   if (b.dataset.a === 'cancel') renderEntries();
   if (b.dataset.a === 'save') {
     const txt = li.querySelector('textarea').value.trim(); if (!txt) return msg('Text darf nicht leer sein.');
@@ -502,7 +507,9 @@ async function exportPdf() {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor('#16181a'); doc.text(hms(e.t), M, y, { baseline: 'top' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor('#5b6166'); if (wl.length) doc.text(wl, M, y + 14, { baseline: 'top' });
     doc.setFontSize(10.5); doc.setTextColor(e.src === 'auto' ? '#5b6166' : '#16181a');
-    doc.setFont('helvetica', e.src === 'auto' ? 'italic' : 'normal'); doc.text(lines, TX, y, { baseline: 'top', lineHeightFactor: 1.29 });
+    // Prio-Meldung: gelb hinterlegt und fett, wie im Journal
+    if (e.prio) { doc.setFillColor('#ffe600'); doc.rect(TX - 3, y - 2, W - M - TX + 6, lines.length * 13.6 + 3, 'F'); }
+    doc.setFont('helvetica', e.prio ? 'bold' : e.src === 'auto' ? 'italic' : 'normal'); doc.text(lines, TX, y, { baseline: 'top', lineHeightFactor: 1.29 });
     y += rowH + 4;
     doc.setDrawColor('#d8d4ce'); doc.setLineWidth(.5); doc.line(M, y, W - M, y); y += 6;
   }

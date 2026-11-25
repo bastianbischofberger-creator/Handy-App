@@ -23,12 +23,12 @@ let rows = [], note = '', loading = false;
 /* ---------- Daten sammeln ---------- */
 async function collect() {
   const S = J.S, key = S.meta && S.meta.fw, out = [];
-  (S.entries || []).forEach(e => out.push({ t: e.t, src: 'j', text: e.text, by: e.who }));
+  (S.entries || []).forEach(e => out.push({ t: e.t, src: e.src === 'asue' ? 'asue' : 'j', text: e.text, by: e.who, prio: !!e.prio }));
   note = '';
   if (!key) { note = 'Dieses Journal gehört zu keinem Einsatz von der Startseite – darum nur die Journal-Einträge.'; rows = out; return; }
   // auf diesem Gerät gespeichert
   const a = ls('asue-db-v1');
-  if (a && a.einsaetze) for (const e of Object.values(a.einsaetze)) if (e.meta && e.meta.fw === key) for (const l of Object.values(e.log || {})) out.push({ t: l.t, src: 'asue', text: l.text, by: l.dev });
+  if (a && a.einsaetze) for (const e of Object.values(a.einsaetze)) if (e.meta && e.meta.fw === key) for (const l of Object.values(e.log || {})) out.push({ t: l.t, src: 'asue', text: l.text, by: l.dev, prio: !!l.prio });
   const m = ls('mf-db-v1');
   if (m && m.ereignisse) for (const e of Object.values(m.ereignisse)) if (e.meta && e.meta.fw === key) for (const l of Object.values(e.log || {})) out.push({ t: l.t, src: 'mf', text: l.text, by: l.dev });
   const sk = ls('einsatzkarte.skizzen.v1');
@@ -38,8 +38,8 @@ async function collect() {
   }
   // synchronisierte Daten (ASÜ und Mehrfachereignisse laufen über Firebase)
   try { out.push(...await cloud(key)); } catch (e) { note = cloudMsg(e); }
-  const seen = new Set();
-  rows = out.filter(r => r.t && r.text).filter(r => { const k = r.src + r.t + r.text; if (seen.has(k)) return false; seen.add(k); return true; });
+  const seen = new Set(); // Notfall steht im ASÜ-Protokoll und im Journal: nur einmal zeigen
+  rows = out.filter(r => r.t && r.text).filter(r => { const k = r.prio ? 'prio' + Math.round(r.t / 5000) + r.text : r.src + r.t + r.text; if (seen.has(k)) return false; seen.add(k); return true; });
 }
 const cloudMsg = e => e && e.message === 'login' ? 'Einträge von anderen Geräten fehlen: Dieses Gerät ist nicht angemeldet. Einmal in der ASÜ oder den Mehrfachereignissen anmelden, dann erscheinen sie hier.'
   : e && e.message === 'nofb' ? '' : !navigator.onLine ? 'Offline – es werden nur die Daten dieses Geräts angezeigt.' : 'Einträge von anderen Geräten konnten nicht geladen werden.';
@@ -60,7 +60,7 @@ async function cloud(key) {
   const { F, fs } = FB, out = [];
   const grab = async (coll, src) => {
     const q = await F.getDocs(F.query(F.collection(fs, coll), F.where('fw', '==', key)));
-    for (const d of q.docs) { const l = await F.getDocs(F.collection(fs, coll, d.id, 'log')); l.docs.forEach(x => { const v = x.data(); out.push({ t: v.t, src, text: v.text, by: v.dev }); }); }
+    for (const d of q.docs) { const l = await F.getDocs(F.collection(fs, coll, d.id, 'log')); l.docs.forEach(x => { const v = x.data(); out.push({ t: v.t, src, text: v.text, by: v.dev, prio: !!v.prio }); }); }
   };
   const fotos = async () => {
     const q = await F.getDocs(F.query(F.collection(fs, 'bi_einsaetze'), F.where('fw', '==', key)));
@@ -82,8 +82,8 @@ function render() {
   let last = null;
   $('#gList').innerHTML = loading ? '<li class="empty">Wird geladen …</li>' : vis.length ? vis.map(r => {
     const day = dmy(r.t), head = day !== last ? `<li class="gday">${day}</li>` : ''; last = day;
-    return head + `<li class="g" style="--c:${SRC[r.src].c}"><div class="t">${hm(r.t)}<small>:${pad(new Date(r.t).getSeconds())}</small></div>
-      <div class="x"><span class="gb">${SRC[r.src].l}</span>${esc(r.text)}</div><div class="by">${esc(r.by || '')}</div></li>`;
+    return head + `<li class="g${r.prio ? ' prio' : ''}" style="--c:${SRC[r.src].c}"><div class="t">${hm(r.t)}<small>:${pad(new Date(r.t).getSeconds())}</small></div>
+      <div class="x"><span class="gb">${SRC[r.src].l}</span>${r.prio ? `<span class="hl">${esc(r.text)}</span>` : esc(r.text)}</div><div class="by">${esc(r.by || '')}</div></li>`;
   }).join('') : '<li class="empty">Keine Einträge.</li>';
   $('#gNote').textContent = note; $('#gNote').hidden = !note;
 }

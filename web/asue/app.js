@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.3.0';
+const VERSION = '3.4.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -97,6 +97,12 @@ async function CloudBackend(fbConfig) {
     putTeam(eid, T) { w(F.setDoc(F.doc(E, eid, 'teams', T.id), clone(T))); },
     delTeam(eid, id) { w(F.deleteDoc(F.doc(E, eid, 'teams', id))); },
     addLog(eid, id, e) { w(F.setDoc(F.doc(E, eid, 'log', id), clone(e))); },
+    // Prio-Eintrag ins Einsatzjournal des aktiven Einsatzes (legt das Journal an, falls es noch fehlt)
+    async putJournal(jid, meta, e) {
+      const J = F.doc(fs, 'journale', jid);
+      try { const d = await F.getDoc(J); if (!d.exists()) await F.setDoc(J, meta); } catch (x) {}
+      w(F.setDoc(F.doc(fs, 'journale', jid, 'eintraege', e.id), clone(e)));
+    },
     // geteilte Lage: Fehler hier stören die normale Synchronisation nicht
     putPublic(k, d) { return F.setDoc(F.doc(fs, 'asue_public', k), clone(d)).then(() => { SY.shareErr = ''; renderShareErr(); }, e => { SY.shareErr = e && e.code === 'permission-denied' ? 'Teilen nicht freigegeben: Firestore-Regeln (Abschnitt «Geteilte Lage») veröffentlichen.' : 'Lage konnte nicht geteilt werden.'; renderShareErr(); }); },
     delPublic(k) { F.deleteDoc(F.doc(fs, 'asue_public', k)).catch(() => {}); },
@@ -245,7 +251,7 @@ function render() {
   const cmp = LP.get('view') !== 'gross'; document.body.classList.toggle('compact', cmp);
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
-  $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
+  $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li${l.prio ? ' class="prio"' : ''}><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
   document.body.classList.toggle('nobau', LP.get('bau') === 'aus');
   renderBau(); renderList(); renderSync(); tick();
 }
@@ -526,6 +532,24 @@ function enter(T, stock) {
   if (!S.meta.start) { S.meta.start = now; saveMeta(); }
   saveTeam(T);
   log(`Trupp ${T.nr} Eingang (Funk ${T.kanal || '–'}${T.stock ? ', ' + T.stock : ''}${aufText(T) ? ', ' + aufText(T) : ''}): ${T.members.map(m => m.name + ' ' + p0t(m)).join(', ')} bar`);
+  if (notfallFor === T.id) { notfallFor = null; notfall(T); }
+}
+/* ---------- Atemschutznotfall ---------- */
+let notfallFor = null;
+function askNotfall(T, cb) {
+  const d = $('#dNot'); $('#notTxt').textContent = `Rettungstrupp ${T.nr} geht in den Einsatz.`;
+  d.returnValue = ''; d.onclose = () => { if (d.returnValue === 'ja') cb(true); else if (d.returnValue === 'nein') cb(false); }; d.showModal();
+}
+function notfall(T) {
+  const now = Date.now(), text = `ATEMSCHUTZNOTFALL – Rettungstrupp ${T.nr} eingesetzt${T.stock ? ' (' + T.stock + ')' : ''}${aufText(T) ? ', ' + aufText(T) : ''}`;
+  BE.addLog(ensureE(), 'not-' + uid(), { t: now, text, dev: LP.get('dev') || '', prio: true });
+  // Eintrag ins Einsatzjournal (Prio-Meldung), wenn der Einsatz mit der Startseite / dem Journal verknüpft ist
+  const fw = S.meta.fw;
+  if (fw && BE.putJournal) {
+    const t0 = +fw.replace('fw-', '');
+    BE.putJournal('fw' + t0, { title: S.meta.ereignis || 'Einsatz', ort: S.meta.ort || '', el: S.meta.el || '', fu: '', start: t0 || now, end: null, closed: false, createdBy: 'ASÜ', fw },
+      { id: 'asue-not-' + uid(), t: now, text, src: 'asue', who: 'ASÜ' + (LP.get('dev') ? ' (' + LP.get('dev') + ')' : ''), prio: true, created: now });
+  }
 }
 let stCtx = null;
 function openStock(id, mode) {
@@ -669,7 +693,12 @@ $('#grid').addEventListener('click', e => {
   const b = e.target.closest('button[data-a]'); if (!b) return;
   const id = b.closest('.card').dataset.id, T = team(id), now = Date.now(), a = b.dataset.a;
   if (!T) return;
-  if (a === 'in') { if (floors().length) openStock(id, 'in'); else enter(T, T.stock || ''); }
+  if (a === 'in') {
+    const go = () => { if (floors().length) openStock(id, 'in'); else enter(T, T.stock || ''); };
+    // Rettungstrupp: zuerst fragen, ob es ein Atemschutznotfall ist
+    if (T.rett) { askNotfall(T, yes => { notfallFor = yes ? T.id : null; go(); }); return; }
+    go();
+  }
   else if (a === 'druck') openP(id, 'check');
   else if (a === 'arr') openP(id, 'arr');
   else if (a === 'out') confirmBox('Trupp ' + T.nr + ' draussen?', 'Die Überwachung für diesen Trupp wird beendet.', () => {

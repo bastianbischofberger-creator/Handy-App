@@ -103,6 +103,13 @@ li.g{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:2px 10px;pad
 li.g .t{font:700 18px/1.25 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}li.g .t small{font:500 11px Barlow,sans-serif;color:var(--mute)}
 li.g .x{line-height:1.35;padding-top:1px}li.g .by{font-size:11px;color:var(--mute);white-space:nowrap;padding-top:3px}
 .gb{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--c);border-radius:4px;padding:1px 6px;margin-right:8px;vertical-align:2px}
+.e.prio .x,li.g.prio .x{font-weight:700}
+.e.prio .x .hl,li.g.prio .x .hl{background:linear-gradient(180deg,transparent 8%,#ffe600 8%,#ffe600 92%,transparent 92%);color:#16181a;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 3px;border-radius:2px}
+.e .ib.on{opacity:1}
+.cbtns .prioBtn{flex:0 0 auto;min-width:86px;font-weight:700}
+.prioBtn .mk{background:linear-gradient(180deg,transparent 12%,#ffe600 12%,#ffe600 88%,transparent 88%);color:#16181a;padding:0 4px}
+.prioBtn.on{background:#ffe600;border-color:#c9a800;color:#16181a}.prioBtn.on .mk{background:none}
+#txt.prio{background:#fffbd1;border-color:#e6c200}
 </style>
 </head>
 <body>
@@ -223,6 +230,7 @@ li.g .x{line-height:1.35;padding-top:1px}li.g .by{font-size:11px;color:var(--mut
       <div id="interim"></div>
       <div class="cbtns">
         <button id="bMic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micLbl">Sprechen</span></button>
+        <button id="bPrio" class="prioBtn" aria-pressed="false" title="Als Prio-Meldung markieren"><span class="mk">Prio</span></button>
         <button class="pri" id="bAdd">Eintragen</button>
       </div>
       <div id="micHint" hidden></div>
@@ -254,7 +262,7 @@ li.g .x{line-height:1.35;padding-top:1px}li.g .by{font-size:11px;color:var(--mut
 <script src="config.js?v=1.5.0"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="../shared/fwform.js?v=1"></script>
-<script src="app.js?v=1.6.0"></script>
-<script src="gesamt.js?v=1.5.1"></script>
+<script src="app.js?v=1.7.0"></script>
+<script src="gesamt.js?v=1.7.0"></script>
 </body>
 </html>
