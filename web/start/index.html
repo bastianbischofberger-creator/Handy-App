@@ -9,6 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FW RTL">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
@@ -45,6 +46,18 @@ a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .einsatz .act small{display:block;opacity:.9;margin-top:4px;font-size:15px}
 .einsatz .err{font-weight:600;background:#fff;color:var(--red);border-radius:6px;padding:4px 10px;display:inline-block;margin:0 0 10px}
 .einsatz .err:empty{display:none}
+.einsatz .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch}
+@media(max-width:700px){.einsatz .cols{grid-template-columns:1fr}}
+.einsatz .addr{position:relative}
+.einsatz #eSug{position:absolute;left:0;right:0;top:100%;z-index:1100;background:#fff;color:#16181a;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.3);margin-top:2px;max-height:280px;overflow:auto}
+.einsatz #eSug button{display:block;width:100%;text-align:left;background:#fff;color:#16181a;border:0;border-bottom:1px solid #eee;border-radius:0;font-weight:500;min-height:46px}
+.einsatz #eSug button:hover,.einsatz #eSug button:focus{background:#fdecef}
+.einsatz .ok{font-size:13px;font-weight:600;margin:4px 0 0;color:rgba(255,255,255,.92)}
+.einsatz .mapbox{position:relative;min-height:240px;border-radius:10px;overflow:hidden;background:#e8e8e8;border:2px solid rgba(255,255,255,.85)}
+.einsatz #eMap{position:absolute;inset:0}
+.einsatz .mapempty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:#5b6166;font-weight:600;z-index:500;pointer-events:none;background:rgba(255,255,255,.55)}
+.einsatz [hidden]{display:none !important}
+.einsatz .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--red);border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
 .tile .head{display:flex;align-items:center;gap:14px}
 .tile .head img{width:60px;height:60px;border-radius:14px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .tile h2{font:700 26px/1.05 "Barlow Condensed",sans-serif;margin:0}
@@ -69,19 +82,22 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
 <main>
   <div class="grid">
     <section class="einsatz" id="einsatz" aria-label="Einsatz">
-      <form id="eForm">
-        <h2>Einsatz generieren</h2>
-        <label>Einsatzbezeichnung<input id="eBez" autocomplete="off" placeholder="z. B. Brand Einfamilienhaus"></label>
-        <div class="r">
-          <label>Adresse<input id="eAdr" autocomplete="off" placeholder="Strasse Nr., Ort"></label>
-          <label>Einsatzleiter<input id="eEl" autocomplete="off" placeholder="Grad, Name"></label>
+      <div class="cols">
+        <div>
+          <form id="eForm" autocomplete="off">
+            <h2>Einsatz generieren</h2>
+            <label>Einsatzbezeichnung<input id="eBez" placeholder="z. B. Brand EFH"></label>
+            <label class="addr">Adresse<input id="eAdr" placeholder="Strasse Nr. oder Ort eintippen …" role="combobox" aria-autocomplete="list" aria-controls="eSug"><div id="eSug" role="listbox" hidden></div><p class="ok" id="eAdrOk"></p></label>
+            <label>Einsatzleiter<input id="eEl" placeholder="Name Vorname" autocomplete="name"></label>
+            <p class="err" id="eErr"></p>
+            <div class="bt"><button>Einsatz eröffnen</button><button type="button" class="sec" id="eCancel" hidden>Abbrechen</button></div>
+          </form>
+          <div id="eAct" hidden>
+            <div class="act" id="eInfo"></div>
+            <div class="bt" style="margin-top:12px"><button type="button" id="eEdit">Bearbeiten</button><button type="button" class="sec" id="eEnd">Einsatz beenden</button></div>
+          </div>
         </div>
-        <p class="err" id="eErr"></p>
-        <div class="bt"><button>Einsatz eröffnen</button><button type="button" class="sec" id="eCancel" hidden>Abbrechen</button></div>
-      </form>
-      <div id="eAct" hidden>
-        <div class="act" id="eInfo"></div>
-        <div class="bt" style="margin-top:12px"><button type="button" id="eEdit">Bearbeiten</button><button type="button" class="sec" id="eEnd">Einsatz beenden</button></div>
+        <div class="mapbox"><div id="eMap"></div><div class="mapempty" id="eMapEmpty">Adresse wählen – der Kartenausschnitt erscheint hier</div></div>
       </div>
     </section>
     <a class="tile" href="../asue/" style="--c:#c8102e">
@@ -150,9 +166,10 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.5 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.6 · Testversionen</footer>
 </main>
 
+<script src="../vendor/leaflet/leaflet.js"></script>
 <script>
 // Uhr
 const clock = document.getElementById('clock');
@@ -170,7 +187,7 @@ if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) do
 // Offline-Fähigkeit der Startseite
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-/* ----- Einsatz generieren (vorerst nur Eingabe, gespeichert auf diesem Gerät als «fw-einsatz») ----- */
+/* ----- Einsatz generieren (gespeichert auf diesem Gerät als «fw-einsatz»; Adresse aus dem amtlichen Verzeichnis von swisstopo) ----- */
 (function () {
   const $ = id => document.getElementById(id), KEY = 'fw-einsatz';
   const get = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
@@ -178,23 +195,73 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const p2 = n => String(n).padStart(2, '0');
   const when = t => { const d = new Date(t); return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+  let pos = null; // {lat, lng} der gewählten Adresse
+
+  /* Karte */
+  let map = null, pin = null;
+  function initMap() {
+    if (map || !window.L) return;
+    map = L.map('eMap', { zoomControl: true, attributionControl: true }).setView([47.4655, 9.5905], 14);
+    L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', { maxZoom: 19, maxNativeZoom: 18, attribution: '© swisstopo' }).addTo(map);
+  }
+  function showPos() {
+    initMap(); $('eMapEmpty').hidden = !!pos; if (!map) return;
+    if (pos) { if (pin) pin.setLatLng([pos.lat, pos.lng]); else pin = L.marker([pos.lat, pos.lng], { icon: L.divIcon({ className: '', html: '<div class="pin"></div>', iconSize: [26, 26], iconAnchor: [13, 26] }) }).addTo(map);
+      map.setView([pos.lat, pos.lng], 17); }
+    else if (pin) { map.removeLayer(pin); pin = null; }
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+
+  /* Adresssuche */
+  let sT, res = [], act = -1;
+  const clean = l => l.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const fmt = l => { const t = clean(l); const m = t.match(/^(.*?)\s(\d{4}\s.+)$/); return m ? m[1] + ', ' + m[2] : t; };
+  function sug() {
+    $('eSug').innerHTML = res.map((a, i) => `<button type="button" role="option" data-i="${i}"${i === act ? ' style="background:#fdecef"' : ''}>${esc(fmt(a.label))}</button>`).join('');
+    $('eSug').hidden = !res.length;
+  }
+  function pick(i) { const a = res[i]; if (!a) return; $('eAdr').value = fmt(a.label); pos = { lat: a.lat, lng: a.lon }; res = []; sug(); $('eAdrOk').textContent = '✓ Adresse gefunden'; showPos(); }
+  $('eAdr').addEventListener('input', () => {
+    pos = null; $('eAdrOk').textContent = ''; showPos(); clearTimeout(sT);
+    const q = $('eAdr').value.trim(); if (q.length < 3) { res = []; sug(); return; }
+    sT = setTimeout(async () => {
+      try {
+        const url = 'https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&origins=address&sr=4326&limit=8&searchText=' + encodeURIComponent(q);
+        const r = await fetch(url).then(r => r.json());
+        res = (r.results || []).map(x => x.attrs).filter(a => a && a.lat); act = -1; sug();
+      } catch (e) { res = []; sug(); }
+    }, 250);
+  });
+  $('eAdr').addEventListener('keydown', e => {
+    if ($('eSug').hidden) return;
+    if (e.key === 'ArrowDown') { act = Math.min(res.length - 1, act + 1); sug(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { act = Math.max(0, act - 1); sug(); e.preventDefault(); }
+    else if (e.key === 'Enter' && act >= 0) { pick(act); e.preventDefault(); }
+    else if (e.key === 'Escape') { res = []; sug(); }
+  });
+  $('eSug').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) pick(+b.dataset.i); });
+  document.addEventListener('click', e => { if (!e.target.closest('.addr')) { res = []; sug(); } });
+
   function show(edit) {
     const e = get();
     $('eForm').hidden = !!e && !edit; $('eAct').hidden = !e || edit; $('eCancel').hidden = !(e && edit);
     if (e && !edit) $('eInfo').innerHTML = `<b>${esc(e.bez)}</b>${esc(e.adr)}<small>Einsatzleiter: ${esc(e.el)} · eröffnet ${when(e.t)}</small>`;
-    if (edit && e) { $('eBez').value = e.bez; $('eAdr').value = e.adr; $('eEl').value = e.el; }
+    if (edit && e) { $('eBez').value = e.bez; $('eAdr').value = e.adr; $('eEl').value = e.el; $('eAdrOk').textContent = e.lat != null ? '✓ Adresse gefunden' : ''; }
+    if (e) pos = e.lat != null ? { lat: e.lat, lng: e.lng } : null;
     $('eForm').querySelector('button').textContent = e && edit ? 'Speichern' : 'Einsatz eröffnen';
+    showPos();
   }
   $('eForm').addEventListener('submit', ev => {
     ev.preventDefault();
+    if (!$('eSug').hidden && res.length && !pos) { pick(act >= 0 ? act : 0); return; }
     const bez = $('eBez').value.trim(), adr = $('eAdr').value.trim(), el = $('eEl').value.trim();
     const miss = [!bez && 'Einsatzbezeichnung', !adr && 'Adresse', !el && 'Einsatzleiter'].filter(Boolean);
     $('eErr').textContent = miss.length ? 'Bitte ausfüllen: ' + miss.join(', ') : ''; if (miss.length) return;
-    const old = get(); put({ bez, adr, el, t: old ? old.t : Date.now() }); show(false);
+    const old = get(); put({ bez, adr, el, lat: pos ? pos.lat : null, lng: pos ? pos.lng : null, t: old ? old.t : Date.now() }); show(false);
   });
   $('eEdit').onclick = () => show(true);
   $('eCancel').onclick = () => show(false);
-  $('eEnd').onclick = () => { if (!confirm('Einsatz beenden?')) return; put(null); ['eBez', 'eAdr', 'eEl'].forEach(i => $(i).value = ''); show(false); };
+  $('eEnd').onclick = () => { if (!confirm('Einsatz beenden?')) return; put(null); ['eBez', 'eAdr', 'eEl'].forEach(i => $(i).value = ''); $('eAdrOk').textContent = ''; pos = null; show(false); };
   show(false);
 })();
 </script>
