@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -229,7 +229,7 @@ function card(T) {
 function render() {
   const vis = S.teams.filter(t => !t.hidden);
   set('sub', [S.settings.org, S.meta.ereignis].filter(Boolean).join(' · '));
-  renderFw();
+  renderFw(); if (isDash()) renderDash();
   for (const i of document.querySelectorAll('[data-m]')) if (document.activeElement !== i) i.value = S.meta[i.dataset.m] || '';
   const g = $('#grid');
   if (!vis.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch kein Trupp auf der Tafel</h2><p>Erfasse Trupp-Nummer, Funkkanal, Auftrag und die Namen mit Anfangsdruck. Beim Eingang startet die Überwachung.</p><div class="row"><button class="pri" data-g="add">+ Trupp erfassen</button></div></div>`;
@@ -294,7 +294,7 @@ function tick() {
 
 /* ---------- Einsätze-Liste ---------- */
 function renderList() {
-  renderAdList(); renderPers();
+  renderAdList(); renderPers(); renderDash();
   const ul = $('#elist'); if (!ul) return;
   ul.innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
     <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span>
@@ -311,7 +311,7 @@ $('#adList').addEventListener('click', e => {
     renderAdList();
   });
 });
-$('#bList').onclick = () => { renderList(); $('#eMsg').textContent = ''; $('#bBackup').hidden = !BE.exportAll; $('#lImport').hidden = !BE.importAll; $('#dE').showModal(); };
+$('#bList').onclick = () => showDash();
 $('#bEClose').onclick = () => $('#dE').close();
 $('#bNew').onclick = () => {
   const go = () => { openE(BE.create(newMeta())); $('#dE').close(); };
@@ -676,7 +676,13 @@ $('#bExp').onclick = () => { $('#msg').textContent = ''; $('#dX').showModal(); }
 $('#bXClose').onclick = () => $('#dX').close();
 for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
-$('#bHome').onclick = () => confirmBox('Zur Startseite wechseln?', 'Die Daten bleiben gespeichert. Solange die Atemschutzüberwachung nicht offen ist, gibt es aber keine Alarme für Druckkontrolle und Rückzug.', () => { location.href = '../start/'; });
+/* Logo: im Tableau → Dashboard, im Dashboard → Startseite */
+$('#bHome').onclick = () => {
+  if (!isDash()) return showDash();
+  const inside = S.teams.filter(t => t.status === 'innen' || t.status === 'rueckzug').length;
+  if (!inside) { location.href = '../start/'; return; }
+  confirmBox('Zur Startseite wechseln?', `Achtung: ${inside} Trupp(s) sind noch drin. Die Daten bleiben gespeichert, aber solange die Atemschutzüberwachung nicht offen ist, gibt es keine Alarme für Druckkontrolle und Rückzug.`, () => { location.href = '../start/'; });
+};
 $('#muteInd').onclick = () => confirmBox('Ton wieder einschalten?', 'Alarme für Druckkontrolle und Rückzug sind dann wieder hörbar.', () => { LP.set('mute', false); render(); initAudio(); beep(1); });
 $('#fS').elements.ton.addEventListener('change', e => {
   if (e.target.value === 'an') { LP.set('mute', false); render(); initAudio(); beep(1); return; }
@@ -828,6 +834,34 @@ $('#bPdf').onclick = () => exportAs('pdf');
 
 
 
+/* ================= Dashboard ================= */
+const isDash = () => document.body.classList.contains('dashmode');
+function showDash() { document.body.classList.add('dashmode'); renderDash(); scrollTo(0, 0); }
+function showBoard() { document.body.classList.remove('dashmode'); scrollTo(0, 0); render(); }
+function renderDash() {
+  const cur = S.eid && S.list.find(e => e.id === S.eid), open = cur && !cur.closed;
+  const inside = S.teams.filter(t => t.status === 'innen' || t.status === 'rueckzug').length;
+  $('#dCur').hidden = !open;
+  if (open) $('#dCur').innerHTML = `<span>Laufender Einsatz</span><b>${esc(cur.ereignis || 'Ohne Bezeichnung')}</b><span>${[cur.ort && esc(cur.ort), 'seit ' + dt(cur.start || cur.created), inside ? inside + ' Trupp(s) im Einsatz' : 'kein Trupp drin'].filter(Boolean).join(' · ')}</span><span class="go">Zum Einsatztableau →</span>`;
+  $('#dCloseE').hidden = !open;
+  $('#dBackup').hidden = !(BE && BE.exportAll); $('#dImport').hidden = !(BE && BE.importAll);
+  $('#dList').innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
+    <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span><button data-open="${esc(e.id)}">${e.id === S.eid ? 'Zum Tableau' : 'Öffnen'}</button></li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
+}
+$('#dCur').onclick = () => showBoard();
+$('#dList').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (!b) return; if (b.dataset.open !== S.eid) openE(b.dataset.open); showBoard(); });
+$('#dNew').onclick = () => {
+  const go = () => { openE(BE.create(newMeta())); showBoard(); };
+  if (S.teams.some(t => t.status === 'innen' || t.status === 'rueckzug')) confirmBox('Neuen Einsatz starten?', 'Im geöffneten Einsatz sind noch Trupps drin. Der Einsatz bleibt gespeichert und ist im Dashboard weiter erreichbar.', go);
+  else go();
+};
+$('#dSet').onclick = () => $('#bSet').click();
+$('#dDemo').onclick = () => { demo(); showBoard(); };
+$('#dBackup').onclick = async () => { $('#eMsg').textContent = ''; await $('#bBackup').onclick(); $('#dMsg').textContent = $('#eMsg').textContent; };
+$('#dImport').onclick = () => $('#fImport').click();
+$('#fImport').addEventListener('change', () => setTimeout(() => { $('#dMsg').textContent = $('#eMsg').textContent; }, 300));
+$('#dCloseE').onclick = () => $('#bClose').click();
+
 /* ================= Einsatz von der Startseite ================= */
 function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
 let fwSynced = false;
@@ -846,7 +880,8 @@ function start() {
   if (started) return; started = true;
   BE.watchSettings(s => { S.settings = { ...DEF, ...s }; render(); });
   const FW = fwRead(), key = FW && 'fw-' + FW.t;
-  let linked = !FW, dashShown = false;
+  let linked = !FW;
+  if (FW) showBoard(); else showDash();
   // Einsatz von der Startseite: passenden ASÜ-Einsatz öffnen oder einmalig anlegen
   const link = (l, final) => {
     if (linked) return;
@@ -858,8 +893,7 @@ function start() {
     S.list = l; renderList();
     if (FW) { link(l, SY.mode === 'local'); return; }
     if (!S.eid) { const want = LP.get('eid'); const hit = l.find(e => e.id === want && !e.closed) || l.find(e => !e.closed); if (hit) openE(hit.id); }
-    // Kein Einsatz auf der Startseite: Zwischenfenster (Einsätze) zeigen
-    if (!dashShown && !$('#login').classList.contains('show')) { dashShown = true; if (!document.querySelector('dialog[open]')) $('#bList').click(); }
+
   });
   if (FW) setTimeout(() => link(S.list || [], true), 2500);
   render();

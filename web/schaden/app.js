@@ -149,5 +149,11 @@ $('#bAgain').onclick = () => { if (last) { LP.o.hist.shift(); openMail(last); } 
 $('#bHome').onclick = () => { photos.forEach(p => URL.revokeObjectURL(p.url)); photos = []; home(); };
 
 home();
+/* Logo: in einer Unterseite → Dashboard, im Dashboard → Startseite */
+$('#aHome').onclick = e => {
+  if (!$('#vDash').hidden) return; e.preventDefault();
+  if (!$('#vForm').hidden && ($('#besch').value.trim() || photos.length) && !confirm('Meldung verwerfen und zum Dashboard?')) return;
+  photos.forEach(p => URL.revokeObjectURL(p.url)); photos = []; home();
+};
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

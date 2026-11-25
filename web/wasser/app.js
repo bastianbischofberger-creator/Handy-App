@@ -303,5 +303,7 @@ $('#bPSave').onclick = () => {
 $('#bPReset').onclick = () => { if (confirm('Alle Parameter auf die Standardwerte zurücksetzen?')) { P = clone(WT.DEFAULTS); store('wasser-param', P); fillParam(); msg('Standardwerte geladen.'); } };
 
 go('dash');
+/* Logo: in einer Unterseite → Dashboard, im Dashboard → Startseite */
+$('#aHome').onclick = e => { if (view !== 'dash') { e.preventDefault(); go('dash'); } };
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

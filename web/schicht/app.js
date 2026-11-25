@@ -377,5 +377,7 @@ addEventListener('online', renderSync); addEventListener('offline', renderSync);
 /* ---------- Start ---------- */
 const m = location.hash.match(/p=([\w-]+)/);
 if (m && DB.plaene[m[1]]) go('plan', m[1]); else go('dash');
+/* Logo: in einer Unterseite → Dashboard, im Dashboard → Startseite */
+$('#aHome').onclick = e => { if ($('#vDash').hidden) { e.preventDefault(); go('dash'); } };
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
