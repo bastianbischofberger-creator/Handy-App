@@ -6,10 +6,8 @@
 */
 window.JR_CONFIG = {
   feuerwehr: 'Feuerwehr Rheineck-Thal-Lutzenberg',
-  /* VORÜBERGEHEND AUS: Synchronisation erst einschalten, wenn die Firestore-Regeln veröffentlicht sind.
-     Zum Einschalten «firebase: null» löschen und «firebaseSync» wieder in «firebase» umbenennen. */
-  firebase: null,
-  firebaseSync: {
+  /* Synchronisation EIN (Firestore-Regeln am 25.11.2026 veröffentlicht). Ausschalten: «firebase: null» setzen. */
+  firebase: {
     apiKey: "AIzaSyAUV3mBtsPkXjf4by7VXVARBoCIZffsjHw",
     authDomain: "asue-e0f21.firebaseapp.com",
     projectId: "asue-e0f21",

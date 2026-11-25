@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -109,6 +109,17 @@ function migrateV1() {
   }
   if (old.who && !LP.get('name')) LP.set('name', old.who);
   try { localStorage.setItem('fwrtl-journal-v1-uebernommen', JSON.stringify(old)); localStorage.removeItem('fwrtl-journal-v1'); } catch (e) {}
+}
+
+/* Journale, die vorher nur auf diesem Gerät gespeichert waren, einmalig in die Synchronisation übernehmen */
+function migrateLocal() {
+  if (SY.mode !== 'cloud') return;
+  let old = null; try { old = JSON.parse(localStorage.getItem('journal-db-v2')); } catch (e) {}
+  if (!old || !old.journale || !Object.keys(old.journale).length) return;
+  let n = 0;
+  for (const [id, j] of Object.entries(old.journale)) { if (!j || !j.meta) continue; BE.create(id, j.meta); for (const e of Object.values(j.eintraege || {})) BE.putEntry(id, e); n++; }
+  try { localStorage.setItem('journal-db-v2-uebernommen', JSON.stringify(old)); localStorage.removeItem('journal-db-v2'); } catch (e) {}
+  if (n) msg(n + ' Journal' + (n > 1 ? 'e' : '') + ' von diesem Gerät in die Synchronisation übernommen.');
 }
 
 /* ---------- Sync-Anzeige ---------- */
@@ -508,7 +519,7 @@ $('#bPdf').onclick = () => { if (S.jid && S.meta) exportPdf(); else { renderList
 let started = false;
 function start() {
   if (started) return; started = true;
-  migrateV1();
+  migrateV1(); migrateLocal();
   BE.watchSettings(o => { if (o && typeof o.words === 'string') { SETT.words = o.words; buildDict(o.words); } });
   let first = true;
   BE.watchList(l => {
