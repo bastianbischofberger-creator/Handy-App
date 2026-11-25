@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.1.0';
+const VERSION = '3.1.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -476,7 +476,8 @@ const floors = () => String(S.meta.floors || S.settings.floors || '').split(',')
 const genFloors = (og, ug) => [...Array(ug)].map((_, i) => 'UG -' + (ug - i)).concat(['EG'], [...Array(og)].map((_, i) => (i + 1) + '. OG'), ['Dach']);
 const countOG = fl => fl.filter(f => /^\d+\. ?OG$/i.test(f)).length, countUG = fl => fl.filter(f => /^UG/i.test(f)).length;
 const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
-const aufKeys = T => window.ASUE_ICONS ? window.ASUE_ICONS.keys([T.auftrag, T.zusatz].filter(Boolean).join(' ')) : [];
+// Rettungstrupp behält nur seine Axt – keine Auftrags-Symbole
+const aufKeys = T => window.ASUE_ICONS && !T.rett ? window.ASUE_ICONS.keys([T.auftrag, T.zusatz].filter(Boolean).join(' ')) : [];
 function badge(T, extra) { return `<button type="button" class="tbg ${T.status}${T.rett ? ' rett' : ''}" id="b-${T.id}" data-st="${esc(T.id)}" title="${T.rett ? 'Rettungstrupp' : 'Trupp'} ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}${T.auftrag ? ' · ' + esc(T.auftrag) : ''}">${T.rett ? AXE : ''}${window.ASUE_ICONS ? window.ASUE_ICONS.html(aufKeys(T)) : ''}${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
 function renderBau() {
   const el = $('#bau'); if (!el) return;

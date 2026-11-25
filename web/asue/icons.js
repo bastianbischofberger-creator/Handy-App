@@ -9,7 +9,7 @@ const LIST = [
 ];
 window.ASUE_ICONS = {
   LIST,
-  keys: (text, max = 2) => LIST.filter(x => x.re.test(String(text || ''))).slice(0, max).map(x => x.k),
+  keys: (text, max = 2) => { const t = String(text || '').replace(/rettungstrupp|sicherungstrupp/gi, ''); return LIST.filter(x => x.re.test(t)).slice(0, max).map(x => x.k); },
   html: keys => (keys || []).map(k => { const x = LIST.find(i => i.k === k); return x ? x.svg.replace('<svg ', `<svg title="${x.l}" `) : ''; }).join('')
 };
 })();
