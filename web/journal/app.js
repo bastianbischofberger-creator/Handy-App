@@ -179,11 +179,11 @@ function renderEntries() {
   $('#cnt').textContent = es.length ? `(${es.length})` : '';
   $('#list').innerHTML = es.length ? es.map(e => `
     <li class="e${e.who && e.who === me ? ' mine' : ''}" data-id="${esc(e.id)}">
-      <div class="t">${hm(e.t)}<small>${pad(new Date(e.t).getSeconds())} s</small></div>
+      <div class="t">${hm(e.t)}<small>:${pad(new Date(e.t).getSeconds())}</small></div>
       <div class="x">${esc(e.text)}</div>
       <div class="act">
-        <span class="src">${e.src === 'voice' ? ICO_MIC : ICO_KEY}<span class="by">${esc(e.who || 'unbekannt')}</span>${e.edited ? ` · bearbeitet${e.editedBy && e.editedBy !== e.who ? ' von ' + esc(e.editedBy) : ''}` : ''}</span>
-        ${S.meta && S.meta.closed ? '' : '<button class="ghost" data-a="edit">Bearbeiten</button><button class="ghost" data-a="del">Löschen</button>'}
+        <span class="src" title="${e.src === 'voice' ? 'gesprochen' : 'geschrieben'}${e.edited ? ' · bearbeitet' + (e.editedBy && e.editedBy !== e.who ? ' von ' + esc(e.editedBy) : '') : ''}">${e.src === 'voice' ? ICO_MIC : ''}<span class="by">${esc(e.who || 'unbekannt')}</span>${e.edited ? ' ✎' : ''}</span>
+        ${S.meta && S.meta.closed ? '' : '<button class="ib" data-a="edit" title="Bearbeiten" aria-label="Bearbeiten">✏️</button><button class="ib" data-a="del" title="Löschen" aria-label="Löschen">🗑</button>'}
       </div>
     </li>`).join('') : '<li class="empty">Noch keine Einträge. Schreib oder sprich den ersten Eintrag.</li>';
 }
@@ -325,6 +325,7 @@ $('#list').onclick = e => {
     BE.delEntry(S.jid, en.id);
   }
   if (b.dataset.a === 'edit') {
+    li.classList.add('editing');
     li.querySelector('.x').innerHTML = `<input type="time" step="1" value="${hms(en.t)}" style="width:auto;margin-bottom:6px"><textarea>${esc(en.text)}</textarea>`;
     li.querySelector('.act').innerHTML = '<span class="src"></span><button class="ghost" data-a="cancel">Abbrechen</button><button class="pri" data-a="save" style="min-height:36px">Speichern</button>';
     li.querySelector('textarea').focus();

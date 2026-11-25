@@ -77,8 +77,8 @@ function render() {
   let last = null;
   $('#gList').innerHTML = loading ? '<li class="empty">Wird geladen …</li>' : vis.length ? vis.map(r => {
     const day = dmy(r.t), head = day !== last ? `<li class="gday">${day}</li>` : ''; last = day;
-    return head + `<li class="g" style="--c:${SRC[r.src].c}"><div class="t">${hm(r.t)}<small>${pad(new Date(r.t).getSeconds())} s</small></div>
-      <div class="x"><span class="gb">${SRC[r.src].l}</span>${esc(r.text)}${r.by ? `<small>${esc(r.by)}</small>` : ''}</div></li>`;
+    return head + `<li class="g" style="--c:${SRC[r.src].c}"><div class="t">${hm(r.t)}<small>:${pad(new Date(r.t).getSeconds())}</small></div>
+      <div class="x"><span class="gb">${SRC[r.src].l}</span>${esc(r.text)}</div><div class="by">${esc(r.by || '')}</div></li>`;
   }).join('') : '<li class="empty">Keine Einträge.</li>';
   $('#gNote').textContent = note; $('#gNote').hidden = !note;
 }
