@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schadenmeldung</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Schaden">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--c:#0f7b8a}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.top{position:sticky;top:0;z-index:5;background:var(--red);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px}
+#clock{font:700 clamp(30px,5.5vw,46px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button:disabled{opacity:.5}
+svg{width:22px;height:22px;flex:none}
+main{max-width:860px;margin:0 auto;padding:16px max(3vw,14px) calc(30px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:12px}
+input,select,textarea{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+textarea{resize:vertical;min-height:110px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 12px}
+.mute{color:var(--mute)}
+/* Dashboard */
+.dash{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+@media(min-width:700px){.dash{grid-template-columns:repeat(3,1fr)}}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;text-align:left;background:var(--card);border:1px solid var(--line);border-top:6px solid var(--tc);border-radius:12px;padding:18px;min-height:150px;font-weight:400;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tile .ic{width:52px;height:52px;border-radius:12px;background:var(--tc);color:#fff;display:grid;place-items:center}
+.tile .ic svg{width:30px;height:30px}
+.tile b{font:700 24px/1.05 "Barlow Condensed",sans-serif}
+.tile span{color:var(--mute);font-size:15px}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.hist li:last-child{border-bottom:0}
+.hist .d{font:700 18px/1.1 "Barlow Condensed",sans-serif;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hist .d small{display:block;font:500 13px Barlow,sans-serif;color:var(--mute)}
+.hist div{flex:1}.hist div small{display:block;color:var(--mute);font-size:14px}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px;color:#fff;background:var(--mute)}
+.tag.u1{background:#d96c00}.tag.u2{background:var(--red)}
+/* Formular */
+.fhead{border-top:6px solid var(--tc)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chips button{min-height:44px;padding:6px 12px;font-weight:500}
+.chips button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.chips.urg button.on[data-v="1"]{background:#d96c00;border-color:#d96c00;color:#fff}
+.chips.urg button.on[data-v="2"]{background:var(--red);border-color:var(--red);color:#fff}
+.photos{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.ph{position:relative;width:100px;height:100px}
+.ph img{width:100%;height:100%;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.ph button{position:absolute;top:-8px;right:-8px;width:32px;min-height:32px;padding:0;border-radius:50%;background:#16181a;color:#fff;border:2px solid #fff;font-size:18px}
+.addph{width:100px;height:100px;border:2px dashed var(--line);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--mute);font-weight:600;font-size:14px;cursor:pointer;background:none}
+.to{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:15px;margin-bottom:12px}
+.err{color:var(--red);font-weight:600;margin:0 0 10px}.err:empty{display:none}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+#bSend{flex:1;min-height:56px;font-size:18px}
+.done{text-align:center}.done svg{width:72px;height:72px;color:var(--ok)}
+.done>b{display:block;font:700 28px "Barlow Condensed",sans-serif;color:var(--ok)}
+.steps{text-align:left;background:var(--field);border-radius:10px;padding:10px 14px 10px 34px;margin:12px 0}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:480px){.top h1{font-size:20px}.top h1 small{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>Schadenmeldung<small>Schäden &amp; Mängel melden</small></h1>
+  <div id="clock">--:--</div>
+</header>
+
+<main>
+  <!-- Dashboard -->
+  <section id="vDash">
+    <div class="dash">
+      <button class="tile" data-k="fz" style="--tc:#c8102e"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 16V9a1 1 0 0 1 1-1h10v8M14 11h4l3 3v2h-7"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg></span><b>Fahrzeug</b><span>Schäden und Mängel an Fahrzeugen und Anhängern</span></button>
+      <button class="tile" data-k="al" style="--tc:#0f7b8a"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg></span><b>Allgemein</b><span>Depot, Gebäude, Geräte, Material, Werkzeug</span></button>
+      <button class="tile" data-k="pa" style="--tc:#1557c0"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0 1 16 0v2H4zM2 16h20M9 6.5V4h6v2.5"/></svg></span><b>Persönliche Ausrüstung</b><span>Helm, Brandschutzbekleidung, Stiefel, Handschuhe …</span></button>
+    </div>
+    <div class="card">
+      <h2>Meine Meldungen</h2>
+      <ul class="hist" id="hist"></ul>
+      <p class="mute" style="font-size:13px;margin:8px 0 0">Gespeichert nur auf diesem Gerät (ohne Fotos).</p>
+    </div>
+  </section>
+
+  <!-- Formular -->
+  <section id="vForm" hidden>
+    <div class="card fhead" id="fCard">
+      <h2 id="fTitle"></h2>
+
+      <div id="gFz">
+        <div class="row">
+          <label>Fahrzeug *<input id="fzName" list="fzList" placeholder="z. B. TLF, Pio, MTF"></label>
+          <label>Kilometerstand<input id="fzKm" inputmode="numeric" placeholder="optional"></label>
+        </div>
+        <datalist id="fzList"></datalist>
+        <label>Fahrzeug einsatzbereit? *<div class="chips" id="fzBereit" data-name="bereit"><button type="button" data-v="Ja">Ja</button><button type="button" data-v="Eingeschränkt">Eingeschränkt</button><button type="button" data-v="Nein">Nein</button></div></label>
+      </div>
+
+      <div id="gAl">
+        <div class="row">
+          <label>Gegenstand / Gerät *<input id="alWas" placeholder="z. B. Tragkraftspritze, Tor Depot, Leiter"></label>
+          <label>Standort<input id="alWo" placeholder="z. B. Depot Rheineck, TLF Geräteraum 2"></label>
+        </div>
+      </div>
+
+      <div id="gPa">
+        <label>Ausrüstungsteil *<div class="chips" id="paTeil" data-name="teil"></div></label>
+        <input id="paAnder" placeholder="Welches Teil?" hidden style="margin:-6px 0 12px">
+        <div class="row">
+          <label>Grösse<input id="paGr" placeholder="optional"></label>
+          <label>Ersatz nötig?<div class="chips" id="paErs" data-name="ersatz"><button type="button" data-v="Ja">Ja</button><button type="button" data-v="Nein">Nein</button><button type="button" data-v="Weiss nicht">Weiss nicht</button></div></label>
+        </div>
+      </div>
+
+      <label>Was ist passiert / was ist defekt? *<textarea id="besch" placeholder="Schaden oder Mangel möglichst genau beschreiben"></textarea></label>
+      <label>Dringlichkeit *<div class="chips urg" id="urg" data-name="urg"><button type="button" data-v="0">Normal</button><button type="button" data-v="1">Dringend</button><button type="button" data-v="2">Sofort – nicht einsatzbereit</button></div></label>
+
+      <label>Fotos<span class="mute" style="font-weight:500"> (optional, mehrere möglich)</span>
+        <div class="photos" id="photos"></div>
+      </label>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+
+      <div class="row">
+        <label>Gemeldet von *<input id="who" autocomplete="name" placeholder="Grad, Name, Vorname"></label>
+        <label>Telefon<input id="tel" type="tel" autocomplete="tel"></label>
+      </div>
+
+      <div class="to">Geht an: <b id="toAddr"></b></div>
+      <p class="err" id="fErr"></p>
+      <div class="btns">
+        <button class="pri" id="bSend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/></svg>Meldung senden</button>
+        <button id="bCancel">Abbrechen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gesendet -->
+  <section id="vDone" class="card done" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+    <b id="dTitle">Meldung vorbereitet</b>
+    <div id="dText"></div>
+    <div class="btns" style="justify-content:center;margin-top:12px">
+      <button id="bAgain">Nochmals öffnen</button>
+      <button class="pri" id="bHome">Fertig</button>
+    </div>
+  </section>
+</main>
+<div id="msg"></div>
+
+<script src="config.js?v=1.0.0"></script>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>
