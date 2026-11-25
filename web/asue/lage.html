@@ -23,7 +23,9 @@ main{max-width:560px;margin:0 auto;padding:14px}
 .bau{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
 .roof{height:30px;background:#9aa1a7;clip-path:polygon(50% 0,100% 100%,0 100%);margin:0 4px}
 .fl{display:grid;grid-template-columns:64px 1fr;min-height:54px;border:2px solid #4a5056;border-top-width:0;background:#f7f6f4}
-.fl.top1{border-top-width:2px}
+.fl.top1,.dach+.fl{border-top-width:2px}
+.dach{min-height:84px;margin:0 -2px;background:#c4c8cc;clip-path:polygon(50% 0,100% 100%,0 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 16% 8px;gap:4px}
+.dach .fn{font:700 15px "Barlow Condensed",sans-serif;color:#3a3f44}.dach .tm{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}.dach.on{min-height:110px}
 .fl.ug{background:#d9dcdf}
 .fl .fn{display:grid;place-items:center;font:700 15px "Barlow Condensed",sans-serif;border-right:1px dashed #9aa1a7;text-align:center;padding:2px}
 .fl .tm{display:flex;flex-wrap:wrap;gap:6px;padding:6px;align-items:center}
@@ -82,9 +84,11 @@ function render() {
   const fl = D.floors || [], teams = D.teams || [], inside = teams.filter(t => t.status === 'innen' || t.status === 'rueckzug');
   const byNr = (a, b) => String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true });
   const egI = fl.findIndex(isEG);
-  let h = '<div class="roof"></div>';
+  const hasDach = /^dach/i.test(fl[fl.length - 1] || '');
+  let h = hasDach ? '' : '<div class="roof"></div>';
   for (let i = fl.length - 1; i >= 0; i--) {
     const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
+    if (i === fl.length - 1 && hasDach) { h += `<div class="dach${ts.length ? ' on' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(chip).join('')}</div></div>`; continue; }
     h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}${i === fl.length - 1 ? ' top1' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(chip).join('')}</div></div>`;
     if (i === egI) h += '<div class="ground"></div>';
   }

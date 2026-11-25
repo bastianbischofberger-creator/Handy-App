@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.2.1';
+const VERSION = '3.3.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -489,9 +489,12 @@ function renderBau() {
   const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = vis.filter(t => t.status === 'bereit' && !t.rett).sort(byNr), rready = vis.filter(t => t.status === 'bereit' && t.rett).sort(byNr);
   let h = `<div class="bau-h"><b>Gebäude</b></div><div class="bau-sel"><label>OG<select id="selOG">${opt(20, og, '+')}</select></label><label>UG<select id="selUG">${opt(5, ug, '-')}</select></label></div>`;
   el.classList.toggle('many', fl.length > 10);
-  h += '<div class="roof"></div>';
+  // Ist das oberste Stockwerk «Dach», wird es als Dach (Dreieck) gezeichnet, sonst nur als Zierde
+  const hasDach = /^dach/i.test(fl[fl.length - 1] || '');
+  if (!hasDach) h += '<div class="roof"></div>';
   for (let i = fl.length - 1; i >= 0; i--) {
     const ts = inside.filter(t => t.stock === fl[i]).sort(byNr);
+    if (i === fl.length - 1 && hasDach) { h += `<div class="dach${ts.length ? ' on' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`; continue; }
     h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}${i === fl.length - 1 ? ' ftop' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(t => badge(t)).join('')}</div></div>`;
     if (i === egI) h += '<div class="ground"></div>';
   }

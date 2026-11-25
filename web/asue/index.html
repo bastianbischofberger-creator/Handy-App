@@ -173,7 +173,9 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .bau.many .fl{min-height:34px}.fl .fn{white-space:nowrap}.compact .bau .fl{grid-template-columns:52px minmax(0,1fr)}.compact .bau .fl .fn{font-size:12.5px}.bau.many .fl .tm{padding:2px 4px}.bau.many .tbg{min-height:28px;font-size:16px}
 .roof{height:30px;margin:0 4px;background:var(--mute);opacity:.55;clip-path:polygon(50% 0,100% 100%,0 100%)}
 .fl{display:grid;grid-template-columns:54px minmax(0,1fr);border:2px solid var(--mute);border-top-width:0;min-height:50px;background:var(--field)}
-.roof+.fl,.fl.ftop{border-top-width:2px}
+.roof+.fl,.dach+.fl,.fl.ftop{border-top-width:2px}
+.dach{min-height:78px;margin:0 -2px;background:color-mix(in srgb,var(--mute) 35%,var(--field));clip-path:polygon(50% 0,100% 100%,0 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 18% 6px;gap:3px}
+.dach .fn{font:700 13px Barlow,sans-serif;color:var(--ink);opacity:.75}.dach .tm{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}.dach.on{min-height:96px}
 .site{display:grid;grid-template-columns:minmax(0,1fr) 46px;column-gap:4px}
 .site .ground{grid-column:1/-1}
 .site .earth{background:color-mix(in srgb,#7a5c3a 18%,transparent)}
@@ -462,6 +464,6 @@ label select+input{margin-top:6px}
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
 <script src="icons.js?v=2"></script>
 <script src="../shared/fwform.js?v=1"></script>
-<script src="app.js?v=3.2.1"></script>
+<script src="app.js?v=3.3.0"></script>
 </body>
 </html>
