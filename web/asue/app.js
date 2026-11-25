@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.1.1';
+const VERSION = '3.2.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -222,8 +222,8 @@ function card(T) {
   }[T.status];
   return `<article class="card${T.rett ? ' rett' : ''}" id="c-${T.id}" data-id="${T.id}">
   <header><div class="nr">${esc(T.nr)}${window.ASUE_ICONS ? `<span class="nri">${window.ASUE_ICONS.html(aufKeys(T))}</span>` : ''}</div><div class="hd">
-    <div class="row">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span>` : ''}<span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}${eqHtml(T)}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
-    <div class="auftrag">${esc(aufText(T) || 'Kein Auftrag erfasst')}</div></div></header>
+    <div class="auftrag">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span> ` : ''}${esc(aufText(T) || 'Kein Auftrag erfasst')}</div>
+    <div class="row">${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}<span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${eqHtml(T)}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div></div></header>
   <table class="mt"><thead><tr><th>Name</th><th>Start</th><th>Druck</th><th>bar/Min.</th><th>RZ-Druck</th></tr></thead><tbody>${mem}</tbody></table>
   <div class="kpis"><div><span data-s="Einsatz">Im Einsatz</span><b id="k1-${T.id}">–</b></div><div><span data-s="Kontrolle">Nächste Kontrolle</span><b id="k2-${T.id}">–</b></div><div><span id="k3l-${T.id}" data-s="${T.status === 'draussen' ? 'Raus' : 'Rückzug'}">${T.status === 'draussen' ? 'Raus um' : 'Rückzug spätestens'}</span><b><i class="k3t" id="k3t-${T.id}"></i><em id="k3-${T.id}">–</em></b></div></div>
   <div class="btns">${B}</div></article>`;

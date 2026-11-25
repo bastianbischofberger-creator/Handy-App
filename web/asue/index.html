@@ -80,7 +80,7 @@ body:not(.dashmode) #dash{display:none}
 .kanal{font-weight:600;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:2px 8px;white-space:nowrap}
 .st{font-size:14px;font-weight:600;border-radius:6px;padding:2px 8px;white-space:nowrap}
 .st-bereit{background:var(--field);color:var(--mute)}.st-innen{background:var(--red);color:#fff}.st-rueckzug{background:var(--warn);color:#1a1a1a}.st-draussen{background:var(--ok);color:#fff}
-.auftrag{margin-top:6px;font-size:17px;font-weight:500}
+.auftrag{margin-bottom:6px;font-size:17px;font-weight:500}
 .lbl{display:none;margin-left:auto;font-weight:700;font-size:14px;padding:2px 8px;border-radius:6px}
 .mt{width:100%;border-collapse:collapse;font-size:15px}
 .mt th{font-size:12.5px;font-weight:500;color:var(--mute);text-align:right;padding:6px 10px 2px}
@@ -207,7 +207,7 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .compact .card header{padding:7px 10px;gap:8px;cursor:pointer}
 .compact .nr{font-size:30px;min-width:32px;padding-top:2px}
 .compact .row{gap:5px}.compact .kanal,.compact .st,.compact .lbl{font-size:12.5px;padding:1px 6px}
-.compact .auftrag{font-size:14.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compact .auftrag{font-size:14.5px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
 .compact .mt thead,.compact .mt td:nth-child(2),.compact .mt td:nth-child(4),.compact .mt td:nth-child(5){display:none}
 .compact .mt td{padding:2px 10px;font-size:14.5px}.compact .mt .n{font-size:16px}.compact .mt .n b{font-size:19px}
 .compact .mt tr.low td:first-child{color:var(--red);font-weight:600}.compact .mt tr.low td:first-child::after{content:""}
@@ -461,6 +461,6 @@ label select+input{margin-top:6px}
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
 <script src="icons.js?v=2"></script>
 <script src="../shared/fwform.js?v=1"></script>
-<script src="app.js?v=3.1.1"></script>
+<script src="app.js?v=3.2.0"></script>
 </body>
 </html>
