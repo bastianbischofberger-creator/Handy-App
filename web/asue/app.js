@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.4.1';
+const VERSION = '3.5.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -229,7 +229,7 @@ function card(T) {
   }[T.status];
   return `<article class="card${T.rett ? ' rett' : ''}" id="c-${T.id}" data-id="${T.id}">
   <header><div class="nr">${esc(T.nr)}${window.ASUE_ICONS ? `<span class="nri">${window.ASUE_ICONS.html(aufKeys(T))}</span>` : ''}</div><div class="hd">
-    <div class="auftrag">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span> ` : ''}${esc(aufText(T) || 'Kein Auftrag erfasst')}</div>
+    <div class="auftrag">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span> ` : ''}${T.fuer && (T.status === 'innen' || T.status === 'rueckzug') ? `<span class="notf" title="Atemschutznotfall für ${/^\d/.test(T.fuer) ? 'Trupp ' : ''}${esc(T.fuer)}">NOTFALL ${/^\d/.test(T.fuer) ? 'T' + esc(T.fuer) : '?'}</span> ` : ''}${esc(aufText(T) || 'Kein Auftrag erfasst')}</div>
     <div class="row">${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}<span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${eqHtml(T)}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div></div></header>
   <table class="mt"><thead><tr><th>Name</th><th>Start</th><th>Druck</th><th>bar/Min.</th><th>RZ-Druck</th></tr></thead><tbody>${mem}</tbody></table>
   <div class="kpis"><div><span data-s="Einsatz">Im Einsatz</span><b id="k1-${T.id}">–</b></div><div><span data-s="Kontrolle">Nächste Kontrolle</span><b id="k2-${T.id}">–</b></div><div><span id="k3l-${T.id}" data-s="${T.status === 'draussen' ? 'Raus' : 'Rückzug'}">${T.status === 'draussen' ? 'Raus um' : 'Rückzug spätestens'}</span><b><i class="k3t" id="k3t-${T.id}"></i><em id="k3-${T.id}">–</em></b></div></div>
@@ -535,13 +535,30 @@ function enter(T, stock) {
   if (notfallFor === T.id) { notfallFor = null; notfall(T); }
 }
 /* ---------- Atemschutznotfall ---------- */
-let notfallFor = null;
+let notfallFor = null, notfallTarget = null;
 function askNotfall(T, cb) {
-  const d = $('#dNot'); $('#notTxt').textContent = `Rettungstrupp ${T.nr} geht in den Einsatz.`;
-  d.returnValue = ''; d.onclose = () => { if (d.returnValue === 'ja') cb(true); else if (d.returnValue === 'nein') cb(false); }; d.showModal();
+  const d = $('#dNot'), others = S.teams.filter(t => t.id !== T.id && !t.hidden && (t.status === 'innen' || t.status === 'rueckzug'))
+    .sort((a, b) => String(a.nr).localeCompare(String(b.nr), 'de', { numeric: true }));
+  $('#notTxt').textContent = `Rettungstrupp ${T.nr} geht in den Einsatz.`;
+  $('#notS1').hidden = false; $('#notS2').hidden = true;
+  $('#notPick').innerHTML = others.map(t => `<button type="button" data-t="${esc(t.id)}">${window.ASUE_ICONS ? window.ASUE_ICONS.html(aufKeys(t)) : ''}<b>Trupp ${esc(t.nr)}</b>${t.stock ? ' · ' + esc(t.stock) : ''}${t.status === 'rueckzug' ? ' · Rückzug' : ''}</button>`).join('')
+    + '<button type="button" class="unk" data-t="unk"><b>Unbekannt / Dritte</b></button>';
+  d.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const n = b.dataset.n, t = b.dataset.t;
+    if (n === 'cancel') { d.close(); return; }
+    if (n === 'nein') { d.close(); cb(false); return; }
+    if (n === 'ja') { $('#notS1').hidden = true; $('#notS2').hidden = false; return; }
+    if (n === 'back') { $('#notS1').hidden = false; $('#notS2').hidden = true; return; }
+    if (t) { d.close(); cb(true, t === 'unk' ? null : team(t)); }
+  };
+  d.showModal();
 }
 function notfall(T) {
-  const now = Date.now(), text = `ATEMSCHUTZNOTFALL – Rettungstrupp ${T.nr} eingesetzt${T.stock ? ' (' + T.stock + ')' : ''}${aufText(T) ? ', ' + aufText(T) : ''}`;
+  const X = notfallTarget; notfallTarget = null;
+  const fuer = X ? `für Trupp ${X.nr}${X.stock ? ' (' + X.stock + ')' : ''}` : 'für Unbekannt / Dritte';
+  const now = Date.now(), text = `ATEMSCHUTZNOTFALL – Rettungstrupp ${T.nr} eingesetzt ${fuer}`;
+  T.fuer = X ? X.nr : 'Unbekannt / Dritte'; saveTeam(T);
   BE.addLog(ensureE(), 'not-' + uid(), { t: now, text, dev: LP.get('dev') || '', prio: true });
   // Eintrag ins Einsatzjournal (Prio-Meldung), wenn der Einsatz mit der Startseite / dem Journal verknüpft ist
   const fw = S.meta.fw;
@@ -696,7 +713,7 @@ $('#grid').addEventListener('click', e => {
   if (a === 'in') {
     const go = () => { if (floors().length) openStock(id, 'in'); else enter(T, T.stock || ''); };
     // Rettungstrupp: zuerst fragen, ob es ein Atemschutznotfall ist
-    if (T.rett) { askNotfall(T, yes => { notfallFor = yes ? T.id : null; go(); }); return; }
+    if (T.rett) { askNotfall(T, (yes, target) => { notfallFor = yes ? T.id : null; notfallTarget = target || null; go(); }); return; }
     go();
   }
   else if (a === 'druck') openP(id, 'check');

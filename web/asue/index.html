@@ -71,6 +71,8 @@ body:not(.dashmode) #dash{display:none}
 .dcard .elist{max-height:none}
 #shQR svg{width:min(280px,70vw);height:auto;background:#fff;padding:6px;border-radius:8px}
 #log li.prio{font-weight:700}#log li.prio span{background:linear-gradient(180deg,transparent 8%,#ffe600 8%,#ffe600 92%,transparent 92%);color:#16181a;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 3px;border-radius:2px}
+.notpick{display:grid;gap:8px}.notpick button{min-height:54px;justify-content:flex-start;font-size:18px;gap:8px}.notpick button.unk{border-style:dashed}.notpick .ai{width:20px;height:20px}
+.notf{background:#ffe600;color:#16181a;font-weight:800;border-radius:4px;padding:0 5px;font-size:.9em}
 .fwbar{background:#16181a;color:#fff;padding:6px max(3vw,14px);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fwbar::before{content:"EINSATZ";font-size:11px;font-weight:700;letter-spacing:.06em;background:var(--red,#c8102e);color:#fff;border-radius:4px;padding:1px 6px;margin-right:8px;vertical-align:1px}
 .banner{background:var(--warn);color:#1a1a1a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:500}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:16px}
@@ -453,11 +455,16 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button id="shStop" class="ghost">Teilen beenden</button><button id="shCopy">Link kopieren</button><button id="shX" class="pri">Schliessen</button></div>
 </div></dialog>
 
-<dialog id="dNot"><form method="dialog">
+<dialog id="dNot"><div class="dpad">
   <h3 style="color:var(--red)">Atemschutznotfall?</h3>
   <p id="notTxt"></p>
-  <div class="dbtn"><button value="cancel">Abbrechen</button><button value="nein">Nein – normaler Einsatz</button><button class="pri" value="ja">Ja – Atemschutznotfall</button></div>
-</form></dialog>
+  <div id="notS1" class="dbtn"><button type="button" data-n="cancel">Abbrechen</button><button type="button" data-n="nein">Nein – normaler Einsatz</button><button type="button" class="pri" data-n="ja">Ja – Atemschutznotfall</button></div>
+  <div id="notS2" hidden>
+    <p style="margin:0 0 8px;font-weight:600">Für welchen Trupp?</p>
+    <div class="notpick" id="notPick"></div>
+    <div class="dbtn" style="margin-top:10px"><button type="button" data-n="back">Zurück</button></div>
+  </div>
+</div></dialog>
 
 <dialog id="dC"><form method="dialog">
   <h3 id="cTitle">Sicher?</h3>
@@ -471,6 +478,6 @@ label select+input{margin-top:6px}
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
 <script src="icons.js?v=2"></script>
 <script src="../shared/fwform.js?v=1"></script>
-<script src="app.js?v=3.4.1"></script>
+<script src="app.js?v=3.5.0"></script>
 </body>
 </html>
