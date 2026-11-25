@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.5.0';
+const VERSION = '3.5.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -713,7 +713,11 @@ $('#grid').addEventListener('click', e => {
   if (a === 'in') {
     const go = () => { if (floors().length) openStock(id, 'in'); else enter(T, T.stock || ''); };
     // Rettungstrupp: zuerst fragen, ob es ein Atemschutznotfall ist
-    if (T.rett) { askNotfall(T, (yes, target) => { notfallFor = yes ? T.id : null; notfallTarget = target || null; go(); }); return; }
+    if (T.rett) { askNotfall(T, (yes, target) => {
+      notfallFor = yes ? T.id : null; notfallTarget = target || null;
+      // Notfall für einen bekannten Trupp: Rettungstrupp geht direkt auf dessen Stockwerk – keine Stockwerk-Abfrage
+      if (yes && target) enter(T, target.stock || ''); else go();
+    }); return; }
     go();
   }
   else if (a === 'druck') openP(id, 'check');
