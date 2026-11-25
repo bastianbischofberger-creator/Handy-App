@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.0.0';
+const VERSION = '3.1.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -221,7 +221,7 @@ function card(T) {
     draussen: `<button data-a="hide" class="ghost">Von der Tafel nehmen</button>`
   }[T.status];
   return `<article class="card${T.rett ? ' rett' : ''}" id="c-${T.id}" data-id="${T.id}">
-  <header><div class="nr">${esc(T.nr)}</div><div class="hd">
+  <header><div class="nr">${esc(T.nr)}${window.ASUE_ICONS ? `<span class="nri">${window.ASUE_ICONS.html(aufKeys(T))}</span>` : ''}</div><div class="hd">
     <div class="row">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span>` : ''}<span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}${eqHtml(T)}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div>
     <div class="auftrag">${esc(aufText(T) || 'Kein Auftrag erfasst')}</div></div></header>
   <table class="mt"><thead><tr><th>Name</th><th>Start</th><th>Druck</th><th>bar/Min.</th><th>RZ-Druck</th></tr></thead><tbody>${mem}</tbody></table>
@@ -476,7 +476,8 @@ const floors = () => String(S.meta.floors || S.settings.floors || '').split(',')
 const genFloors = (og, ug) => [...Array(ug)].map((_, i) => 'UG -' + (ug - i)).concat(['EG'], [...Array(og)].map((_, i) => (i + 1) + '. OG'), ['Dach']);
 const countOG = fl => fl.filter(f => /^\d+\. ?OG$/i.test(f)).length, countUG = fl => fl.filter(f => /^UG/i.test(f)).length;
 const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
-function badge(T, extra) { return `<button type="button" class="tbg ${T.status}${T.rett ? ' rett' : ''}" id="b-${T.id}" data-st="${esc(T.id)}" title="${T.rett ? 'Rettungstrupp' : 'Trupp'} ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}">${T.rett ? AXE : ''}${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
+const aufKeys = T => window.ASUE_ICONS ? window.ASUE_ICONS.keys([T.auftrag, T.zusatz].filter(Boolean).join(' ')) : [];
+function badge(T, extra) { return `<button type="button" class="tbg ${T.status}${T.rett ? ' rett' : ''}" id="b-${T.id}" data-st="${esc(T.id)}" title="${T.rett ? 'Rettungstrupp' : 'Trupp'} ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}${T.auftrag ? ' · ' + esc(T.auftrag) : ''}">${T.rett ? AXE : ''}${window.ASUE_ICONS ? window.ASUE_ICONS.html(aufKeys(T)) : ''}${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
 function renderBau() {
   const el = $('#bau'); if (!el) return;
   const fl = floors(), vis = S.teams.filter(t => !t.hidden), inside = vis.filter(t => t.status === 'innen' || t.status === 'rueckzug');
@@ -695,7 +696,7 @@ let lastPub = '', pubT = null;
 function publishLage() {
   const k = S.meta.shareK; if (!k || !BE.putPublic || !S.eid) return;
   const d = { title: S.meta.ereignis || '', ort: S.meta.ort || '', floors: floors(), closed: !!S.meta.closed,
-    teams: S.teams.filter(t => !t.hidden && t.status !== 'draussen').map(t => ({ nr: String(t.nr || ''), stock: t.stock || '', status: t.status, rett: !!t.rett, tIn: t.tIn || null })) };
+    teams: S.teams.filter(t => !t.hidden && t.status !== 'draussen').map(t => ({ nr: String(t.nr || ''), stock: t.stock || '', status: t.status, rett: !!t.rett, tIn: t.tIn || null, ic: aufKeys(t) })) };
   const js = JSON.stringify(d); if (js === lastPub) return; lastPub = js;
   clearTimeout(pubT); pubT = setTimeout(() => BE.putPublic(k, { ...d, upd: Date.now() }), 400);
 }

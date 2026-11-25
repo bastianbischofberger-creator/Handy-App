@@ -188,6 +188,8 @@ input,select{display:block;width:100%;font:500 17px Barlow,sans-serif;min-height
 .zone{margin-top:10px;font-size:12.5px;color:var(--mute)}.zone .tm{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
 .tbg{min-height:36px;min-width:40px;padding:2px 9px;font:700 19px "Barlow Condensed",sans-serif;border-radius:8px;background:var(--ink);color:var(--bg);border:0}
 .tbg small{font:500 11.5px Barlow,sans-serif;margin-left:5px}
+.nri{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}.nri .ai{width:24px;height:24px}
+.tbg .ai{width:17px;height:17px;margin-right:3px;flex:none}.yard .tbg .ai,.bau.many .tbg .ai{width:13px;height:13px;margin-right:1px}
 .tbg.rueckzug{background:var(--warn);color:#1a1a1a}.tbg.bereit{background:var(--card);color:var(--ink);border:1px solid var(--line)}
 .tbg.due{box-shadow:0 0 0 3px var(--warn)}.tbg.soon{box-shadow:0 0 0 2px var(--warn)}
 .tbg.alarm{background:var(--red);color:#fff;animation:blink 1s steps(2) infinite}
@@ -457,7 +459,8 @@ label select+input{margin-top:6px}
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
+<script src="icons.js?v=1"></script>
 <script src="../shared/fwform.js?v=1"></script>
-<script src="app.js?v=3.0.0"></script>
+<script src="app.js?v=3.1.0"></script>
 </body>
 </html>
