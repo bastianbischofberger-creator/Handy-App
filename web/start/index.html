@@ -34,7 +34,7 @@ a.tile{display:flex;flex-direction:column;gap:12px;background:var(--card);color:
 a.tile:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
 a.tile:active{transform:scale(.98)}
 a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
-.einsatz{grid-column:1/-1;background:var(--red);color:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 4px 14px rgba(200,16,46,.3)}
+.einsatz{grid-column:1/-1;color:#fff;border-radius:14px;padding:18px 20px;border:10px solid transparent;background:linear-gradient(var(--red),var(--red)) padding-box,repeating-linear-gradient(-45deg,#f2b705 0 16px,#16181a 16px 32px) border-box;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .einsatz h2{font:700 26px/1.05 "Barlow Condensed",sans-serif;margin:0 0 12px}
 .einsatz label{display:block;font-size:14px;font-weight:600;margin-bottom:10px;color:rgba(255,255,255,.92)}
 .einsatz input{display:block;width:100%;margin-top:4px;font:17px Barlow,sans-serif;color:#16181a;background:#fff;border:0;border-radius:8px;padding:10px 12px;min-height:48px}
@@ -166,7 +166,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.6 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.7 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
