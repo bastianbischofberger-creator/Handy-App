@@ -182,6 +182,24 @@
     .dTile.big .ic { font-size: 34px; }
     .dTile.big div { flex: 1; display: flex; flex-direction: column; gap: 4px; }
     .dTile[disabled] { opacity: .45; cursor: default; }
+    .dMain { max-width: 1100px !important; }
+    .dLay { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 700px) { .dLay { grid-template-columns: 1fr; } }
+    .dSide { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 90px; }
+    @media (max-width: 700px) { .dSide { position: static; flex-direction: row; flex-wrap: wrap; } .dSide .dTile { flex: 1 1 140px; } }
+    .rc { background: #c8102e; color: #fff; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .rc.fwe { border: 10px solid transparent; border-radius: 14px;
+      background: linear-gradient(#c8102e, #c8102e) padding-box, repeating-linear-gradient(-45deg, #f2b705 0 16px, #16181a 16px 32px) border-box; }
+    .rc small { display: block; font-size: 13px; opacity: .92; }
+    .rc b { display: block; font-size: 26px; line-height: 1.15; margin: 2px 0; }
+    .rc .info { font-size: 15px; opacity: .95; }
+    .rc .bb { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .rc .bb button { min-height: 42px; padding: 8px 14px; border-radius: 8px; font: 700 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      cursor: pointer; border: 0; background: #fff; color: #c8102e; }
+    .rc .bb button.sec { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.75); }
+    .dBtn.fwTake { width: 100%; margin-bottom: 12px; text-align: left; border: 3px solid transparent; color: #16181a;
+      background: linear-gradient(#fff8e1, #fff8e1) padding-box, repeating-linear-gradient(-45deg, #f2b705 0 10px, #16181a 10px 20px) border-box; }
+    .dRow.fwr b::before { content: "EINSATZ"; font-size: 10px; font-weight: 700; background: #c8102e; color: #fff; border-radius: 4px; padding: 1px 5px; margin-right: 6px; vertical-align: 2px; }
     .dCard { background: #fff; border: 1px solid #d8d4ce; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
     .dCard h2 { margin: 0 0 8px; font-size: 19px; }
     .dCard label { display: block; font-size: 14px; font-weight: 600; color: #5b6166; margin-bottom: 10px; }
@@ -215,17 +233,23 @@
       <div class="clk" id="dClock">--:--</div>
     </header>
     <main class="dMain">
-      <div class="dGrid" id="dTiles"></div>
-      <section class="dCard" id="dNew" hidden>
-        <h2>Neue Lageskizze</h2>
-        <label>Bezeichnung *<input id="dName" placeholder="z. B. Brand Wohnhaus Hauptstrasse" autocomplete="off" /></label>
-        <label>Adresse / Ort (optional, die Karte springt dorthin)<input id="dOrt" placeholder="Strasse Nr., Ort" autocomplete="off" /></label>
-        <div class="dBtns"><button class="dBtn pri" id="dCreate">Skizze starten</button><button class="dBtn" id="dCancel">Abbrechen</button></div>
-      </section>
-      <section class="dCard">
-        <h2>Gespeicherte Skizzen</h2>
-        <div id="dList"></div>
-      </section>
+      <div class="dLay">
+        <div class="dSide" id="dTiles"></div>
+        <div>
+          <div id="dRun"></div>
+          <section class="dCard" id="dNew" hidden>
+            <h2>Neue Lageskizze</h2>
+            <button class="dBtn fwTake" id="dFwTake" hidden></button>
+            <label>Bezeichnung *<input id="dName" placeholder="z. B. Brand Wohnhaus Hauptstrasse" autocomplete="off" /></label>
+            <label>Adresse / Ort (optional, die Karte springt dorthin)<input id="dOrt" placeholder="Strasse Nr., Ort" autocomplete="off" /></label>
+            <div class="dBtns"><button class="dBtn pri" id="dCreate">Skizze starten</button><button class="dBtn" id="dCancel">Abbrechen</button></div>
+          </section>
+          <section class="dCard">
+            <h2>Gespeicherte Skizzen</h2>
+            <div id="dList"></div>
+          </section>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -2246,19 +2270,37 @@
       if (disabled) b.disabled = true; else b.onclick = onClick;
       return b;
     }
+    function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
     function renderDash() {
-      const act = activeId && findSketch(activeId);
+      const act = activeId && findSketch(activeId), FW = fwRead(), key = FW && 'fw-' + FW.t;
+      const fwSk = key && sketches.filter((x) => x.fw === key).sort((a, b) => b.updated - a.updated)[0];
       const tiles = document.getElementById('dTiles'); tiles.innerHTML = '';
-      if (act) tiles.appendChild(tile('▶️', 'Weiterarbeiten', act.name + ' · ' + nE(act.n) + ' · geändert ' + fmtDT(act.updated), '#1d7a46', () => openSketch(act.id), true));
-      tiles.appendChild(tile('➕', 'Neue Lageskizze', 'Leere Karte für ein neues Ereignis', '#c8102e', newSketchForm, !act));
-      tiles.appendChild(tile('📤', 'Teilen / Export', act ? 'Aktive Skizze als Foto, Link oder QR-Code' : 'Zuerst eine Skizze öffnen', '#1557c0', () => { openSketch(act.id); shareMenu(); }, false, !act));
-      tiles.appendChild(tile('🗺️', 'Nur Karte ansehen', 'Karte ohne Skizze öffnen, z. B. zum Nachschauen', '#5b6166', () => { if (!act) { firstFix = true; if (myPos) map.flyTo(myPos, 17, { duration: 0.8 }); } hideDash(); }));
+      tiles.appendChild(tile('➕', 'Neue Lageskizze', 'Leere Karte für ein neues Ereignis', '#c8102e', newSketchForm));
+      tiles.appendChild(tile('🗺️', 'Nur Karte ansehen', 'Karte ohne Skizze, z. B. zum Nachschauen', '#5b6166', () => { if (!act) { firstFix = true; if (myPos) map.flyTo(myPos, 17, { duration: 0.8 }); } hideDash(); }));
+      // Rote Karten: Einsatz von der Startseite (markiert) und aktive Skizze
+      const run = document.getElementById('dRun'); run.innerHTML = '';
+      const card = (cls, small, title, info, btns) => {
+        const d = document.createElement('div'); d.className = 'rc' + cls;
+        d.innerHTML = '<small>' + esc(small) + '</small><b>' + esc(title) + '</b><div class="info">' + esc(info) + '</div><div class="bb"></div>';
+        btns.forEach(([label, fn, sec]) => { const b = document.createElement('button'); b.textContent = label; if (sec) b.className = 'sec'; b.onclick = fn; d.querySelector('.bb').appendChild(b); });
+        run.appendChild(d);
+      };
+      if (FW) {
+        const info = FW.adr + ' · EL ' + FW.el + (fwSk ? ' · Skizze: ' + nE(fwSk.n) + ', geändert ' + fmtDT(fwSk.updated) : '');
+        card(' fwe', 'Einsatz von der Startseite', FW.bez, info, fwSk
+          ? [['Lageskizze öffnen →', () => openSketch(fwSk.id)], ['Teilen / Export', () => { openSketch(fwSk.id); shareMenu(); }, true]]
+          : [['Neue Lageskizze für diesen Einsatz →', () => startFwSketch(FW)]]);
+      }
+      if (act && (!fwSk || act.id !== fwSk.id)) {
+        card('', 'Aktive Lageskizze', act.name, (act.ort ? act.ort + ' · ' : '') + nE(act.n) + ' · geändert ' + fmtDT(act.updated),
+          [['Weiterarbeiten →', () => openSketch(act.id)], ['Teilen / Export', () => { openSketch(act.id); shareMenu(); }, true]]);
+      }
       const list = document.getElementById('dList');
       const ss = [...sketches].sort((a, b) => b.updated - a.updated);
       list.innerHTML = ss.length ? '' : '<div class="dEmpty">Noch keine Skizzen gespeichert.</div>';
       ss.forEach((x) => {
         const r = document.createElement('div');
-        r.className = 'dRow' + (x.id === activeId ? ' act' : '');
+        r.className = 'dRow' + (x.id === activeId ? ' act' : '') + (key && x.fw === key ? ' fwr' : '');
         r.innerHTML = '<div><b>' + esc(x.name) + '</b><small>' + (x.ort ? esc(x.ort) + ' · ' : '') + nE(x.n) + ' · ' + fmtDT(x.updated) + '</small></div>';
         const o = document.createElement('button'); o.className = 'dBtn pri'; o.textContent = 'Öffnen'; o.onclick = () => openSketch(x.id);
         const rn = document.createElement('button'); rn.className = 'dBtn ghost'; rn.textContent = 'Umbenennen'; rn.onclick = () => renameSketch(x.id);
@@ -2266,26 +2308,41 @@
         r.append(o, rn, del); list.appendChild(r);
       });
     }
+    // Neue Skizze direkt für den Einsatz der Startseite
+    function startFwSketch(FW) {
+      createSketch(FW.bez, FW.adr, 'fw-' + FW.t);
+      setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();
+      if (FW.lat != null) placePin(FW.lat, FW.lng, FW.adr, 'address'); // Adresse ist schon bekannt: Nadel direkt setzen
+      else if (FW.adr) searchAddress(FW.adr);
+    }
+    let formFw = null;
     function newSketchForm() {
-      const f = document.getElementById('dNew');
-      document.getElementById('dName').value = ''; document.getElementById('dOrt').value = '';
+      const f = document.getElementById('dNew'), FW = fwRead(), tk = document.getElementById('dFwTake');
+      document.getElementById('dName').value = ''; document.getElementById('dOrt').value = ''; formFw = null;
+      tk.hidden = !FW; if (FW) tk.innerHTML = '⚠️ Einsatz von der Startseite übernehmen: <b>' + esc(FW.bez) + '</b> · ' + esc(FW.adr);
       f.hidden = false; f.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => document.getElementById('dName').focus(), 250);
     }
+    document.getElementById('dFwTake').onclick = () => {
+      const FW = fwRead(); if (!FW) return; formFw = FW;
+      document.getElementById('dName').value = FW.bez; document.getElementById('dOrt').value = FW.adr;
+    };
     document.getElementById('dCancel').onclick = () => { document.getElementById('dNew').hidden = true; };
     document.getElementById('dCreate').onclick = () => {
       const name = document.getElementById('dName').value.trim(), ort = document.getElementById('dOrt').value.trim();
       if (!name) { document.getElementById('dName').focus(); return; }
-      createSketch(name, ort);
+      const fw = formFw && formFw.bez === name ? formFw : null;
+      createSketch(name, ort, fw ? 'fw-' + fw.t : undefined);
       setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();
-      if (ort) searchAddress(ort);
+      if (fw && fw.lat != null && ort === fw.adr) placePin(fw.lat, fw.lng, fw.adr, 'address');
+      else if (ort) searchAddress(ort);
       else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
     };
     document.getElementById('dName').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('dOrt').focus(); };
     document.getElementById('dOrt').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('dCreate').click(); };
-    function createSketch(name, ort) {
+    function createSketch(name, ort, fw) {
       const id = newId(), now = Date.now();
-      sketches.push({ id, name, ort, created: now, updated: now, n: 0 });
+      sketches.push({ id, name, ort, created: now, updated: now, n: 0, ...(fw ? { fw } : {}) });
       activeId = id; drawing = { symbols: [], lines: [] };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {}
       lsSet(SK(id), drawing); saveIndex();
