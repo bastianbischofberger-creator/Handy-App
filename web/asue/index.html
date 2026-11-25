@@ -48,8 +48,10 @@ body:not(.dashmode) #dash{display:none}
 .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:16px}
 .dt{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:6px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-top:6px solid var(--c,#c8102e);border-radius:12px;padding:18px;min-height:130px;font:400 16px Barlow,sans-serif;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .dt b{font:700 25px/1.05 "Barlow Condensed",sans-serif}.dt span{color:var(--mute);font-size:15px}
+.dt.wide{grid-column:1/-1}
 .dt.cur{grid-column:1/-1;background:var(--red);color:#fff;border-color:var(--red);min-height:0}
 .dt.cur span{color:rgba(255,255,255,.92)}.dt.cur b{font-size:30px}
+.dt.cur.fwe{border:10px solid transparent;background:linear-gradient(var(--red),var(--red)) padding-box,repeating-linear-gradient(-45deg,#f2b705 0 16px,#16181a 16px 32px) border-box;border-radius:14px}
 .dt.cur .go{margin-top:6px;background:#fff;color:var(--red);font-weight:700;border-radius:8px;padding:8px 16px}
 .dcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
 .dcard h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 10px}
@@ -266,14 +268,13 @@ label select+input{margin-top:6px}
 <section id="dash" aria-label="Dashboard">
   <div class="dgrid">
     <button class="dt cur" id="dCur" hidden></button>
-    <button class="dt" id="dNew" style="--c:#c8102e"><b>+ Neuer Einsatz</b><span>Leere Tafel öffnen – Einsatzzeit startet beim ersten Eingang</span></button>
-    <button class="dt" id="dSet" style="--c:#5b6166"><b>Einstellungen</b><span>Stockwerke, Zeiten, Personal, Admin</span></button>
+    <button class="dt wide" id="dNew" style="--c:#c8102e"><b>+ Neuer Einsatz</b><span>Leere Tafel öffnen – Einsatzzeit startet beim ersten Eingang</span></button>
     <button class="dt" id="dDemo" style="--c:#1557c0"><b>Demo / Übung</b><span>Beispiel-Einsatz mit Trupps zum Ausprobieren</span></button>
   </div>
   <div class="dcard">
     <h2>Einsätze &amp; Protokolle</h2>
     <ul class="elist" id="dList"></ul>
-    <div class="row" style="gap:8px;display:flex;flex-wrap:wrap;margin-top:8px"><button id="dBackup">Daten sichern</button><button id="dImport">Daten laden</button><button id="dCloseE" class="warnb" hidden>Geöffneten Einsatz abschliessen</button></div>
+    <div class="row" style="gap:8px;display:flex;flex-wrap:wrap;margin-top:8px"><button id="dBackup">Daten sichern</button><button id="dImport">Daten laden</button></div>
     <p class="err" id="dMsg" style="color:var(--ok)"></p>
   </div>
 </section>
@@ -432,6 +433,6 @@ label select+input{margin-top:6px}
 <script src="config.js?v=2.3.2"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.5.0"></script>
+<script src="app.js?v=2.6.1"></script>
 </body>
 </html>

@@ -458,6 +458,7 @@
     if (activeId && !findSketch(activeId)) { activeId = null; saveIndex(); }
 
     // ---------- Karte ----------
+    L.Control.Attribution.prototype.options.prefix = false; // nur «© swisstopo» anzeigen
     const map = L.map('map', {
       zoomControl: false,
       attributionControl: false,

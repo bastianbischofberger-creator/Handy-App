@@ -201,6 +201,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   let map = null, pin = null;
   function initMap() {
     if (map || !window.L) return;
+    L.Control.Attribution.prototype.options.prefix = false; // nur «© swisstopo» anzeigen
     map = L.map('eMap', { zoomControl: true, attributionControl: true }).setView([47.4655, 9.5905], 14);
     L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', { maxZoom: 19, maxNativeZoom: 18, attribution: '© swisstopo' }).addTo(map);
   }

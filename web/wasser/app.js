@@ -72,6 +72,7 @@ let map, layer, layerKey = 'karte', line, pumpLayer, markers = [], PTS = [], cur
 const icon = (cls, txt, s) => L.divIcon({ className: '', html: `<div class="pin ${cls}" style="width:${s}px;height:${s}px">${txt}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
 function initMap() {
   if (!map) {
+    L.Control.Attribution.prototype.options.prefix = false; // nur «© swisstopo» anzeigen
     map = L.map('map', { zoomControl: false, attributionControl: true }).setView([47.4655, 9.5905], 14);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     setLayer('karte');

@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.5.0';
+const VERSION = '2.6.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -843,24 +843,34 @@ function renderDash() {
   const inside = S.teams.filter(t => t.status === 'innen' || t.status === 'rueckzug').length;
   $('#dCur').hidden = !open;
   if (open) $('#dCur').innerHTML = `<span>Laufender Einsatz</span><b>${esc(cur.ereignis || 'Ohne Bezeichnung')}</b><span>${[cur.ort && esc(cur.ort), 'seit ' + dt(cur.start || cur.created), inside ? inside + ' Trupp(s) im Einsatz' : 'kein Trupp drin'].filter(Boolean).join(' · ')}</span><span class="go">Zum Einsatztableau →</span>`;
-  $('#dCloseE').hidden = !open;
+  $('#dCur').classList.toggle('fwe', !!(open && cur.fw));
   $('#dBackup').hidden = !(BE && BE.exportAll); $('#dImport').hidden = !(BE && BE.importAll);
   $('#dList').innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
-    <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span><button data-open="${esc(e.id)}">${e.id === S.eid ? 'Zum Tableau' : 'Öffnen'}</button></li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
+    <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span>${e.closed ? '' : `<button class="warnb" data-close="${esc(e.id)}">Abschliessen</button>`}<button data-open="${esc(e.id)}">${e.id === S.eid ? 'Zum Tableau' : 'Öffnen'}</button></li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
 }
 $('#dCur').onclick = () => showBoard();
-$('#dList').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (!b) return; if (b.dataset.open !== S.eid) openE(b.dataset.open); showBoard(); });
+$('#dList').addEventListener('click', e => {
+  const c = e.target.closest('[data-close]');
+  if (c) {
+    if (c.dataset.close === S.eid) return $('#bClose').click();
+    const ein = S.list.find(x => x.id === c.dataset.close); if (!ein) return;
+    const { id, ...meta } = ein;
+    confirmBox('Einsatz abschliessen?', `«${ein.ereignis || 'Ohne Bezeichnung'}» vom ${dt(ein.start || ein.created)} wird archiviert. Du kannst ihn jederzeit wieder öffnen und das Protokoll exportieren.`, () => {
+      BE.putMeta(id, { ...newMeta(), ...meta, closed: true, end: meta.end || Date.now() });
+      BE.addLog(id, uid(), { t: Date.now(), text: 'Einsatz abgeschlossen', dev: LP.get('dev') || '' });
+    });
+    return;
+  }
+  const b = e.target.closest('[data-open]'); if (!b) return; if (b.dataset.open !== S.eid) openE(b.dataset.open); showBoard(); });
 $('#dNew').onclick = () => {
   const go = () => { openE(BE.create(newMeta())); showBoard(); };
   if (S.teams.some(t => t.status === 'innen' || t.status === 'rueckzug')) confirmBox('Neuen Einsatz starten?', 'Im geöffneten Einsatz sind noch Trupps drin. Der Einsatz bleibt gespeichert und ist im Dashboard weiter erreichbar.', go);
   else go();
 };
-$('#dSet').onclick = () => $('#bSet').click();
 $('#dDemo').onclick = () => { demo(); showBoard(); };
 $('#dBackup').onclick = async () => { $('#eMsg').textContent = ''; await $('#bBackup').onclick(); $('#dMsg').textContent = $('#eMsg').textContent; };
 $('#dImport').onclick = () => $('#fImport').click();
 $('#fImport').addEventListener('change', () => setTimeout(() => { $('#dMsg').textContent = $('#eMsg').textContent; }, 300));
-$('#dCloseE').onclick = () => $('#bClose').click();
 
 /* ================= Einsatz von der Startseite ================= */
 function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }

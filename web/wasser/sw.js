@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'wasser-1.0.1';
+const CACHE = 'wasser-1.0.2';
 const SHELL = ['./', './index.html', './app.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './calc.js', '../vendor/leaflet/leaflet.js', '../vendor/leaflet/leaflet.css'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];

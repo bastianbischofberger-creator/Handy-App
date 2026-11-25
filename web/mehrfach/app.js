@@ -565,6 +565,7 @@ let erfMap = null, erfMk = null;
 function initErfMap() {
   if (!window.L) { $('#erfMap').innerHTML = '<p class="empty">Karte nicht geladen (App einmal mit Internet öffnen).</p>'; return; }
   if (!erfMap) {
+    L.Control.Attribution.prototype.options.prefix = false; // nur «© swisstopo» anzeigen
     erfMap = L.map('erfMap', { zoomControl: true, attributionControl: true }).setView([KS.lat, KS.lng], KS.zoom);
     mkTiles('karte').addTo(erfMap);
     erfMap.on('click', ev => { ERF.lat = +ev.latlng.lat.toFixed(6); ERF.lng = +ev.latlng.lng.toFixed(6); placeErfMarker(false); });
@@ -583,6 +584,7 @@ let lageMap = null, lageLayer = null, baseK = null, baseL = null;
 function initLageMap() {
   if (!window.L) { $('#lageMap').innerHTML = '<p class="empty">Karte nicht geladen (App einmal mit Internet öffnen).</p>'; return; }
   if (!lageMap) {
+    L.Control.Attribution.prototype.options.prefix = false;
     lageMap = L.map('lageMap').setView([KS.lat, KS.lng], KS.zoom);
     baseK = mkTiles('karte').addTo(lageMap); baseL = mkTiles('luft');
     lageLayer = L.layerGroup().addTo(lageMap);
