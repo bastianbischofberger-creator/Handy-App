@@ -416,12 +416,15 @@ function tick() {
 function renderStart() {
   $('#startOrg').textContent = 'Mehrfachereignisse · ' + (S.settings.org || '');
   const f = $('#fStart');
-  if (!f.dataset.init) { const n = Date.now(); f.elements.name.value = 'Mehrfachereignis ' + dmy(n); f.elements.datum.value = dmy(n); f.elements.beginn.value = hm(n); f.dataset.init = '1'; }
+  if (!f.dataset.init) { const n = Date.now(); f.elements.name.value = 'Mehrfachereignis ' + dmy(n); f.elements.datum.value = dmy(n); f.elements.beginn.value = hm(n); f.dataset.init = '1';
+    // Einsatz von der Startseite übernehmen (wird für das Gesamtjournal verknüpft)
+    const FW = fwRead(); if (FW && !S.list.some(e => e.fw === 'fw-' + FW.t)) { f.elements.name.value = FW.bez; f.elements.el.value = FW.el || ''; } }
   $('#eList').innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.name || 'Ohne Bezeichnung')}</b><span>${e.el ? 'EL: ' + esc(e.el) + ' · ' : ''}${dt(e.start || e.created)}${e.n != null ? ' · ' + e.n + ' Aufträge' : ''}</span></div>
     <span class="tag ${e.closed ? 's-abg' : 's-offen'}">${e.closed ? 'Abgeschlossen' : 'Laufend'}</span><button data-open="${esc(e.id)}">Öffnen</button></li>`).join('') : '<li><span>Noch keine Ereignisse.</span></li>';
   $('#bBackup').hidden = !BE.exportAll; $('#lImport').hidden = !BE.importAll;
 }
 $('#eList').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (b) { openE(b.dataset.open); go('dash'); } });
+function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
 function parseStart(datum, zeit) {
   const d = String(datum || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/), z = String(zeit || '').match(/(\d{1,2})[:.](\d{2})/);
   const r = d ? new Date(+d[3], +d[2] - 1, +d[1]) : new Date(); if (z) r.setHours(+z[1], +z[2], 0, 0); return r.getTime();
@@ -431,6 +434,7 @@ $('#fStart').addEventListener('submit', e => {
   if (!el) { $('#startErr').textContent = 'Bitte den Einsatzleiter eintragen.'; return; }
   const meta = { created: Date.now(), start: parseStart(f.elements.datum.value, f.elements.beginn.value), end: null, closed: false,
     name: f.elements.name.value.trim() || 'Mehrfachereignis ' + dmy(Date.now()), el, code: newCode(), fu: f.elements.fu.value.trim(), kp: f.elements.kp.value.trim(), lage: f.elements.lage.value.trim() };
+  { const FW = fwRead(); if (FW && meta.name === FW.bez) meta.fw = 'fw-' + FW.t; }
   const id = BE.create(meta); openE(id);
   log(`Ereignis eröffnet: ${meta.name}, Einsatzleiter ${el}${meta.kp ? ', KP ' + meta.kp : ''}${meta.lage ? ' – ' + meta.lage : ''}`);
   f.reset(); delete f.dataset.init; $('#startErr').textContent = ''; go('dash');

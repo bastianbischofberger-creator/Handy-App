@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -142,7 +142,7 @@ function resetDraft() {
 }
 
 /* ---------- Ansichten ---------- */
-const VIEWS = ['vName', 'vNew', 'vList', 'vJ', 'vEdit', 'vSet'];
+const VIEWS = ['vName', 'vNew', 'vList', 'vJ', 'vEdit', 'vSet', 'vAll'];
 function show(v) { S.view = v; VIEWS.forEach(id => $('#' + id).hidden = id !== v); scrollTo(0, 0); }
 const myName = () => LP.get('name') || '';
 
@@ -517,7 +517,7 @@ function start() {
   });
 }
 // Logo: im Journal → Übersicht der Journale; dort → Startseite aller Apps
-$('#aHome').onclick = e => { if (S.view === 'vJ' || S.view === 'vEdit' || S.view === 'vSet') { e.preventDefault(); stopRec(); renderList(); show('vList'); } };
+$('#aHome').onclick = e => { if (S.view === 'vAll') { e.preventDefault(); renderJ(); return; } if (S.view === 'vJ' || S.view === 'vEdit' || S.view === 'vSet') { e.preventDefault(); stopRec(); renderList(); show('vList'); } };
 $('#bLogout').onclick = () => { if (confirm('Abmelden? Danach braucht dieses Gerät Internet, um sich wieder anzumelden.')) BE.logout(); };
 $('#fLogin').addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target; $('#lErr').textContent = '';
@@ -538,5 +538,5 @@ async function boot() {
 }
 boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
-window.__JR = { S, VERSION };
+window.__JR = { S, VERSION, show, renderJ };
 })();
