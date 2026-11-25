@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.5.1';
+const VERSION = '3.6.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -227,7 +227,8 @@ function card(T) {
     rueckzug: `<button data-a="druck" class="pri" data-s="Druck">Druck erfassen</button><button data-a="out">Draussen</button><button data-a="edit">Bearbeiten</button>`,
     draussen: `<button data-a="hide" class="ghost">Von der Tafel nehmen</button>`
   }[T.status];
-  return `<article class="card${T.rett ? ' rett' : ''}" id="c-${T.id}" data-id="${T.id}">
+  const inNot = T.inNot && (T.status === 'innen' || T.status === 'rueckzug');
+  return `<article class="card${T.rett ? ' rett' : ''}${inNot ? ' innot' : ''}" id="c-${T.id}" data-id="${T.id}">${inNot ? `<div class="innotbar">⚠ IN NOT – Rettungstrupp ${esc(T.inNot)} unterwegs</div>` : ''}
   <header><div class="nr">${esc(T.nr)}${window.ASUE_ICONS ? `<span class="nri">${window.ASUE_ICONS.html(aufKeys(T))}</span>` : ''}</div><div class="hd">
     <div class="auftrag">${T.rett ? `<span class="rtag" title="Rettungstrupp">${AXE}<span>Rettungstrupp</span></span> ` : ''}${T.fuer && (T.status === 'innen' || T.status === 'rueckzug') ? `<span class="notf" title="Atemschutznotfall für ${/^\d/.test(T.fuer) ? 'Trupp ' : ''}${esc(T.fuer)}">NOTFALL ${/^\d/.test(T.fuer) ? 'T' + esc(T.fuer) : '?'}</span> ` : ''}${esc(aufText(T) || 'Kein Auftrag erfasst')}</div>
     <div class="row">${T.stock && T.status !== 'draussen' ? `<button type="button" class="stk" data-a="stock">${esc(T.stock)}</button>` : ''}<span class="kanal"><span class="fw">Funk </span>${esc(T.kanal || '–')}</span>${eqHtml(T)}<span class="st st-${T.status}">${STL[T.status]}</span><span class="lbl d">Druckkontrolle fällig</span><span class="lbl a">RÜCKZUG!</span></div></div></header>
@@ -296,8 +297,8 @@ function tick() {
       T.members.forEach((m, i) => set(`p-${T.id}-${i}`, m.readings.length > 1 ? m.readings[m.readings.length - 1].p : p0t(m)));
       set('k1-' + T.id, dur(T.tOut - T.tIn)); set('k2-' + T.id, '–'); set('k3-' + T.id, hm(T.tOut));
     }
-    const nc = 'card' + (T.rett ? ' rett' : '') + (cls ? ' ' + cls : ''); if (c.className !== nc) c.className = nc;
-    const bd = document.getElementById('b-' + T.id); if (bd) { const bc = 'tbg ' + T.status + (T.rett ? ' rett' : '') + (cls ? ' ' + cls : ''); if (bd.className !== bc) bd.className = bc; }
+    const nc = 'card' + (T.rett ? ' rett' : '') + (T.inNot && (T.status === 'innen' || T.status === 'rueckzug') ? ' innot' : '') + (cls ? ' ' + cls : ''); if (c.className !== nc) c.className = nc;
+    const bd = document.getElementById('b-' + T.id); if (bd) { const bc = 'tbg ' + T.status + (T.rett ? ' rett' : '') + (T.inNot && (T.status === 'innen' || T.status === 'rueckzug') ? ' innot' : '') + (cls ? ' ' + cls : ''); if (bd.className !== bc) bd.className = bc; }
   }
 }
 
@@ -409,7 +410,7 @@ $('#fP').addEventListener('submit', e => {
   const parts = [];
   T.members.forEach((m, i) => { const v = vals[i]; if (isNaN(v)) return; m.readings.push({ t: now, p: v }); if (pCtx.mode === 'arr') m.pArr = v; parts.push(m.name + ' ' + v); });
   const txt = parts.length ? ': ' + parts.join(', ') + ' bar' : '';
-  if (pCtx.mode === 'out') { T.status = 'draussen'; T.tOut = now; }
+  if (pCtx.mode === 'out') { T.status = 'draussen'; T.tOut = now; clearNot(T); }
   saveTeam(T);
   log({ check: `Trupp ${T.nr} Druck${txt}`, arr: `Trupp ${T.nr} am Arbeitsort${txt}`, out: `Trupp ${T.nr} draussen nach ${dur(now - T.tIn)} Min.${txt}` }[pCtx.mode]);
 });
@@ -485,7 +486,7 @@ const countOG = fl => fl.filter(f => /^\d+\. ?OG$/i.test(f)).length, countUG = f
 const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
 // Rettungstrupp behält nur seine Axt – keine Auftrags-Symbole
 const aufKeys = T => window.ASUE_ICONS && !T.rett ? window.ASUE_ICONS.keys([T.auftrag, T.zusatz].filter(Boolean).join(' ')) : [];
-function badge(T, extra) { return `<button type="button" class="tbg ${T.status}${T.rett ? ' rett' : ''}" id="b-${T.id}" data-st="${esc(T.id)}" title="${T.rett ? 'Rettungstrupp' : 'Trupp'} ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}${T.auftrag ? ' · ' + esc(T.auftrag) : ''}">${T.rett ? AXE : ''}${window.ASUE_ICONS ? window.ASUE_ICONS.html(aufKeys(T)) : ''}${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
+function badge(T, extra) { return `<button type="button" class="tbg ${T.status}${T.rett ? ' rett' : ''}${T.inNot && (T.status === 'innen' || T.status === 'rueckzug') ? ' innot' : ''}" id="b-${T.id}" data-st="${esc(T.id)}" title="${T.rett ? 'Rettungstrupp' : 'Trupp'} ${esc(T.nr)}${T.stock ? ' · ' + esc(T.stock) : ''}${T.auftrag ? ' · ' + esc(T.auftrag) : ''}">${T.rett ? AXE : ''}${window.ASUE_ICONS ? window.ASUE_ICONS.html(aufKeys(T)) : ''}${esc(T.nr)}${extra ? `<small>${esc(extra)}</small>` : ''}</button>`; }
 function renderBau() {
   const el = $('#bau'); if (!el) return;
   const fl = floors(), vis = S.teams.filter(t => !t.hidden), inside = vis.filter(t => t.status === 'innen' || t.status === 'rueckzug');
@@ -535,6 +536,11 @@ function enter(T, stock) {
   if (notfallFor === T.id) { notfallFor = null; notfall(T); }
 }
 /* ---------- Atemschutznotfall ---------- */
+// Markierung «in Not» aufheben, wenn der betroffene Trupp oder sein Rettungstrupp draussen ist
+function clearNot(T) {
+  if (T.inNot) delete T.inNot;
+  if (T.rett && T.fuer) { S.teams.filter(x => x.inNot === String(T.nr)).forEach(x => { delete x.inNot; saveTeam(x); }); }
+}
 let notfallFor = null, notfallTarget = null;
 function askNotfall(T, cb) {
   const d = $('#dNot'), others = S.teams.filter(t => t.id !== T.id && !t.hidden && (t.status === 'innen' || t.status === 'rueckzug'))
@@ -559,6 +565,7 @@ function notfall(T) {
   const fuer = X ? `für Trupp ${X.nr}${X.stock ? ' (' + X.stock + ')' : ''}` : 'für Unbekannt / Dritte';
   const now = Date.now(), text = `ATEMSCHUTZNOTFALL – Rettungstrupp ${T.nr} eingesetzt ${fuer}`;
   T.fuer = X ? X.nr : 'Unbekannt / Dritte'; saveTeam(T);
+  if (X) { X.inNot = String(T.nr); saveTeam(X); } // betroffenen Trupp markieren (Karte und Haus)
   BE.addLog(ensureE(), 'not-' + uid(), { t: now, text, dev: LP.get('dev') || '', prio: true });
   // Eintrag ins Einsatzjournal (Prio-Meldung), wenn der Einsatz mit der Startseite / dem Journal verknüpft ist
   const fw = S.meta.fw;
@@ -723,7 +730,7 @@ $('#grid').addEventListener('click', e => {
   else if (a === 'druck') openP(id, 'check');
   else if (a === 'arr') openP(id, 'arr');
   else if (a === 'out') confirmBox('Trupp ' + T.nr + ' draussen?', 'Die Überwachung für diesen Trupp wird beendet.', () => {
-    const t = Date.now(); T.status = 'draussen'; T.tOut = t; saveTeam(T); log(`Trupp ${T.nr} draussen nach ${dur(t - T.tIn)} Min.`); });
+    const t = Date.now(); T.status = 'draussen'; T.tOut = t; clearNot(T); saveTeam(T); log(`Trupp ${T.nr} draussen nach ${dur(t - T.tIn)} Min.`); });
   else if (a === 'rz') { T.status = 'rueckzug'; saveTeam(T); log(`Trupp ${T.nr} Rückzug angetreten`); }
   else if (a === 'edit') openTeam(id);
   else if (a === 'hide') { T.hidden = true; saveTeam(T); }
@@ -752,7 +759,7 @@ let lastPub = '', pubT = null;
 function publishLage() {
   const k = S.meta.shareK; if (!k || !BE.putPublic || !S.eid) return;
   const d = { title: S.meta.ereignis || '', ort: S.meta.ort || '', floors: floors(), closed: !!S.meta.closed,
-    teams: S.teams.filter(t => !t.hidden && t.status !== 'draussen').map(t => ({ nr: String(t.nr || ''), stock: t.stock || '', status: t.status, rett: !!t.rett, tIn: t.tIn || null, ic: aufKeys(t) })) };
+    teams: S.teams.filter(t => !t.hidden && t.status !== 'draussen').map(t => ({ nr: String(t.nr || ''), stock: t.stock || '', status: t.status, rett: !!t.rett, tIn: t.tIn || null, ic: aufKeys(t), not: t.inNot || null })) };
   const js = JSON.stringify(d); if (js === lastPub) return; lastPub = js;
   clearTimeout(pubT); pubT = setTimeout(() => BE.putPublic(k, { ...d, upd: Date.now() }), 400);
 }

@@ -73,6 +73,11 @@ body:not(.dashmode) #dash{display:none}
 #log li.prio{font-weight:700}#log li.prio span{background:linear-gradient(180deg,transparent 8%,#ffe600 8%,#ffe600 92%,transparent 92%);color:#16181a;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 3px;border-radius:2px}
 .notpick{display:grid;gap:8px}.notpick button{min-height:54px;justify-content:flex-start;font-size:18px;gap:8px}.notpick button.unk{border-style:dashed}.notpick .ai{width:20px;height:20px}
 .notf{background:#ffe600;color:#16181a;font-weight:800;border-radius:4px;padding:0 5px;font-size:.9em}
+.card.innot{outline:5px solid #ffe600;outline-offset:-1px;animation:notpulse 1.2s ease-in-out infinite}
+.innotbar{background:#16181a;color:#ffe600;font-weight:800;text-align:center;padding:4px 8px;border-top:6px solid transparent;border-image:repeating-linear-gradient(-45deg,#ffe600 0 10px,#16181a 10px 20px) 6}
+.bau .tbg.innot,.tbg.innot{outline:3px solid #ffe600;outline-offset:1px;box-shadow:0 0 0 6px #16181a;animation:notpulse 1.2s ease-in-out infinite}
+@keyframes notpulse{50%{filter:brightness(1.35)}}
+@media (prefers-reduced-motion:reduce){.card.innot,.tbg.innot{animation:none}}
 .fwbar{background:#16181a;color:#fff;padding:6px max(3vw,14px);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fwbar::before{content:"EINSATZ";font-size:11px;font-weight:700;letter-spacing:.06em;background:var(--red,#c8102e);color:#fff;border-radius:4px;padding:1px 6px;margin-right:8px;vertical-align:1px}
 .banner{background:var(--warn);color:#1a1a1a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:500}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:16px}
@@ -478,6 +483,6 @@ label select+input{margin-top:6px}
 <script src="../vendor/qrcode-generator/qrcode.js"></script>
 <script src="icons.js?v=2"></script>
 <script src="../shared/fwform.js?v=1"></script>
-<script src="app.js?v=3.5.1"></script>
+<script src="app.js?v=3.6.0"></script>
 </body>
 </html>
