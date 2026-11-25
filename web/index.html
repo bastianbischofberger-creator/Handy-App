@@ -237,13 +237,6 @@
         <div class="dSide" id="dTiles"></div>
         <div>
           <div id="dRun"></div>
-          <section class="dCard" id="dNew" hidden>
-            <h2>Neue Lageskizze</h2>
-            <button class="dBtn fwTake" id="dFwTake" hidden></button>
-            <label>Bezeichnung *<input id="dName" placeholder="z. B. Brand Wohnhaus Hauptstrasse" autocomplete="off" /></label>
-            <label>Adresse / Ort (optional, die Karte springt dorthin)<input id="dOrt" placeholder="Strasse Nr., Ort" autocomplete="off" /></label>
-            <div class="dBtns"><button class="dBtn pri" id="dCreate">Skizze starten</button><button class="dBtn" id="dCancel">Abbrechen</button></div>
-          </section>
           <section class="dCard">
             <h2>Gespeicherte Skizzen</h2>
             <div id="dList"></div>
@@ -285,6 +278,7 @@
   </div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="shared/fwform.js?v=1"></script>
   <script src="vendor/leaflet-rotate/leaflet-rotate.js"></script>
   <script src="vendor/qrcode-generator/qrcode.js"></script>
   <script>
@@ -2259,7 +2253,6 @@
     setInterval(dClock, 10000); dClock();
     function showDash() {
       document.getElementById('dialog').classList.remove('open');
-      document.getElementById('dNew').hidden = true;
       renderDash(); dash.classList.add('open'); dash.scrollTop = 0;
     }
     function hideDash() { dash.classList.remove('open'); }
@@ -2287,7 +2280,7 @@
       };
       if (FW) {
         const info = FW.adr + ' · EL ' + FW.el + (fwSk ? ' · Skizze: ' + nE(fwSk.n) + ', geändert ' + fmtDT(fwSk.updated) : '');
-        card(' fwe', 'Einsatz von der Startseite', FW.bez, info, fwSk
+        card(' fwe', 'Aktiver Einsatz', FW.bez, info, fwSk
           ? [['Lageskizze öffnen →', () => openSketch(fwSk.id)], ['Teilen / Export', () => { openSketch(fwSk.id); shareMenu(); }, true]]
           : [['Neue Lageskizze für diesen Einsatz →', () => startFwSketch(FW)]]);
       }
@@ -2315,31 +2308,16 @@
       if (FW.lat != null) placePin(FW.lat, FW.lng, FW.adr, 'address'); // Adresse ist schon bekannt: Nadel direkt setzen
       else if (FW.adr) searchAddress(FW.adr);
     }
-    let formFw = null;
-    function newSketchForm() {
-      const f = document.getElementById('dNew'), FW = fwRead(), tk = document.getElementById('dFwTake');
-      document.getElementById('dName').value = ''; document.getElementById('dOrt').value = ''; formFw = null;
-      tk.hidden = !FW; if (FW) tk.innerHTML = '⚠️ Einsatz von der Startseite übernehmen: <b>' + esc(FW.bez) + '</b> · ' + esc(FW.adr);
-      f.hidden = false; f.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => document.getElementById('dName').focus(), 250);
-    }
-    document.getElementById('dFwTake').onclick = () => {
-      const FW = fwRead(); if (!FW) return; formFw = FW;
-      document.getElementById('dName').value = FW.bez; document.getElementById('dOrt').value = FW.adr;
-    };
-    document.getElementById('dCancel').onclick = () => { document.getElementById('dNew').hidden = true; };
-    document.getElementById('dCreate').onclick = () => {
-      const name = document.getElementById('dName').value.trim(), ort = document.getElementById('dOrt').value.trim();
-      if (!name) { document.getElementById('dName').focus(); return; }
-      const fw = formFw && formFw.bez === name ? formFw : null;
-      createSketch(name, ort, fw ? 'fw-' + fw.t : undefined);
+    // Neue Lageskizze: gemeinsames Fenster wie auf der Startseite (Bezeichnung, Adresse, Einsatzleiter)
+    async function newSketchForm() {
+      const r = await window.FWForm.open({ app: 'Lagekarte', title: 'Neue Lageskizze', ok: 'Skizze starten', adrPflicht: false, elPflicht: false });
+      if (!r) return;
+      createSketch(r.bez, r.adr, r.fw || undefined);
       setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();
-      if (fw && fw.lat != null && ort === fw.adr) placePin(fw.lat, fw.lng, fw.adr, 'address');
-      else if (ort) searchAddress(ort);
+      if (r.lat != null) placePin(r.lat, r.lng, r.adr, 'address');
+      else if (r.adr) searchAddress(r.adr);
       else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
-    };
-    document.getElementById('dName').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('dOrt').focus(); };
-    document.getElementById('dOrt').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('dCreate').click(); };
+    }
     function createSketch(name, ort, fw) {
       const id = newId(), now = Date.now();
       sketches.push({ id, name, ort, created: now, updated: now, n: 0, ...(fw ? { fw } : {}) });

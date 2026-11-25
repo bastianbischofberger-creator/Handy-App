@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -201,7 +201,7 @@ function renderEntries() {
 function renderList() {
   const FW = fwRead(), fj = FW && S.list.find(x => x.id === fwId(FW));
   $('#fwCard').hidden = !FW;
-  if (FW) $('#fwCard').innerHTML = `<small>Einsatz von der Startseite</small><b>${esc(FW.bez)}</b><div>${esc(FW.adr || '')}${FW.el ? ' · EL ' + esc(FW.el) : ''}${fj ? ' · Journal ' + (fj.closed ? 'abgeschlossen' : 'offen') : ''}</div>
+  if (FW) $('#fwCard').innerHTML = `<small>Aktiver Einsatz</small><b>${esc(FW.bez)}</b><div>${esc(FW.adr || '')}${FW.el ? ' · EL ' + esc(FW.el) : ''}${fj ? ' · Journal ' + (fj.closed ? 'abgeschlossen' : 'offen') : ''}</div>
     <div class="bb"><button id="bFw">${fj ? 'Journal öffnen →' : 'Journal für diesen Einsatz eröffnen →'}</button></div>`;
   const js = [...S.list].sort((a, b) => b.start - a.start);
   $('#jList').innerHTML = js.length ? js.map(j => `
@@ -232,7 +232,7 @@ function goHome() {
   if (cur) return openJ(cur);
   const open = S.list.filter(j => !j.closed);
   if (open.length === 1) return openJ(open[0].id);
-  if (!S.list.length) { prepNew(); return; }
+  if (!S.list.length) { renderList(); show('vList'); return; }
   renderList(); show('vList');
 }
 function prepNew() { $('#nFu').value = myName(); show('vNew'); $('#nTitle').focus(); }
@@ -254,12 +254,20 @@ $('#bOpen').onclick = () => {
   const title = $('#nTitle').value.trim(), fu = $('#nFu').value.trim();
   if (!title) { $('#nTitle').focus(); return msg('Bitte ein Ereignis eintragen.'); }
   if (!fu) { $('#nFu').focus(); return msg('Bitte den Journalführer eintragen.'); }
-  const id = uid();
-  BE.create(id, { title, ort: $('#nOrt').value.trim(), el: $('#nEl').value.trim(), fu, start: Date.now(), end: null, closed: false, createdBy: myName() });
+  let id = uid(), fw;
+  // läuft noch kein aktiver Einsatz, wird dieses Journal zum aktiven Einsatz für alle Apps
+  if (!fwRead()) { const t = Date.now(); try { localStorage.setItem('fw-einsatz', JSON.stringify({ bez: title, adr: $('#nOrt').value.trim(), el: $('#nEl').value.trim(), t, quelle: 'Journal' })); } catch (e) {} id = 'fw' + t; fw = 'fw-' + t; }
+  BE.create(id, { title, ort: $('#nOrt').value.trim(), el: $('#nEl').value.trim(), fu, start: Date.now(), end: null, closed: false, createdBy: myName(), ...(fw ? { fw } : {}) });
   ['#nTitle', '#nOrt', '#nEl'].forEach(s => $(s).value = '');
   S.view = null; openJ(id); setTimeout(() => $('#txt').focus(), 50);
 };
-$('#bNew').onclick = prepNew;
+$('#bNew').onclick = async () => {
+  // gemeinsames Fenster wie auf der Startseite; Journalführer = Name dieses Geräts (später unter «Bearbeiten» änderbar)
+  const r = await window.FWForm.open({ app: 'Journal' }); if (!r) return;
+  const id = r.fw ? 'fw' + r.t : uid();
+  if (!S.list.some(j => j.id === id)) BE.create(id, { title: r.bez, ort: r.adr, el: r.el, fu: myName(), start: Date.now(), end: null, closed: false, createdBy: myName(), ...(r.fw ? { fw: r.fw } : {}) });
+  S.view = null; openJ(id); setTimeout(() => { const t = $('#txt'); if (t) t.focus(); }, 50);
+};
 $('#fwCard').addEventListener('click', e => { if (e.target.closest('#bFw')) { const FW = fwRead(); if (FW) openFw(FW); } });
 $('#bBack').onclick = () => renderJ();
 $('#bJournals').onclick = () => { stopRec(); renderList(); show('vList'); };

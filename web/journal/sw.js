@@ -1,7 +1,7 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'journal-1.5.0';
-const SHELL = ['./', './index.html', './app.js', './gesamt.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './vendor/jspdf.umd.min.js'];
+const CACHE = 'journal-1.6.1';
+const SHELL = ['./', './index.html', './app.js', './gesamt.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './vendor/jspdf.umd.min.js', '../shared/fwform.js'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];
 const FBMODS = [FB + 'firebase-app.js', FB + 'firebase-auth.js', FB + 'firebase-firestore.js'];

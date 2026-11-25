@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.8.0';
+const VERSION = '2.9.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -844,7 +844,7 @@ function renderDash() {
   const done = S.list.filter(e => e.closed);
   const inside = S.teams.filter(t => t.status === 'innen' || t.status === 'rueckzug').length;
   $('#dRun').innerHTML = run.length ? run.map(e => `<div class="rc${fwKey && e.fw === fwKey ? ' fwe' : ''}" data-open="${esc(e.id)}">
-      <small>Laufender Einsatz${fwKey && e.fw === fwKey ? ' · von der Startseite' : ''}</small><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b>
+      <small>Laufender Einsatz${fwKey && e.fw === fwKey ? ' · aktiver Einsatz' : ''}</small><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b>
       <div class="info">${[e.ort && esc(e.ort), e.el && 'EL ' + esc(e.el), 'seit ' + dt(e.start || e.created), e.id === S.eid ? (inside ? inside + ' Trupp(s) drin' : 'kein Trupp drin') : ''].filter(Boolean).join(' · ')}</div>
       <div class="bb"><button data-open="${esc(e.id)}">Zum Einsatztableau →</button><button class="sec" data-close="${esc(e.id)}">Abschliessen</button></div></div>`).join('')
     : '<div class="rcempty">Kein laufender Einsatz. Links einen neuen Einsatz eröffnen oder auf der Startseite einen Einsatz generieren.</div>';
@@ -867,28 +867,16 @@ function dashClick(e) {
     return;
   }
   const b = e.target.closest('[data-open]'); if (!b) return; if (b.dataset.open !== S.eid) openE(b.dataset.open); showBoard(); }
-/* Neuer Einsatz: zuerst Bezeichnung, Ort und Einsatzleiter abfragen */
-$('#dNew').onclick = () => {
-  const f = $('#fNewE'), FW = fwRead(); f.reset(); $('#neErr').textContent = '';
-  const used = FW && S.list.some(e => e.fw === 'fw-' + FW.t && !e.closed);
-  $('#neFw').hidden = !FW || used;
-  if (FW) $('#neFw').innerHTML = `⚠️ Einsatz von der Startseite übernehmen: <b>${esc(FW.bez)}</b> · ${esc(FW.adr)}`;
-  $('#neFw').onclick = () => { f.elements.ereignis.value = FW.bez; f.elements.ort.value = FW.adr; f.elements.el.value = FW.el; f.dataset.fw = 'fw-' + FW.t; };
-  delete f.dataset.fw; $('#dNewE').showModal(); setTimeout(() => f.elements.ereignis.focus(), 50);
-};
-$('#neX').onclick = () => $('#dNewE').close();
-$('#fNewE').addEventListener('submit', ev => {
-  ev.preventDefault(); const f = ev.target, v = n => f.elements[n].value.trim();
-  const miss = [!v('ereignis') && 'Einsatzbezeichnung', !v('el') && 'Einsatzleiter'].filter(Boolean);
-  $('#neErr').textContent = miss.length ? 'Bitte ausfüllen: ' + miss.join(', ') : ''; if (miss.length) return;
-  const meta = { ...newMeta(), ereignis: v('ereignis'), ort: v('ort'), el: v('el') };
-  if (f.dataset.fw && FWmatch(f, meta)) meta.fw = f.dataset.fw;
-  $('#dNewE').close();
+/* Neuer Einsatz: gemeinsames Fenster wie auf der Startseite (Bezeichnung, Adresse, Einsatzleiter) */
+$('#dNew').onclick = async () => {
+  const r = await window.FWForm.open({ app: 'ASÜ' }); if (!r) return;
+  const hit = r.fw && S.list.find(e => e.fw === r.fw && !e.closed);
+  if (hit) { openE(hit.id); showBoard(); return; }
+  const meta = { ...newMeta(), ereignis: r.bez, ort: r.adr, el: r.el, ...(r.fw ? { fw: r.fw } : {}) };
   const go = () => { openE(BE.create(meta)); log('Einsatz eröffnet: ' + meta.ereignis); showBoard(); };
   if (S.teams.some(t => t.status === 'innen' || t.status === 'rueckzug')) confirmBox('Neuen Einsatz starten?', 'Im geöffneten Einsatz sind noch Trupps drin. Der Einsatz bleibt gespeichert und ist im Dashboard weiter erreichbar.', go);
   else go();
-});
-function FWmatch(f, meta) { const FW = fwRead(); return FW && 'fw-' + FW.t === f.dataset.fw && meta.ereignis === FW.bez; }
+};
 $('#dBackup').onclick = async () => { $('#eMsg').textContent = ''; await $('#bBackup').onclick(); $('#dMsg').textContent = $('#eMsg').textContent; };
 $('#dImport').onclick = () => $('#fImport').click();
 $('#fImport').addEventListener('change', () => setTimeout(() => { $('#dMsg').textContent = $('#eMsg').textContent; }, 300));

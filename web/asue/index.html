@@ -438,16 +438,6 @@ label select+input{margin-top:6px}
   <div class="dbtn"><button id="bXClose" class="pri">Schliessen</button></div>
 </div></dialog>
 
-<dialog id="dNewE"><form id="fNewE" autocomplete="off">
-  <h3>Neuer Einsatz</h3>
-  <button type="button" class="fwtake" id="neFw" hidden></button>
-  <label>Einsatzbezeichnung <span class="req">*</span><input name="ereignis" placeholder="z. B. Brand EFH"></label>
-  <label>Einsatzort<input name="ort" placeholder="Strasse Nr., Ort"></label>
-  <label>Einsatzleiter <span class="req">*</span><input name="el" placeholder="Name Vorname"></label>
-  <p class="err" id="neErr"></p>
-  <div class="dbtn"><button type="button" id="neX">Abbrechen</button><button class="pri" type="submit">Einsatz eröffnen</button></div>
-</form></dialog>
-
 <dialog id="dC"><form method="dialog">
   <h3 id="cTitle">Sicher?</h3>
   <p id="cText"></p>
@@ -457,6 +447,7 @@ label select+input{margin-top:6px}
 <script src="config.js?v=2.3.2"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jsQR.js"></script>
-<script src="app.js?v=2.8.0"></script>
+<script src="../shared/fwform.js?v=1"></script>
+<script src="app.js?v=2.9.0"></script>
 </body>
 </html>

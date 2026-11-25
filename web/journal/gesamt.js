@@ -14,9 +14,10 @@ const SRC = {
   j: { l: 'Journal', c: '#7a3db8' },
   asue: { l: 'Atemschutz', c: '#c8102e' },
   mf: { l: 'Mehrfachereignisse', c: '#1557c0' },
-  lage: { l: 'Lagekarte', c: '#1d7a46' }
+  lage: { l: 'Lagekarte', c: '#1d7a46' },
+  bild: { l: 'Einsatzbilder', c: '#b8860b' }
 };
-const ON = { j: true, asue: true, mf: true, lage: true };
+const ON = { j: true, asue: true, mf: true, lage: true, bild: true };
 let rows = [], note = '', loading = false;
 
 /* ---------- Daten sammeln ---------- */
@@ -61,7 +62,11 @@ async function cloud(key) {
     const q = await F.getDocs(F.query(F.collection(fs, coll), F.where('fw', '==', key)));
     for (const d of q.docs) { const l = await F.getDocs(F.collection(fs, coll, d.id, 'log')); l.docs.forEach(x => { const v = x.data(); out.push({ t: v.t, src, text: v.text, by: v.dev }); }); }
   };
-  await Promise.race([Promise.all([grab('einsaetze', 'asue'), grab('mf_ereignisse', 'mf')]), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 10000))]);
+  const fotos = async () => {
+    const q = await F.getDocs(F.query(F.collection(fs, 'bi_einsaetze'), F.where('fw', '==', key)));
+    for (const d of q.docs) { const l = await F.getDocs(F.collection(fs, 'bi_einsaetze', d.id, 'fotos')); l.docs.forEach(x => { const v = x.data(); out.push({ t: v.t, src: 'bild', text: `Foto «${v.name}»${v.src === 'qr' ? ' (per QR)' : ''}`, by: v.by }); }); }
+  };
+  await Promise.race([Promise.all([grab('einsaetze', 'asue'), grab('mf_ereignisse', 'mf'), fotos()]), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 10000))]);
   return out;
 }
 

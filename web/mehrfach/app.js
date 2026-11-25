@@ -429,12 +429,20 @@ function parseStart(datum, zeit) {
   const d = String(datum || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/), z = String(zeit || '').match(/(\d{1,2})[:.](\d{2})/);
   const r = d ? new Date(+d[3], +d[2] - 1, +d[1]) : new Date(); if (z) r.setHours(+z[1], +z[2], 0, 0); return r.getTime();
 }
-$('#fStart').addEventListener('submit', e => {
-  e.preventDefault(); const f = e.target, el = f.elements.el.value.trim();
+$('#fStart').addEventListener('submit', async e => {
+  e.preventDefault(); const f = e.target; let el = f.elements.el.value.trim();
   if (!el) { $('#startErr').textContent = 'Bitte den Einsatzleiter eintragen.'; return; }
+  // Gibt es noch keinen aktiven Einsatz: gemeinsames Fenster wie auf der Startseite (Adresse sauber erfassen) → aktiver Einsatz für alle Apps
+  let R = null;
+  if (!fwRead() && window.FWForm) {
+    R = await window.FWForm.open({ app: 'Mehrfachereignisse', title: 'Ereignis als Einsatz erfassen', ok: 'Ereignis eröffnen', prefill: { bez: f.elements.name.value.trim(), el } });
+    if (!R) return;
+    f.elements.name.value = R.bez; f.elements.el.value = el = R.el;
+  }
   const meta = { created: Date.now(), start: parseStart(f.elements.datum.value, f.elements.beginn.value), end: null, closed: false,
     name: f.elements.name.value.trim() || 'Mehrfachereignis ' + dmy(Date.now()), el, code: newCode(), fu: f.elements.fu.value.trim(), kp: f.elements.kp.value.trim(), lage: f.elements.lage.value.trim() };
-  { const FW = fwRead(); if (FW && meta.name === FW.bez) meta.fw = 'fw-' + FW.t; }
+  if (R) { if (R.fw) meta.fw = R.fw; meta.ort = R.adr; if (R.lat != null) { meta.lat = R.lat; meta.lng = R.lng; } }
+  else { const FW = fwRead(); if (FW && meta.name === FW.bez) { meta.fw = 'fw-' + FW.t; meta.ort = FW.adr || ''; } }
   const id = BE.create(meta); openE(id);
   log(`Ereignis eröffnet: ${meta.name}, Einsatzleiter ${el}${meta.kp ? ', KP ' + meta.kp : ''}${meta.lage ? ' – ' + meta.lage : ''}`);
   f.reset(); delete f.dataset.init; $('#startErr').textContent = ''; go('dash');

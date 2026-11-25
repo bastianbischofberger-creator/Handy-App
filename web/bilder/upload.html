@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Einsatzbilder – hochladen</title>
+<meta name="theme-color" content="#c8102e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c8102e;--ink:#16181a;--mute:#5b6166;--line:#d8d4ce;--field:#f7f6f4;--ok:#1d7a46}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;min-height:100vh;background:var(--red);color:var(--ink);font:17px/1.4 Barlow,system-ui,sans-serif;display:flex;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 12px 24px}
+.card{width:min(520px,100%);background:#fff;border-radius:18px;padding:18px 18px 22px;align-self:flex-start;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.hd{display:flex;align-items:center;gap:12px;margin-bottom:10px}.hd img{width:54px;height:56px;object-fit:contain}
+h1{font:600 23px/1.1 "Barlow Condensed",sans-serif;margin:0}h1 small{display:block;font:500 14px Barlow,sans-serif;color:var(--mute)}
+.mute{color:var(--mute);font-size:15px}
+label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
+input{display:block;width:100%;font:500 18px Barlow,sans-serif;min-height:50px;padding:8px 12px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink)}
+button{font:600 17px Barlow,sans-serif;min-height:48px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.link{background:none;border:0;color:var(--mute);font-size:15px;min-height:36px;text-decoration:underline;padding:0}
+button svg{width:30px;height:30px}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.big button{min-height:110px;flex-direction:column;font-size:18px}
+.ev{background:#fdecef;border-left:6px solid var(--red);border-radius:10px;padding:10px 12px;margin:4px 0 12px}.ev b{display:block;font:700 22px/1.1 "Barlow Condensed",sans-serif}
+.prog{background:#e6f3ec;border:1px solid var(--ok);border-radius:10px;padding:10px 12px;font-weight:600;margin-bottom:10px}
+.err{color:var(--red);font-weight:600;margin:8px 0}.err:empty{display:none}
+.mine{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.mine img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#eee}
+h2{font:700 19px "Barlow Condensed",sans-serif;margin:16px 0 4px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd"><img src="logo.png" alt="FW RTL"><h1>Einsatzbilder<small id="org">Feuerwehr</small></h1></div>
+  <p class="err" id="msg">Lädt …</p>
+
+  <section id="sName" hidden>
+    <p class="mute" style="margin-top:0">Einmal ausfüllen – bleibt auf diesem Handy gespeichert.</p>
+    <label>Grad und Name *<input id="nm" autocomplete="name" placeholder="z. B. Sdt Muster Hans"></label>
+    <button class="pri" id="bName" style="width:100%">Weiter</button>
+  </section>
+
+  <section id="sMain" hidden>
+    <div class="ev"><b id="evT"></b><span id="evD" class="mute"></span></div>
+    <div class="mute">Du: <b id="meN" style="color:var(--ink)"></b> <button class="link" id="bEdit">ändern</button></div>
+    <div class="big">
+      <button class="pri" id="bCam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto aufnehmen</button>
+      <button id="bPick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>Aus Galerie</button>
+    </div>
+    <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="fPick" accept="image/*" multiple hidden>
+    <div class="prog" id="prog" hidden></div>
+    <p class="err" id="mErr"></p>
+    <h2>Deine Bilder <span id="cnt" class="mute"></span></h2>
+    <div class="mine" id="mine"></div>
+  </section>
+</div>
+<script src="config.js?v=1.0.0"></script>
+<script src="foto.js?v=1.0.0"></script>
+<script type="module" src="upload.js?v=1.0.0"></script>
+</body>
+</html>
