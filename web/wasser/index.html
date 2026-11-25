@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wassertransport</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Wasser">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--blue:#1565c0}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.top{position:sticky;top:0;z-index:1000;background:var(--red);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px}
+#clock{font:700 clamp(30px,5.5vw,46px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+button.ghost{background:none;border-color:transparent;color:var(--mute);min-height:36px;padding:4px 8px;font-size:14px}
+button:disabled{opacity:.45;cursor:default}
+svg{width:22px;height:22px;flex:none}
+main{max-width:1000px;margin:0 auto;padding:16px max(3vw,14px) calc(30px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
+h3{font:700 19px/1.1 "Barlow Condensed",sans-serif;margin:16px 0 8px}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:12px}
+input,select{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0 12px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.mute{color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chips button{min-height:42px;padding:6px 12px;font-weight:500}
+.chips button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+/* Dashboard */
+.dash{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+@media(min-width:640px){.dash{grid-template-columns:1fr 1fr}}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;text-align:left;background:var(--card);border:1px solid var(--line);border-top:6px solid var(--tc);border-radius:12px;padding:18px;min-height:140px;font-weight:400;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tile .ic{width:50px;height:50px;border-radius:12px;background:var(--tc);color:#fff;display:grid;place-items:center}.tile .ic svg{width:28px;height:28px}
+.tile b{font:700 24px/1.05 "Barlow Condensed",sans-serif}.tile span{color:var(--mute);font-size:15px}
+.sl{list-style:none;margin:0;padding:0}
+.sl li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.sl li:last-child{border-bottom:0}.sl li div{flex:1;cursor:pointer}.sl small{display:block;color:var(--mute)}
+/* Karte */
+#mapWrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-bottom:10px}
+#map{height:min(62vh,560px);background:#e8e8e8}
+.mbar{position:absolute;z-index:500;left:10px;right:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.mbar>*{pointer-events:auto}
+.mbar button{background:#fff;color:#16181a;border-color:#bbb;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.search{flex:1 1 200px;position:relative}
+.search input{margin:0;background:#fff;color:#16181a;border-color:#bbb;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#sres{position:absolute;left:0;right:0;top:100%;background:#fff;color:#16181a;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.3);margin-top:4px;max-height:260px;overflow:auto}
+#sres button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;border-radius:0;background:#fff;color:#16181a;font-weight:500;justify-content:flex-start}
+.hint{position:absolute;z-index:500;left:10px;bottom:22px;right:10px;background:rgba(22,24,26,.85);color:#fff;border-radius:8px;padding:8px 12px;font-size:15px;pointer-events:none;text-align:center}
+.pin{display:grid;place-items:center;border-radius:50%;color:#fff;font:700 14px Barlow,sans-serif;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+.pin.w{background:var(--blue)}.pin.z{background:var(--red)}.pin.v{background:#555;border-width:2px}
+.pin.p{background:#d96c00;border-radius:8px;font-size:13px}
+/* Ergebnis */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.stat{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stat small{display:block;font-size:13px;color:var(--mute);font-weight:600}.stat b{font:700 28px/1.1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.stat.big{border-left:6px solid #d96c00}
+.warn{background:light-dark(#fff4d6,#3a2f0c);border:1px solid var(--warn);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.warn p{margin:2px 0}
+.prof{width:100%;height:auto;display:block;background:var(--field);border:1px solid var(--line);border-radius:10px}
+.prof text{font:12px Barlow,sans-serif;fill:var(--mute)}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th,.tbl td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{font-size:13px;color:var(--mute)}
+.tbl td.n{font:700 18px "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tblw{overflow-x:auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin:6px 0 0}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:5px;vertical-align:3px}
+.pp{display:grid;grid-template-columns:1fr 90px 100px 40px;gap:6px;align-items:end;margin-bottom:8px}
+.pp input{margin:0}.pp button{min-height:46px;padding:0}
+.note{font-size:14px;color:var(--mute);margin:0 0 12px}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:2000;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:480px){.top h1{font-size:20px}.top h1 small{display:none}.pp{grid-template-columns:1fr 70px 80px 40px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>Wassertransport<small>Relaisleitung &amp; Pendelverkehr</small></h1>
+  <div id="clock">--:--</div>
+</header>
+
+<main>
+  <!-- Dashboard -->
+  <section id="vDash">
+    <div class="dash">
+      <button class="tile" data-go="map" style="--tc:#1565c0"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg></span><b>Strecke auf der Karte</b><span>Wasserbezug und Ziel setzen – Höhenprofil von swisstopo, Pumpenstandorte und Schläuche</span></button>
+      <button class="tile" data-go="quick" style="--tc:#0f7b8a"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20 10 9l4 5 7-10"/></svg></span><b>Schnellrechnung</b><span>Ohne Karte: Länge und Höhen von Hand eingeben</span></button>
+      <button class="tile" data-go="pendel" style="--tc:#d96c00"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 16V9a1 1 0 0 1 1-1h10v8M14 11h4l3 3v2h-7"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg></span><b>Pendelverkehr</b><span>Wie viele Tankfahrzeuge braucht es?</span></button>
+      <button class="tile" data-go="param" style="--tc:#5b6166"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span><b>Parameter</b><span>Schlauch, Reibungsverluste, Pumpen, Drücke</span></button>
+    </div>
+    <div class="card">
+      <h2>Gespeicherte Strecken</h2>
+      <ul class="sl" id="saved"></ul>
+    </div>
+  </section>
+
+  <!-- Karte -->
+  <section id="vMap" hidden>
+    <div id="mapWrap">
+      <div id="map"></div>
+      <div class="mbar">
+        <div class="search"><input id="q" placeholder="Ort / Adresse suchen" autocomplete="off"><div id="sres" hidden></div></div>
+        <button id="bLoc" title="Mein Standort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+        <button id="bLayer" title="Karte / Luftbild">Luftbild</button>
+      </div>
+      <div class="hint" id="mHint"></div>
+    </div>
+    <div class="btns" style="margin-bottom:14px">
+      <button id="bUndo">↶ Letzten Punkt weg</button>
+      <button id="bClear" class="ghost">Alle Punkte löschen</button>
+    </div>
+    <div id="slotMap"></div>
+  </section>
+
+  <!-- Schnellrechnung -->
+  <section id="vQuick" hidden>
+    <div class="card">
+      <h2>Schnellrechnung ohne Karte</h2>
+      <p class="note">Die Steigung wird gleichmässig über die ganze Strecke verteilt. Mit der Karte wird genauer gerechnet (echtes Gelände).</p>
+      <div class="row">
+        <label>Länge der Strecke (m) *<input id="qL" type="number" inputmode="numeric" min="10" value="1000"></label>
+        <label>Höhe Wasserbezug (m ü. M.) *<input id="qH1" type="number" inputmode="decimal" value="400"></label>
+        <label>Höhe Ziel (m ü. M.) *<input id="qH2" type="number" inputmode="decimal" value="450"></label>
+      </div>
+    </div>
+    <div id="slotQuick"></div>
+  </section>
+
+  <!-- Eingaben (werden in Karte oder Schnellrechnung eingesetzt) -->
+  <div id="inp" class="card">
+    <h2>Leitung</h2>
+    <label>Fördermenge total (l/min)<div class="chips" id="cQ"></div><input id="iQ" type="number" inputmode="numeric" min="50" step="50" hidden style="max-width:180px"></label>
+    <div class="row">
+      <label>Anzahl Leitungen parallel<div class="chips" id="cL"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button></div></label>
+      <label>Druck am Ziel (bar)<input id="iZ" type="number" inputmode="decimal" step="0.5" min="0"></label>
+    </div>
+    <div class="row">
+      <label>Pumpe beim Wasserbezug<select id="iSrc"></select></label>
+      <label>Verstärkerpumpen<select id="iRel"></select></label>
+    </div>
+    <p class="note" id="iInfo"></p>
+    <button class="pri" id="bCalc" style="width:100%;min-height:54px;font-size:18px">Berechnen</button>
+  </div>
+
+  <!-- Ergebnis -->
+  <div id="res" class="card" hidden>
+    <h2>Ergebnis</h2>
+    <div id="rWarn"></div>
+    <div class="stats" id="rStats"></div>
+    <div id="rProf"></div>
+    <h3>Teilstrecken</h3>
+    <div class="tblw"><table class="tbl" id="rTbl"></table></div>
+    <p class="note" style="margin-top:10px" id="rNote"></p>
+    <div class="btns">
+      <button id="bSave" class="blue">Strecke speichern</button>
+      <button id="bPrint">Drucken / PDF</button>
+    </div>
+  </div>
+
+  <!-- Pendelverkehr -->
+  <section id="vPendel" class="card" hidden>
+    <h2>Pendelverkehr</h2>
+    <div class="row">
+      <label>Wasserbedarf am Ziel (l/min) *<input id="pB" type="number" inputmode="numeric" value="800"></label>
+      <label>Fahrstrecke einfach (km) *<input id="pKm" type="number" inputmode="decimal" step="0.1" value="3"></label>
+      <label>Durchschnittstempo (km/h)<input id="pV" type="number" inputmode="numeric"></label>
+    </div>
+    <div class="row">
+      <label>Tankinhalt pro Fahrzeug (l)<input id="pT" type="number" inputmode="numeric"></label>
+      <label>Füllen (l/min)<input id="pF" type="number" inputmode="numeric"></label>
+      <label>Entleeren (l/min)<input id="pE" type="number" inputmode="numeric"></label>
+      <label>Rüstzeit je Halt (min)<input id="pR" type="number" inputmode="decimal" step="0.5"></label>
+    </div>
+    <label>Vorhandene Tankfahrzeuge<input id="pN" type="number" inputmode="numeric" value="2" style="max-width:160px"></label>
+    <div class="stats" id="pRes"></div>
+    <p class="note" id="pNote"></p>
+  </section>
+
+  <!-- Parameter -->
+  <section id="vParam" class="card" hidden>
+    <h2>Parameter</h2>
+    <p class="note">Gelten für alle Berechnungen auf diesem Gerät. Die Standardwerte sind Richtwerte – bitte mit euren Unterlagen (Reglement, Herstellerangaben) abgleichen.</p>
+    <h3>Schlauch</h3>
+    <div class="row">
+      <label>Bezeichnung<input id="sN"></label>
+      <label>Länge pro Schlauch (m)<input id="sLen" type="number" inputmode="decimal"></label>
+    </div>
+    <div class="row">
+      <label>Reibungsverlust (bar / 100 m)<input id="sV" type="number" inputmode="decimal" step="0.05"></label>
+      <label>… bei Durchfluss pro Leitung (l/min)<input id="sQ" type="number" inputmode="numeric"></label>
+    </div>
+    <p class="note" id="sTab"></p>
+    <h3>Pumpen</h3>
+    <div class="pp mute" style="font-size:13px;font-weight:600;margin-bottom:2px"><span>Name</span><span>Druck (bar)</span><span>Leistung (l/min)</span><span></span></div>
+    <div id="pList"></div>
+    <button id="bPAdd" style="margin-bottom:12px">+ Pumpe</button>
+    <h3>Drücke &amp; Reserve</h3>
+    <div class="row">
+      <label>Mindestdruck am Ende jeder Teilstrecke (bar)<input id="sMin" type="number" inputmode="decimal" step="0.1"></label>
+      <label>Druck am Ziel – Vorschlag (bar)<input id="sZ" type="number" inputmode="decimal" step="0.5"></label>
+      <label>Max. Druck in der Leitung (bar)<input id="sMax" type="number" inputmode="decimal" step="0.5"></label>
+      <label>Höhenverlust (bar pro m)<input id="sH" type="number" inputmode="decimal" step="0.001"></label>
+      <label>Schlauchreserve (%)<input id="sRes" type="number" inputmode="numeric"></label>
+    </div>
+    <h3>Pendelverkehr – Vorgaben</h3>
+    <div class="row">
+      <label>Tankinhalt (l)<input id="sPT" type="number" inputmode="numeric"></label>
+      <label>Füllen (l/min)<input id="sPF" type="number" inputmode="numeric"></label>
+      <label>Entleeren (l/min)<input id="sPE" type="number" inputmode="numeric"></label>
+      <label>Tempo (km/h)<input id="sPV" type="number" inputmode="numeric"></label>
+      <label>Rüstzeit (min)<input id="sPR" type="number" inputmode="decimal" step="0.5"></label>
+    </div>
+    <div class="btns">
+      <button class="pri" id="bPSave">Speichern</button>
+      <button id="bPReset">Standardwerte</button>
+    </div>
+  </section>
+
+  <div class="btns" id="backRow" hidden><button id="bBack">← Zurück zur Übersicht</button></div>
+</main>
+<div id="msg"></div>
+
+<script src="../vendor/leaflet/leaflet.js"></script>
+<script src="calc.js?v=1.0.0"></script>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>
