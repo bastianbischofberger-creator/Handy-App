@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '2.6.0';
+const VERSION = '2.7.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -839,17 +839,22 @@ const isDash = () => document.body.classList.contains('dashmode');
 function showDash() { document.body.classList.add('dashmode'); renderDash(); scrollTo(0, 0); }
 function showBoard() { document.body.classList.remove('dashmode'); scrollTo(0, 0); render(); }
 function renderDash() {
-  const cur = S.eid && S.list.find(e => e.id === S.eid), open = cur && !cur.closed;
+  const FW = fwRead(), fwKey = FW && 'fw-' + FW.t;
+  const run = S.list.filter(e => !e.closed).sort((a, b) => (b.fw === fwKey) - (a.fw === fwKey) || (b.start || b.created) - (a.start || a.created));
+  const done = S.list.filter(e => e.closed);
   const inside = S.teams.filter(t => t.status === 'innen' || t.status === 'rueckzug').length;
-  $('#dCur').hidden = !open;
-  if (open) $('#dCur').innerHTML = `<span>Laufender Einsatz</span><b>${esc(cur.ereignis || 'Ohne Bezeichnung')}</b><span>${[cur.ort && esc(cur.ort), 'seit ' + dt(cur.start || cur.created), inside ? inside + ' Trupp(s) im Einsatz' : 'kein Trupp drin'].filter(Boolean).join(' · ')}</span><span class="go">Zum Einsatztableau →</span>`;
-  $('#dCur').classList.toggle('fwe', !!(open && cur.fw));
+  $('#dRun').innerHTML = run.length ? run.map(e => `<div class="rc${fwKey && e.fw === fwKey ? ' fwe' : ''}" data-open="${esc(e.id)}">
+      <small>Laufender Einsatz${fwKey && e.fw === fwKey ? ' · von der Startseite' : ''}</small><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b>
+      <div class="info">${[e.ort && esc(e.ort), 'seit ' + dt(e.start || e.created), e.id === S.eid ? (inside ? inside + ' Trupp(s) drin' : 'kein Trupp drin') : ''].filter(Boolean).join(' · ')}</div>
+      <div class="bb"><button data-open="${esc(e.id)}">Zum Einsatztableau →</button><button class="sec" data-close="${esc(e.id)}">Abschliessen</button></div></div>`).join('')
+    : '<div class="rcempty">Kein laufender Einsatz. Links einen neuen Einsatz eröffnen oder auf der Startseite einen Einsatz generieren.</div>';
   $('#dBackup').hidden = !(BE && BE.exportAll); $('#dImport').hidden = !(BE && BE.importAll);
-  $('#dList').innerHTML = S.list.length ? S.list.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
-    <span class="tag${e.id === S.eid ? ' on' : ''}">${e.id === S.eid ? 'Geöffnet' : e.closed ? 'Abgeschlossen' : 'Laufend'}</span>${e.closed ? '' : `<button class="warnb" data-close="${esc(e.id)}">Abschliessen</button>`}<button data-open="${esc(e.id)}">${e.id === S.eid ? 'Zum Tableau' : 'Öffnen'}</button></li>`).join('') : '<li><span>Noch keine Einsätze.</span></li>';
+  $('#dList').innerHTML = done.length ? done.map(e => `<li><div><b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b><span>${dt(e.start || e.created)}${e.ort ? ' · ' + esc(e.ort) : ''}</span></div>
+    <span class="tag">Abgeschlossen</span><button data-open="${esc(e.id)}">Öffnen</button></li>`).join('') : '<li><span>Noch keine abgeschlossenen Einsätze.</span></li>';
 }
-$('#dCur').onclick = () => showBoard();
-$('#dList').addEventListener('click', e => {
+$('#dRun').addEventListener('click', e => dashClick(e));
+$('#dList').addEventListener('click', e => dashClick(e));
+function dashClick(e) {
   const c = e.target.closest('[data-close]');
   if (c) {
     if (c.dataset.close === S.eid) return $('#bClose').click();
@@ -861,7 +866,7 @@ $('#dList').addEventListener('click', e => {
     });
     return;
   }
-  const b = e.target.closest('[data-open]'); if (!b) return; if (b.dataset.open !== S.eid) openE(b.dataset.open); showBoard(); });
+  const b = e.target.closest('[data-open]'); if (!b) return; if (b.dataset.open !== S.eid) openE(b.dataset.open); showBoard(); }
 $('#dNew').onclick = () => {
   const go = () => { openE(BE.create(newMeta())); showBoard(); };
   if (S.teams.some(t => t.status === 'innen' || t.status === 'rueckzug')) confirmBox('Neuen Einsatz starten?', 'Im geöffneten Einsatz sind noch Trupps drin. Der Einsatz bleibt gespeichert und ist im Dashboard weiter erreichbar.', go);
