@@ -33,8 +33,10 @@ main{max-width:560px;margin:0 auto;padding:14px}
 .t .ai{width:18px;height:18px}
 .t.rueckzug{background:#f2b705;color:#16181a}
 .t.bereit{background:#5b6166}
-.t.rett{background:#1d7a46}
+.t.rett{background:#1557c0}
+.axe{display:inline-block;width:21px;height:16px;background:currentColor;-webkit-mask:url(rettung.png) center/contain no-repeat;mask:url(rettung.png) center/contain no-repeat}
 .zone{margin-top:10px;border:1px dashed #9aa1a7;border-radius:10px;padding:8px 10px;font-weight:600;color:var(--mute)}
+.zone.rz{border:2px solid #1557c0;background:#e8effa;color:#1557c0}
 .zone .tm{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .leg{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:12px}
 .leg .ai{width:16px;height:16px}
@@ -49,7 +51,7 @@ main{max-width:560px;margin:0 auto;padding:14px}
     <div class="ev" id="ev"></div>
     <div class="upd" id="upd"></div>
     <div class="bau" id="bau"></div>
-    <div class="leg"><span><i style="background:#c8102e"></i>im Einsatz</span><span><i style="background:#f2b705"></i>Rückzug</span><span><i style="background:#5b6166"></i>bereit</span><span><i style="background:#1d7a46"></i>Rettungstrupp</span></div>
+    <div class="leg"><span><i style="background:#c8102e"></i>im Einsatz</span><span><i style="background:#f2b705"></i>Rückzug</span><span><i style="background:#5b6166"></i>bereit</span><span><i style="background:#1557c0"></i>Rettungstrupp</span></div>
     <div class="leg" id="legIc"></div>
   </section>
 </main>
@@ -67,9 +69,9 @@ setInterval(() => { $('#clock').textContent = hm(Date.now()); if (D) render(); }
 const msg = t => { $('#msg').textContent = t; $('#msg').hidden = !t; };
 const isEG = f => /^(eg|erdgeschoss|parterre)$/i.test(f.replace(/\s+/g, ''));
 function chip(t) {
-  const cls = t.status === 'rueckzug' ? 'rueckzug' : t.status === 'bereit' ? (t.rett ? 'rett' : 'bereit') : '';
+  const cls = t.status === 'rueckzug' ? 'rueckzug' : t.rett ? 'rett' : t.status === 'bereit' ? 'bereit' : '';
   const min = t.status === 'innen' || t.status === 'rueckzug' ? (t.tIn ? Math.floor((Date.now() - t.tIn) / 60000) + ' min' : '') : '';
-  return `<span class="t ${cls}">${t.rett ? '⛑ ' : ''}${window.ASUE_ICONS ? window.ASUE_ICONS.html(t.ic) : ''}Trupp ${esc(t.nr)}${min ? `<small>${min}</small>` : ''}${t.status === 'rueckzug' ? '<small>Rückzug</small>' : ''}</span>`;
+  return `<span class="t ${cls}">${t.rett ? '<i class="axe" aria-hidden="true"></i>' : ''}${window.ASUE_ICONS ? window.ASUE_ICONS.html(t.ic) : ''}Trupp ${esc(t.nr)}${min ? `<small>${min}</small>` : ''}${t.status === 'rueckzug' ? '<small>Rückzug</small>' : ''}</span>`;
 }
 function render() {
   $('#view').hidden = false; msg(D.closed ? 'Einsatz abgeschlossen.' : '');
@@ -86,7 +88,8 @@ function render() {
     h += `<div class="fl${egI >= 0 && i < egI ? ' ug' : ''}${i === fl.length - 1 ? ' top1' : ''}"><div class="fn">${esc(fl[i])}</div><div class="tm">${ts.map(chip).join('')}</div></div>`;
     if (i === egI) h += '<div class="ground"></div>';
   }
-  const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = teams.filter(t => t.status === 'bereit').sort(byNr);
+  const other = inside.filter(t => t.stock && !fl.includes(t.stock)).sort(byNr), none = inside.filter(t => !t.stock).sort(byNr), ready = teams.filter(t => t.status === 'bereit' && !t.rett).sort(byNr), rready = teams.filter(t => t.status === 'bereit' && t.rett).sort(byNr);
+  if (rready.length) h += `<div class="zone rz"><i class="axe" aria-hidden="true"></i> Rettungstrupp bereit<div class="tm">${rready.map(chip).join('')}</div></div>`;
   if (other.length) h += `<div class="zone">Anderer Ort<div class="tm">${other.map(t => chip(t) + ` <small>${esc(t.stock)}</small>`).join('')}</div></div>`;
   if (none.length) h += `<div class="zone">Ohne Stockwerk<div class="tm">${none.map(chip).join('')}</div></div>`;
   if (ready.length) h += `<div class="zone">Bereit<div class="tm">${ready.map(chip).join('')}</div></div>`;
