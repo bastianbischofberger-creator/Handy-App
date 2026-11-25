@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schichtplanung</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Schichtplan">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--or:#d96c00}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.bc{font-family:"Barlow Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:5;background:var(--red);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1 1 160px}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#clock{font-size:clamp(30px,5.5vw,46px);font-weight:700;line-height:1}
+.sync{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#bbb;vertical-align:1px}
+.sync.ok::before{background:#5ee08f}.sync.warn::before{background:var(--warn)}.sync.err::before{background:#fff;outline:2px solid #000}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+button.ghost{background:none;border-color:transparent;color:var(--mute);min-height:36px;padding:4px 8px;font-size:14px}
+button:disabled{opacity:.5;cursor:default}
+svg{width:22px;height:22px;flex:none}
+main{max-width:980px;margin:0 auto;padding:16px max(3vw,14px) calc(30px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:12px}
+input,select,textarea{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+textarea{resize:vertical;min-height:70px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 12px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.mute{color:var(--mute)}
+/* Dashboard */
+.dash{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+@media(min-width:640px){.dash{grid-template-columns:1fr 1fr}}
+.tile{display:flex;flex-direction:column;gap:8px;text-align:left;align-items:stretch;justify-content:flex-start;background:var(--card);border:1px solid var(--line);border-top:6px solid var(--or);border-radius:12px;padding:16px;min-height:150px;font-weight:400;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tile.new{border-top-color:var(--red);border-style:dashed;border-top-style:solid;align-items:center;justify-content:center;text-align:center}
+.tile.new b{font:700 26px "Barlow Condensed",sans-serif}
+.tile h3{font:700 23px/1.1 "Barlow Condensed",sans-serif;margin:0}
+.tile .d{color:var(--mute);font-size:15px}
+.tile .bar{height:8px;border-radius:4px;background:var(--field);border:1px solid var(--line);overflow:hidden}
+.tile .bar i{display:block;height:100%;background:var(--ok)}
+.tile.past{opacity:.7;border-top-color:var(--mute)}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:1px 7px;margin-left:6px;vertical-align:2px;background:var(--or);color:#fff;text-transform:uppercase;letter-spacing:.03em}
+.badge.g{background:var(--mute)}.badge.ok{background:var(--ok)}
+/* Formular */
+.prev{background:var(--field);border:1px solid var(--line);border-left:6px solid var(--or);border-radius:8px;padding:10px 14px;margin:0 0 14px;font-weight:600}
+.prev.bad{border-left-color:var(--red);color:var(--red)}
+.step{display:flex;align-items:center;gap:6px;margin-top:4px}
+.step button{width:52px;font-size:22px;padding:0}.step input{text-align:center;font:700 22px "Barlow Condensed",sans-serif;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chips button{min-height:42px;padding:6px 12px;font-weight:500}
+.chips button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+/* Plan */
+.phead{border-top:6px solid var(--or)}
+.phead h2{margin-bottom:4px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:15px;color:var(--mute);margin-bottom:12px}.meta b{color:var(--ink);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stat small{display:block;font-size:13px;color:var(--mute);font-weight:600}.stat b{font:700 28px/1.1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.qrbox{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--field);border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.qrbox div{flex:1 1 220px}.qrbox.off{border-left-color:var(--mute)}
+.day{font:700 18px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin:16px 0 6px}
+.day:first-child{margin-top:0}
+.slot{display:grid;grid-template-columns:110px 1fr;gap:8px 14px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.slot:last-child{border-bottom:0}
+.slot .t{font:700 22px/1.05 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.slot .t small{display:block;font:500 13px Barlow,sans-serif;color:var(--mute)}
+.slot.now .t{color:var(--red)}.slot.now .t small::after{content:" · läuft";color:var(--red);font-weight:700}
+.slot.past{opacity:.55}
+.pos{display:flex;flex-wrap:wrap;gap:8px}
+.p{display:inline-flex;align-items:center;gap:6px;min-height:44px;border-radius:8px;padding:6px 6px 6px 12px;background:light-dark(#e6f3ec,#173022);border:1px solid var(--ok);font-weight:600}
+.p small{font-weight:500;color:var(--mute);font-size:13px}
+.p .src{font-size:11px;font-weight:700;background:var(--ok);color:#fff;border-radius:4px;padding:0 5px}
+.p button{min-height:32px;width:32px;padding:0;border:0;background:none;color:var(--mute);font-size:20px}
+.p.free{background:none;border:1px dashed var(--line);color:var(--mute);font-weight:500;padding:6px 14px;cursor:pointer}
+.p.free:hover{border-color:var(--or);color:var(--or)}
+@media(max-width:520px){.slot{grid-template-columns:1fr}.top h1{font-size:20px}}
+dialog{border:0;border-radius:14px;padding:18px;width:min(440px,94vw);background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog h2{margin-bottom:6px}
+#qrBody{text-align:center}#qrBody svg{width:min(300px,70vw);height:auto;background:#fff;padding:6px;border-radius:8px}
+.err{color:var(--red);font-weight:600;min-height:1.2em;margin:0 0 8px}
+.empty{color:var(--mute);text-align:center;padding:20px 0}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
+#msg:empty{display:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>Schichtplanung<small id="hSub">Brandwache · Feuerwehr RTL</small></h1>
+  <span class="sync" id="sync" hidden></span>
+  <div id="clock" class="bc">--:--</div>
+</header>
+
+<main>
+  <!-- Dashboard -->
+  <section id="vDash" hidden>
+    <div class="dash" id="dash"></div>
+  </section>
+
+  <!-- Neu / Bearbeiten -->
+  <section id="vForm" class="card" hidden>
+    <h2 id="fTitle">Neue Brandwache</h2>
+    <div class="row">
+      <label>Bezeichnung *<input id="fName" placeholder="z. B. Brandwache Scheune Buriet"></label>
+      <label>Ort / Objekt<input id="fOrt" placeholder="Adresse"></label>
+      <label>Verantwortlich<input id="fVer" placeholder="z. B. Lt Muster, 079 …"></label>
+    </div>
+    <div class="row">
+      <label>Startzeit *<input id="fStart" type="datetime-local" step="900"></label>
+      <label>Endzeit *<input id="fEnd" type="datetime-local" step="900"></label>
+    </div>
+    <label>Schichtlänge *
+      <div class="chips" id="fLenChips"></div>
+      <input id="fLenMin" type="number" min="15" max="1440" step="15" placeholder="Minuten" hidden style="max-width:200px">
+    </label>
+    <label>Anzahl AdF pro Schicht *
+      <div class="step"><button type="button" id="fAdfM">−</button><input id="fAdf" type="number" min="1" max="20" value="2" style="max-width:90px"><button type="button" id="fAdfP">+</button></div>
+    </label>
+    <label>Hinweis für die AdF<textarea id="fNote" placeholder="z. B. Treffpunkt Depot, Ausrüstung, Verpflegung …"></textarea></label>
+    <div class="prev" id="fPrev"></div>
+    <p class="err" id="fErr"></p>
+    <div class="btns">
+      <button class="pri" id="bFSave">Plan erstellen</button>
+      <button id="bFCancel">Abbrechen</button>
+    </div>
+  </section>
+
+  <!-- Plan -->
+  <section id="vPlan" hidden>
+    <div class="card phead">
+      <h2 id="pTitle"></h2>
+      <div class="meta" id="pMeta"></div>
+      <div class="stats" id="pStats"></div>
+      <div class="qrbox" id="pQr"></div>
+      <div class="btns">
+        <button id="bEdit">Bearbeiten</button>
+        <button id="bShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14"/></svg>Als Text teilen</button>
+        <button id="bPrint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Drucken / PDF</button>
+        <button id="bDel" class="ghost">Plan löschen</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Schichten</h2>
+      <div id="pSlots"></div>
+    </div>
+    <button id="bBack">← Zurück zur Übersicht</button>
+  </section>
+</main>
+<div id="msg"></div>
+
+<!-- AdF eintragen (von Hand) -->
+<dialog id="dAs"><form method="dialog" id="fAs">
+  <h2>AdF eintragen</h2>
+  <p class="mute" id="asSlot" style="margin:0 0 12px"></p>
+  <label>Grad und Name *<input id="asName" autocomplete="off" placeholder="z. B. Sdt Muster Hans" list="names"></label>
+  <datalist id="names"></datalist>
+  <label>Telefon<input id="asTel" type="tel" autocomplete="off"></label>
+  <p class="err" id="asErr"></p>
+  <div class="btns"><button class="pri" value="ok" id="bAsOk">Eintragen</button><button value="x" formnovalidate>Abbrechen</button></div>
+</form></dialog>
+
+<!-- QR-Code -->
+<dialog id="dQR">
+  <h2>Selbst eintragen per QR-Code</h2>
+  <div id="qrBody"></div>
+  <div class="btns" style="margin-top:12px"><button id="bQrPrint">QR-Blatt drucken</button><button id="bQrCopy">Link kopieren</button><button id="bQrClose">Schliessen</button></div>
+</dialog>
+
+<!-- Bestätigen -->
+<dialog id="dC">
+  <h2 id="cT"></h2><p id="cX" style="margin:0 0 14px"></p>
+  <div class="btns"><button class="pri" id="cOk">OK</button><button id="cNo">Abbrechen</button></div>
+</dialog>
+
+<!-- Anmeldung (nur für QR) -->
+<dialog id="dLogin"><form id="fLogin">
+  <img src="logo.png" alt="" style="width:70px;display:block;margin:0 auto 6px"><h2 style="text-align:center">Anmelden</h2>
+  <p class="mute" style="margin:0 0 12px">Für den QR-Code braucht es die Synchronisation. Konto der Feuerwehr (gleich wie ASÜ und Mehrfachereignisse).</p>
+  <label>E-Mail<input name="email" type="email" autocomplete="username" required></label>
+  <label>Passwort<input name="pw" type="password" autocomplete="current-password" required></label>
+  <p class="err" id="lErr"></p>
+  <div class="btns"><button class="pri">Anmelden</button><button type="button" id="bLoginX">Abbrechen</button></div>
+</form></dialog>
+
+<script src="config.js?v=1.0.0"></script>
+<script src="plan.js?v=1.0.0"></script>
+<script src="../vendor/qrcode-generator/qrcode.js"></script>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brandwache – eintragen</title>
+<meta name="theme-color" content="#c8102e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c8102e;--ink:#16181a;--mute:#5b6166;--line:#d8d4ce;--field:#f7f6f4;--ok:#1d7a46;--or:#d96c00}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;min-height:100vh;background:var(--red);color:var(--ink);font:17px/1.4 Barlow,system-ui,sans-serif;display:flex;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 12px 24px}
+.card{width:min(520px,100%);background:#fff;border-radius:18px;padding:18px 18px 22px;align-self:flex-start;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.hd{display:flex;align-items:center;gap:12px;margin-bottom:10px}.hd img{width:54px;height:56px;object-fit:contain}
+h1{font:600 23px/1.1 "Barlow Condensed",sans-serif;margin:0}h1 small{display:block;font:500 14px Barlow,sans-serif;color:var(--mute)}
+.mute{color:var(--mute);font-size:15px}
+label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
+input{display:block;width:100%;font:500 18px Barlow,sans-serif;min-height:50px;padding:8px 12px;margin-top:5px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink)}
+button{font:600 17px Barlow,sans-serif;min-height:48px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer}
+button.pri{background:var(--red);border-color:var(--red);color:#fff;width:100%}button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+button.link{background:none;border:0;color:var(--mute);font-size:15px;min-height:36px;text-decoration:underline;padding:0}
+button:disabled{opacity:.5}
+.ev{background:#fdf0e3;border-left:6px solid var(--or);border-radius:10px;padding:10px 12px;margin:4px 0 12px}.ev b{display:block;font:700 22px/1.1 "Barlow Condensed",sans-serif}
+.me{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--mute);margin-bottom:6px}.me b{color:var(--ink)}
+.mine{background:#e6f3ec;border:1px solid var(--ok);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:15px}.mine b{color:var(--ok)}
+.day{font:700 17px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin:14px 0 4px}
+.slot{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ebe7e1}
+.slot .t{font:700 22px/1.05 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;width:105px;flex:none}
+.slot .t small{display:block;font:500 13px Barlow,sans-serif;color:var(--mute)}
+.slot .n{flex:1;font-size:14px;color:var(--mute)}.slot .n b{color:var(--ink);font-weight:600}
+.slot .free{font-weight:700;color:var(--or)}.slot .full{font-weight:700;color:var(--mute)}
+.slot.me{background:#e6f3ec;margin:0 -8px;padding:10px 8px;border-radius:10px}
+.slot.past{opacity:.45}
+.slot button{flex:none;min-width:110px}
+.err{color:var(--red);font-weight:600;margin:8px 0}.err:empty{display:none}
+.note{background:var(--field);border-radius:10px;padding:8px 12px;font-size:15px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd"><img src="logo.png" alt="FW RTL"><h1>Brandwache – eintragen<small id="org">Feuerwehr</small></h1></div>
+  <p class="err" id="msg">Lädt …</p>
+
+  <section id="sProfile" hidden>
+    <p class="mute" style="margin-top:0">Einmal ausfüllen – bleibt auf diesem Handy gespeichert.</p>
+    <label>Grad und Name *<input id="nm" autocomplete="name" placeholder="z. B. Sdt Muster Hans"></label>
+    <label>Telefon (nur für den Verantwortlichen sichtbar)<input id="tel" type="tel" autocomplete="tel" placeholder="079 …"></label>
+    <p class="err" id="pErr"></p>
+    <button class="pri" id="bSave">Weiter</button>
+  </section>
+
+  <section id="sMain" hidden>
+    <div class="ev"><b id="evT"></b><span id="evD" class="mute"></span></div>
+    <div class="note" id="evN" hidden></div>
+    <div class="me">Du: <b id="meN"></b> <button class="link" id="bEdit">ändern</button></div>
+    <div class="mine" id="mine" hidden></div>
+    <p class="err" id="mErr"></p>
+    <div id="slots"></div>
+  </section>
+</div>
+<script src="config.js?v=1.0.0"></script>
+<script src="plan.js?v=1.0.0"></script>
+<script type="module" src="eintragen.js?v=1.0.0"></script>
+</body>
+</html>
