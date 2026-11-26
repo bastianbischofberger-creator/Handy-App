@@ -30,6 +30,19 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Routing-Dienst selbst betrieben in der Schweiz (z. B. GraphHopper/OSRM auf OpenStreetMap)
   - Offen: ein Depot oder mehrere (Rheineck, Thal, Lutzenberg)?
 
+- **Neue Kachel «Strassenrettung»**
+  - Rettungsdatenblätter: Suche nach Marke/Modell/Jahrgang, Verlinkung auf bestehende Herstellersammlungen (z. B. Euro Rescue)
+  - Kurzhinweise alternative Antriebe (E-Auto, Hybrid, Gas, Wasserstoff)
+  - Checkliste Ablauf (Sichern, Erkunden, Erstzugang, patientengerechte Rettung, Gerätedepot) mit Zeitstempel, optional ins Einsatzjournal
+
+- **Neue Kachel «Gefahrgut»**
+  - Suche nach UN-Nummer / Gefahrnummer (orange Tafel): Stoff, Gefahren, Schutzausrüstung, Erstmassnahmen
+  - Absperrradius mit Windrichtung auf der Karte
+  - Alarmierung Chemiewehr/Stützpunkt mit Meldeschema
+  - Datenquelle mit freien Nutzungsrechten (z. B. ERG), Inhalte mit Chemiewehr-Stützpunkt / FKS abstimmen
+
+- **Offen zum Besprechen:** Tastatur auf dem iPad in der ASÜ (z. B. eigener Ziffernblock bei der Druckkontrolle)
+
 ## Grundsatzentscheid
 
 - **Schweizer Datenschutz muss gewährleistet sein** → Daten und Apps zu einem Schweizer Anbieter (Favorit: Infomaniak) statt Firebase/Google und GitHub Pages
