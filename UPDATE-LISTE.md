@@ -55,6 +55,8 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Trupp anlegen: Trupp-Nr. automatisch, Namen per Auswahl aus Personal (A–Z-Leiste, aktive ausgegraut) oder QR, Anfangsdruck per Ziffernblock
   - Normale Tastatur nur bei «Andere Person …» / Freitext und auf den übrigen Seiten
 
+- **Offen zum Besprechen:** Alarmstufenerhöhungen bzw. Abschnittsbildung (Einsatzabschnitte) – wie in den Apps abbilden (Mehrfachereignisse, Journal, Lagemonitor, Teilen)?
+
 ## Grundsatzentscheid
 
 - **Schweizer Datenschutz muss gewährleistet sein** → Daten und Apps zu einem Schweizer Anbieter (Favorit: Infomaniak) statt Firebase/Google und GitHub Pages
@@ -76,3 +78,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Startseite v1.11: «Online» antippen = alle Apps auf diesem Gerät synchronisieren (inkl. Index Einsatzpläne)
 - Route & Sperren (Testaufbau, Valhalla/Overpass): Depots, Sperren von/bis mit Umleitung, Bahnübergänge meiden; Startseite v1.12 mit Kachel und Link «Route ab Depot»
 - Einsatzpläne 1.1: Bereich als Punkt, Strecke (z. B. Autobahn-Abschnitt mit Band links/rechts) oder Fläche/Sektor; Startseite v1.13: Einsatzort auch per Karte setzen (Autobahn ohne Adresse); Route 1.0.1: Speicherfehler behoben
+- Einsatzdaten teilen (Test): Freigaben live/Momentaufnahme, Feldauswahl, gültig bis Einsatzende/Dauer/Uhrzeit, QR/Link, Empfängeransicht; Firestore-Regeln «Einsatzdaten teilen» neu (Startseite v1.14)
