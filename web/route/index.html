@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Route &amp; Sperren</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Route">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--c:#1565c0}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.top{position:sticky;top:0;z-index:1000;background:var(--red);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px}
+#clock{font:700 clamp(28px,5vw,42px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.sync{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#bbb;vertical-align:1px}
+.sync.ok::before{background:#5ee08f}.sync.warn::before{background:var(--warn)}.sync.err::before{background:#fff;outline:2px solid #000}
+button,.btn{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--c);border-color:var(--c);color:#fff}
+button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+button.danger{color:var(--red)}
+main{max-width:1400px;margin:0 auto;padding:12px max(2vw,10px) calc(24px + env(safe-area-inset-bottom))}
+.test{background:var(--warn);color:#1a1a1a;border-radius:10px;padding:8px 14px;font-weight:600;margin-bottom:10px;font-size:15px}
+.lay{display:grid;grid-template-columns:390px minmax(0,1fr);gap:12px;align-items:start}
+@media(max-width:900px){.lay{grid-template-columns:1fr}}
+.side{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+h2{font:700 22px/1.1 "Barlow Condensed",sans-serif;margin:0 0 8px}
+.mute{color:var(--mute)}.small{font-size:14px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.tabs button{min-height:48px;padding:6px;font-size:15px}
+#map{height:calc(100dvh - 170px);min-height:420px;border-radius:12px;border:1px solid var(--line)}
+@media(max-width:900px){#map{height:60vh}}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:10px}
+input{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.btns button{flex:1 1 auto}
+.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.items li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.items li b{font-size:17px}
+.st{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;margin-right:6px}
+.st.akt{background:var(--red);color:#fff}.st.plan{background:var(--warn);color:#1a1a1a}.st.alt{background:var(--line);color:var(--ink)}
+.res{display:flex;flex-direction:column;gap:8px}
+.rt{border:2px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--card);text-align:left;width:100%;display:block;font:inherit;color:inherit}
+.rt.sel{border-color:var(--c)}
+.rt b{font:700 26px/1 "Barlow Condensed",sans-serif}
+.warnl{background:color-mix(in srgb,var(--warn) 25%,var(--card));border:1px solid var(--warn);border-radius:8px;padding:8px 10px;font-size:15px;font-weight:600}
+.errl{background:color-mix(in srgb,var(--red) 14%,var(--card));border:1px solid var(--red);border-radius:8px;padding:8px 10px;font-size:15px;font-weight:600}
+.okl{color:var(--ok);font-weight:700}
+.draw{position:sticky;bottom:10px;z-index:1200;background:#16181a;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.draw span{flex:1 1 200px;font-weight:600}
+.draw button{background:#fff;color:#16181a;border:0}
+.draw button.pri{background:var(--c);color:#fff}
+.addr{position:relative}
+.sug{position:absolute;left:0;right:0;top:100%;z-index:1500;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);overflow:hidden}
+.sug button{width:100%;justify-content:flex-start;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;font-weight:500}
+.tg{display:flex;align-items:center;gap:10px;font-weight:600;margin:4px 0 10px;cursor:pointer}
+.tg input{width:26px;height:26px;min-height:0;margin:0;accent-color:var(--c)}
+.lx{width:16px;height:16px;border-radius:3px;border:2px solid #fff;box-shadow:0 0 0 1px #000;background:repeating-linear-gradient(45deg,#c8102e 0 4px,#fff 4px 8px)}
+.lx.ok{background:#1d7a46}
+#login{position:fixed;inset:0;z-index:3000;background:var(--bg);display:grid;place-items:center;padding:16px}
+.err{color:var(--red);font-weight:600;margin:0}.err:empty{display:none}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:4000;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:520px){.top h1 small{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>Route &amp; Sperren<small>Anfahrt ab Depot mit Sperren, Umleitungen und Vorgaben</small></h1>
+  <span class="sync" id="sync">Startet …</span>
+  <div id="clock">--:--</div>
+</header>
+<main>
+  <div class="test">Testaufbau: Die Route wird über einen öffentlichen Dienst in Deutschland berechnet. Nur mit Testadressen arbeiten.</div>
+  <div class="lay">
+    <div class="side">
+      <nav class="tabs" id="tabs">
+        <button type="button" data-t="route" class="on">Route</button>
+        <button type="button" data-t="sperren">Sperren</button>
+        <button type="button" data-t="bahn">Bahn</button>
+        <button type="button" data-t="depots">Depots</button>
+      </nav>
+
+      <!-- Route -->
+      <section class="card" id="t-route">
+        <h2>Ziel</h2>
+        <div class="addr"><label>Adresse<input id="zAdr" autocomplete="off" placeholder="Strasse Nr., Ort"></label><div class="sug" id="sug" hidden></div></div>
+        <div class="btns"><button type="button" id="bZielMap">Ziel auf Karte setzen</button><button type="button" id="bZielFw">Einsatz der Startseite</button></div>
+        <div class="btns"><button type="button" class="pri" id="bRoute">Route berechnen</button></div>
+        <div class="res" id="res" style="margin-top:12px"></div>
+      </section>
+
+      <!-- Sperren -->
+      <section class="card" id="t-sperren" hidden>
+        <h2>Strassensperren</h2>
+        <p class="mute small" style="margin-top:-2px">Sperre einzeichnen (Punkte entlang der Strasse antippen), Zeitraum wählen, optional eine Umleitung einzeichnen.</p>
+        <div class="row">
+          <label>Bezeichnung<input id="sName" placeholder="z. B. Baustelle Hauptstrasse" autocomplete="off"></label>
+          <label>Grund<input id="sGrund" placeholder="Baustelle, Anlass …" autocomplete="off"></label>
+        </div>
+        <div class="row">
+          <label>Von<input id="sVon" type="datetime-local"></label>
+          <label>Bis<input id="sBis" type="datetime-local"></label>
+        </div>
+        <div class="btns"><button type="button" class="pri" id="bSperre">Sperre einzeichnen</button></div>
+        <ul class="items" id="sList" style="margin-top:12px"></ul>
+      </section>
+
+      <!-- Bahn -->
+      <section class="card" id="t-bahn" hidden>
+        <h2>Bahnübergänge</h2>
+        <label class="tg"><input type="checkbox" id="bMeiden"> Bahnübergänge in der Route meiden</label>
+        <p class="mute small" style="margin-top:-4px">Übergänge werden aus OpenStreetMap geladen (Kartenausschnitt). Antippen = einzelnen Übergang erlauben bzw. wieder meiden.</p>
+        <div class="btns"><button type="button" id="bLoadBahn">Übergänge im Kartenausschnitt laden</button></div>
+        <p class="small" id="bInfo" style="margin:10px 0 0"></p>
+        <p class="small mute" style="margin:6px 0 0"><span class="lx" style="display:inline-block;vertical-align:-3px"></span> gemieden · <span class="lx ok" style="display:inline-block;vertical-align:-3px"></span> erlaubt</p>
+      </section>
+
+      <!-- Depots -->
+      <section class="card" id="t-depots" hidden>
+        <h2>Depots</h2>
+        <div class="row">
+          <label>Name<input id="dName" placeholder="z. B. Depot Rheineck" autocomplete="off"></label>
+          <div style="display:flex;align-items:flex-end;padding-bottom:10px"><button type="button" class="pri" id="bDepot" style="width:100%">Auf Karte setzen</button></div>
+        </div>
+        <ul class="items" id="dList"></ul>
+      </section>
+    </div>
+
+    <div>
+      <div id="map"></div>
+      <div class="draw" id="draw" hidden><span id="drawT">Punkte antippen</span><button type="button" id="dUndo">Rückgängig</button><button type="button" id="dCancel">Abbrechen</button><button type="button" class="pri" id="dDone">Fertig</button></div>
+    </div>
+  </div>
+</main>
+
+<div id="login" hidden><form id="fLogin" class="card" style="width:min(380px,100%)">
+  <img src="logo.png" alt="" style="width:70px;display:block;margin:0 auto 6px"><h2 style="text-align:center">Anmelden</h2>
+  <p class="mute" style="margin:0 0 12px;font-size:14px">Gleiches Konto wie ASÜ und Journal.</p>
+  <label>E-Mail<input name="email" type="email" autocomplete="username" required></label>
+  <label>Passwort<input name="pw" type="password" autocomplete="current-password" required></label>
+  <p class="err" id="lErr"></p>
+  <button class="pri" style="width:100%">Anmelden</button>
+</form></div>
+<div id="msg"></div>
+<script src="config.js?v=1.0.0"></script>
+<script src="../vendor/leaflet/leaflet.js"></script>
+<script src="../shared/fwui.js?v=1"></script>
+<script src="../shared/fwsync.js?v=2"></script>
+<script type="module" src="app.js?v=1.0.0"></script>
+</body>
+</html>

@@ -34,6 +34,7 @@ a.tile{display:flex;flex-direction:column;gap:12px;background:var(--card);color:
 a.tile:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
 a.tile:active{transform:scale(.98)}
 a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.einsatz .act .rtlink{display:inline-flex;margin-top:10px;min-height:44px;align-items:center;padding:6px 14px;border-radius:8px;background:#fff;color:#1565c0;font-weight:700;text-decoration:none}
 .einsatz .act .plhint{margin-top:12px;border:3px solid var(--warn);border-radius:12px;padding:10px 12px;background:var(--card);color:var(--ink);display:flex;flex-direction:column;gap:6px}.einsatz .act .plhint>b{font:700 20px/1.1 'Barlow Condensed',sans-serif;color:var(--ink)}
 .einsatz .act .plhint a{display:flex;justify-content:space-between;gap:10px;align-items:center;min-height:48px;padding:6px 10px;border-radius:8px;background:var(--field,#f7f6f4);color:var(--ink);text-decoration:none;font-weight:700;font-size:17px}.einsatz .act .plhint a small{display:block;font-weight:500;color:var(--mute);font-size:13px;margin:0;opacity:1}.einsatz .act .plhint em{font-style:normal;color:var(--mute);white-space:nowrap}
 .einsatz{grid-column:1/-1;color:#fff;border-radius:14px;padding:18px 20px;border:10px solid transparent;background:linear-gradient(var(--red),var(--red)) padding-box,repeating-linear-gradient(-45deg,#f2b705 0 16px,#16181a 16px 32px) border-box;box-shadow:0 4px 14px rgba(0,0,0,.25)}
@@ -184,6 +185,14 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
       <p>Gefahrnummer entschlüsseln, Absperr- und Gefahrenbereich mit Wind auf der Karte, Meldung an die Chemiewehr.</p>
       <span class="go">Öffnen →</span>
     </a>
+    <a class="tile" href="../route/" style="--c:#1565c0">
+      <div class="head">
+        <img src="icon-192.png" alt="">
+        <h2>Route &amp; Sperren<span class="tag">Test</span><small>Anfahrt ab Depot</small></h2>
+      </div>
+      <p>Strassensperren von/bis mit Umleitung, Bahnübergänge meiden, Route ab Depot zum Einsatzort mit Fahrzeit.</p>
+      <span class="go">Öffnen →</span>
+    </a>
     <a class="tile" href="../plaene/" style="--c:#44546a">
       <div class="head">
         <img src="icon-192.png" alt="">
@@ -200,7 +209,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.11 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.12 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
@@ -294,7 +303,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   function show(edit) {
     const e = get();
     $('eForm').hidden = !!e && !edit; $('eAct').hidden = !e || edit; $('eCancel').hidden = !(e && edit);
-    if (e && !edit) $('eInfo').innerHTML = `<b>${esc(e.bez)}</b>${esc(e.adr)}<small>Einsatzleiter: ${esc(e.el)} · eröffnet ${when(e.t)}</small>` + planHint(e);
+    if (e && !edit) $('eInfo').innerHTML = `<b>${esc(e.bez)}</b>${esc(e.adr)}<small>Einsatzleiter: ${esc(e.el)} · eröffnet ${when(e.t)}</small>` + planHint(e) + (e.lat != null ? '<a class="rtlink" href="../route/">Route ab Depot berechnen →</a>' : '');
     if (edit && e) { $('eBez').value = e.bez; $('eAdr').value = e.adr; $('eEl').value = e.el; $('eAdrOk').textContent = e.lat != null ? '✓ Adresse gefunden' : ''; }
     if (e) pos = e.lat != null ? { lat: e.lat, lng: e.lng } : null;
     $('eForm').querySelector('button').textContent = e && edit ? 'Speichern' : 'Einsatz eröffnen';

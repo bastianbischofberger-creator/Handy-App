@@ -74,3 +74,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Einsatzpläne Testversion mit Hinweis «Einsatzplan vorhanden» auf der Startseite (v1.10)
 - iPad: Hintergrund scrollt nicht mehr mit, wenn ein Fenster offen ist; schnellere Touch-Reaktion (`shared/fwui.js`, ASÜ 3.7.1)
 - Startseite v1.11: «Online» antippen = alle Apps auf diesem Gerät synchronisieren (inkl. Index Einsatzpläne)
+- Route & Sperren (Testaufbau, Valhalla/Overpass): Depots, Sperren von/bis mit Umleitung, Bahnübergänge meiden; Startseite v1.12 mit Kachel und Link «Route ab Depot»
