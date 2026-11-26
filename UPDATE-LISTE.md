@@ -15,7 +15,7 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - **Neue Kachel «Einsatzpläne» auf der Startseite**
   - Liste aller Pläne mit Suche (Objekt, Adresse, Strasse)
   - Karte der Gemeinde mit allen Objekten, Tipp öffnet den Plan
-  - Pläne hochladen/ersetzen mit Stand-Datum (nur Kader-Konten)
+  - Erfassungsmaske (nur Kader-Konten): Objekt, Typ, Adresse, PDF hochladen/ersetzen, Stand + nächste Überprüfung, Merkmale (BMA, Schlüsseldepot, Gefahrstoffe …), Bemerkung, Standort auf Karte + Radius
   - Offline auf den Geräten verfügbar
   - Automatischer Hinweis «Einsatzplan vorhanden», wenn die Einsatzadresse im Radius eines Objekts liegt (Radius pro Objekt einstellbar)
   - Pläne nur in Firebase hinter dem Login, nie im öffentlichen Repo
