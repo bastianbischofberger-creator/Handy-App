@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.6.0';
+const VERSION = '3.6.1';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -73,8 +73,14 @@ async function CloudBackend(fbConfig) {
   catch (e) { fs = F.getFirestore(app); }
   const E = F.collection(fs, 'einsaetze');
   const fail = e => { SY.error = (e && e.code === 'permission-denied') ? 'Kein Zugriff (Konto nicht freigegeben)' : 'Sync-Fehler: ' + (e && (e.code || e.message)); renderSync(); };
-  const w = p => p.catch(fail);
+  const w = p => p.then(() => { if (SY.error) { SY.error = ''; renderSync(); } }, fail);
   let subs = [];
+  // iOS trennt die Verbindung im Hintergrund; Firestore wartet danach teils bis zu einer Minute.
+  // Beim Zurückkehren in die App bzw. wenn das Netz wieder da ist: sofort neu verbinden.
+  let rc = 0;
+  const reconnect = () => { if (document.hidden || !navigator.onLine || Date.now() - rc < 5000) return; rc = Date.now();
+    F.disableNetwork(fs).then(() => F.enableNetwork(fs)).catch(() => {}); };
+  document.addEventListener('visibilitychange', reconnect); addEventListener('online', reconnect); addEventListener('pageshow', reconnect);
   return {
     mode: 'cloud',
     onUser: cb => A.onAuthStateChanged(auth, cb),
@@ -82,11 +88,11 @@ async function CloudBackend(fbConfig) {
     logout: () => A.signOut(auth),
     watchSettings(cb) { F.onSnapshot(F.doc(fs, 'config', 'settings'), d => cb(d.exists() ? d.data() : {}), fail); },
     putSettings(s) { w(F.setDoc(F.doc(fs, 'config', 'settings'), clone(s))); },
-    watchList(cb) { F.onSnapshot(F.query(E, F.orderBy('created', 'desc'), F.limit(60)), q => cb(q.docs.map(d => ({ id: d.id, ...d.data() }))), fail); },
+    watchList(cb) { F.onSnapshot(F.query(E, F.orderBy('created', 'desc'), F.limit(60)), { includeMetadataChanges: true }, q => cb(q.docs.map(d => ({ id: d.id, ...d.data() })), q.metadata.fromCache), fail); },
     open(eid, cb) {
       subs.forEach(u => u()); subs = [];
       let meta = {}, teams = [], log = []; const p = { m: false, t: false, l: false };
-      const emit = () => { SY.pending = p.m || p.t || p.l; SY.error = ''; cb({ meta, teams, log }); renderSync(); };
+      const emit = () => { SY.pending = p.m || p.t || p.l; if (SY.error && !SY.pending) SY.error = ''; cb({ meta, teams, log }); renderSync(); };
       const o = { includeMetadataChanges: true };
       subs.push(F.onSnapshot(F.doc(E, eid), o, d => { meta = d.exists() ? d.data() : {}; p.m = d.metadata.hasPendingWrites; emit(); }, fail));
       subs.push(F.onSnapshot(F.collection(E, eid, 'teams'), o, q => { teams = q.docs.map(d => d.data()); p.t = q.metadata.hasPendingWrites; emit(); }, fail));
@@ -985,6 +991,22 @@ function renderFw() {
     if (S.meta.ereignis !== FW.bez || S.meta.ort !== FW.adr || S.meta.el !== FW.el) { S.meta.ereignis = FW.bez; S.meta.ort = FW.adr; S.meta.el = FW.el; saveMeta(); } }
 }
 
+/* Neuer Einsatz auf einem anderen Gerät eröffnet → Hinweis mit «Öffnen» */
+function newFromOther(add) {
+  if (SY.mode !== 'cloud' || !add.length) return;
+  setTimeout(() => showNewE(add), 1500); // eigene neue Einsätze sind bis dahin geöffnet und werden übersprungen
+}
+function showNewE(add) {
+  const e = add.find(x => !x.closed && x.id !== S.eid && Date.now() - (x.created || 0) < 3600000); if (!e) return;
+  let b = $('#newE');
+  if (!b) { b = document.createElement('div'); b.id = 'newE'; b.className = 'banner'; b.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between';
+    $('#banner').after(b); }
+  b.innerHTML = `<span>Neuer Einsatz auf anderem Gerät: <b>${esc(e.ereignis || 'Ohne Bezeichnung')}</b></span><span><button data-o>Öffnen</button> <button data-x>✕</button></span>`;
+  b.hidden = false;
+  b.querySelector('[data-o]').onclick = () => { openE(e.id); b.hidden = true; showBoard(); };
+  b.querySelector('[data-x]').onclick = () => { b.hidden = true; };
+}
+
 /* ================= Start ================= */
 let started = false;
 function start() {
@@ -1000,13 +1022,16 @@ function start() {
     if (hit) { linked = true; if (S.eid !== hit.id) openE(hit.id); return; }
     if (final) { linked = true; openE(BE.create({ ...newMeta(), ereignis: FW.bez, ort: FW.adr, el: FW.el, fw: key })); log('Einsatz von der Startseite übernommen'); }
   };
-  BE.watchList(l => {
+  let known = null;
+  BE.watchList((l, fromCache) => {
     S.list = l; renderList();
-    if (FW) { link(l, SY.mode === 'local'); return; }
+    if (!fromCache) { if (known) newFromOther(l.filter(e => !known.has(e.id))); known = new Set(l.map(e => e.id)); }
+    if (FW) { link(l, SY.mode === 'local' || !fromCache); return; }
     if (!S.eid) { const want = LP.get('eid'); const hit = l.find(e => e.id === want && !e.closed) || l.find(e => !e.closed); if (hit) openE(hit.id); }
 
   });
-  if (FW) setTimeout(() => link(S.list || [], true), 2500);
+  // ohne Antwort vom Server: offline nach 2.5 s lokal anlegen, online bis 15 s auf die Einsatzliste warten (sonst entstehen doppelte Einsätze)
+  if (FW) { setTimeout(() => { if (!navigator.onLine) link(S.list || [], true); }, 2500); setTimeout(() => link(S.list || [], true), 15000); }
   render();
 }
 $('#fLogin').addEventListener('submit', async e => {
