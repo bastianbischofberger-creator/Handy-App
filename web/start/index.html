@@ -34,7 +34,8 @@ a.tile{display:flex;flex-direction:column;gap:12px;background:var(--card);color:
 a.tile:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
 a.tile:active{transform:scale(.98)}
 a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
-a.tile.soon{opacity:.6;cursor:default}a.tile.soon:hover{transform:none}
+.einsatz .act .plhint{margin-top:12px;border:3px solid var(--warn);border-radius:12px;padding:10px 12px;background:var(--card);color:var(--ink);display:flex;flex-direction:column;gap:6px}.einsatz .act .plhint>b{font:700 20px/1.1 'Barlow Condensed',sans-serif;color:var(--ink)}
+.einsatz .act .plhint a{display:flex;justify-content:space-between;gap:10px;align-items:center;min-height:48px;padding:6px 10px;border-radius:8px;background:var(--field,#f7f6f4);color:var(--ink);text-decoration:none;font-weight:700;font-size:17px}.einsatz .act .plhint a small{display:block;font-weight:500;color:var(--mute);font-size:13px;margin:0;opacity:1}.einsatz .act .plhint em{font-style:normal;color:var(--mute);white-space:nowrap}
 .einsatz{grid-column:1/-1;color:#fff;border-radius:14px;padding:18px 20px;border:10px solid transparent;background:linear-gradient(var(--red),var(--red)) padding-box,repeating-linear-gradient(-45deg,#f2b705 0 16px,#16181a 16px 32px) border-box;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .einsatz h2{font:700 26px/1.05 "Barlow Condensed",sans-serif;margin:0 0 12px}
 .einsatz label{display:block;font-size:14px;font-weight:600;margin-bottom:10px;color:rgba(255,255,255,.92)}
@@ -183,13 +184,13 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
       <p>Gefahrnummer entschlüsseln, Absperr- und Gefahrenbereich mit Wind auf der Karte, Meldung an die Chemiewehr.</p>
       <span class="go">Öffnen →</span>
     </a>
-    <a class="tile soon" href="#" aria-disabled="true" onclick="return false" style="--c:#44546a">
+    <a class="tile" href="../plaene/" style="--c:#44546a">
       <div class="head">
         <img src="icon-192.png" alt="">
-        <h2>Einsatz&shy;pläne<span class="tag">Bald</span><small>Objektpläne mit Hinweis beim Einsatz</small></h2>
+        <h2>Einsatz&shy;pläne<span class="tag">Test</span><small>Objektpläne mit Hinweis beim Einsatz</small></h2>
       </div>
-      <p>In Vorbereitung: startet nach dem Umzug auf einen Schweizer Server, weil die Pläne sensible Daten enthalten.</p>
-      <span class="go">In Vorbereitung</span>
+      <p>Objektpläne als PDF mit Standort und Radius. Liegt der Einsatz im Radius, erscheint hier «Einsatzplan vorhanden». Testphase: nur Testdaten.</p>
+      <span class="go">Öffnen →</span>
     </a>
   </div>
 
@@ -199,7 +200,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.9 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.10 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
@@ -276,10 +277,19 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   $('eSug').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) pick(+b.dataset.i); });
   document.addEventListener('click', e => { if (!e.target.closest('.addr')) { res = []; sug(); } });
 
+  /* Einsatzpläne im Radius (Index von der App «Einsatzpläne», gleicher Speicher) */
+  function planHint(e) {
+    if (!e || e.lat == null) return '';
+    let idx = []; try { idx = (JSON.parse(localStorage.getItem('fw-plaene')) || {}).list || []; } catch (x) {}
+    const dist = o => { const R = 6371000, r = Math.PI / 180, dLa = (o.lat - e.lat) * r, dLo = (o.lng - e.lng) * r; const a = Math.sin(dLa / 2) ** 2 + Math.cos(e.lat * r) * Math.cos(o.lat * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
+    const hits = idx.map(o => ({ ...o, d: dist(o) })).filter(o => o.d <= (o.radius || 100)).sort((a, b) => a.d - b.d);
+    if (!hits.length) return '';
+    return `<div class="plhint"><b>Einsatzplan vorhanden</b>${hits.map(o => `<a href="../plaene/#o=${encodeURIComponent(o.id)}"><span>${esc(o.name)}${o.tags && o.tags.length ? '<small>' + esc(o.tags.slice(0, 3).join(' · ')) + '</small>' : ''}</span><em>${Math.round(o.d)} m →</em></a>`).join('')}</div>`;
+  }
   function show(edit) {
     const e = get();
     $('eForm').hidden = !!e && !edit; $('eAct').hidden = !e || edit; $('eCancel').hidden = !(e && edit);
-    if (e && !edit) $('eInfo').innerHTML = `<b>${esc(e.bez)}</b>${esc(e.adr)}<small>Einsatzleiter: ${esc(e.el)} · eröffnet ${when(e.t)}</small>`;
+    if (e && !edit) $('eInfo').innerHTML = `<b>${esc(e.bez)}</b>${esc(e.adr)}<small>Einsatzleiter: ${esc(e.el)} · eröffnet ${when(e.t)}</small>` + planHint(e);
     if (edit && e) { $('eBez').value = e.bez; $('eAdr').value = e.adr; $('eEl').value = e.el; $('eAdrOk').textContent = e.lat != null ? '✓ Adresse gefunden' : ''; }
     if (e) pos = e.lat != null ? { lat: e.lat, lng: e.lng } : null;
     $('eForm').querySelector('button').textContent = e && edit ? 'Speichern' : 'Einsatz eröffnen';

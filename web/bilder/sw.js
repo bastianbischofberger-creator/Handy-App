@@ -1,7 +1,7 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'bilder-1.0.1';
-const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './foto.js', './upload.html', './upload.js', '../vendor/qrcode-generator/qrcode.js', '../shared/fwform.js', '../shared/fwsync.js'];
+const CACHE = 'bilder-1.0.2';
+const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './foto.js', './upload.html', './upload.js', '../vendor/qrcode-generator/qrcode.js', '../shared/fwform.js', '../shared/fwsync.js', '../shared/fwui.js'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];
 const FBMODS = [FB + 'firebase-app.js', FB + 'firebase-auth.js', FB + 'firebase-firestore.js'];

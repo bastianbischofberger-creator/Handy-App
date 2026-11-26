@@ -12,7 +12,7 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 
 ## Geplant
 
-- **Neue Kachel «Einsatzpläne» auf der Startseite** (Kachel «in Vorbereitung» sichtbar seit 26.11.)
+- **Neue Kachel «Einsatzpläne» auf der Startseite** – Testversion aufgeschaltet 26.11. ✓ (nur Testdaten; Firestore-Regeln «Einsatzpläne» müssen in der Konsole veröffentlicht werden)
   - Liste aller Pläne mit Suche (Objekt, Adresse, Strasse)
   - Karte der Gemeinde mit allen Objekten, Tipp öffnet den Plan
   - Erfassungsmaske (nur Kader-Konten): Objekt, Typ, Adresse, PDF hochladen/ersetzen, Stand + nächste Überprüfung, Merkmale (BMA, Schlüsseldepot, Gefahrstoffe …), Bemerkung, Standort auf Karte + Radius
@@ -66,3 +66,5 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 
 - Sync-Status antippen = jetzt synchronisieren in allen Apps mit Synchronisation (gemeinsames Fenster `shared/fwsync.js`)
 - Startseite v1.9 mit Kacheln Strassenrettung, Gefahrgut, Einsatzpläne (in Vorbereitung)
+- Einsatzpläne Testversion mit Hinweis «Einsatzplan vorhanden» auf der Startseite (v1.10)
+- iPad: Hintergrund scrollt nicht mehr mit, wenn ein Fenster offen ist; schnellere Touch-Reaktion (`shared/fwui.js`, ASÜ 3.7.1)

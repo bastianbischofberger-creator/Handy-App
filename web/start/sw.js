@@ -1,6 +1,6 @@
 /* Service Worker der Startseite: macht sie offline verfügbar.
    Nach jedem Update der Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'start-1.9.0';
+const CACHE = 'start-1.10.0';
 const SHELL = ['./', './index.html', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
   '../asue/icon-192.png', '../mehrfach/icon-192.png', '../vendor/leaflet/leaflet.js', '../vendor/leaflet/leaflet.css'];
 

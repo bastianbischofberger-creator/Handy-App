@@ -1,9 +1,9 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'mf-0.9.8';
+const CACHE = 'mf-0.9.9';
 const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './vendor/jspdf.umd.min.js', '../vendor/leaflet/leaflet.js', '../vendor/leaflet/leaflet.css',
-  '../vendor/qrcode-generator/qrcode.js', './checkin.html', './checkin.js', '../shared/fwform.js', '../shared/fwsync.js'];
+  '../vendor/qrcode-generator/qrcode.js', './checkin.html', './checkin.js', '../shared/fwform.js', '../shared/fwsync.js', '../shared/fwui.js'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const FBMODS = [FB + 'firebase-app.js', FB + 'firebase-auth.js', FB + 'firebase-firestore.js'];
 const TILES = 'mf-tiles';
