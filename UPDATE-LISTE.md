@@ -21,6 +21,15 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Pläne nur in Firebase hinter dem Login, nie im öffentlichen Repo
   - Pläne liegen als PDF vor (Plansammlung noch im Aufbau, keine Eile)
 
+- **Einsatzmaske (Hauptmaske der Startseite)**
+  - Einsatz leuchtet auf: Stichwort, Adresse, Alarmzeit, Hinweis «Einsatzplan vorhanden» + wichtigste Merkmale
+  - Route ab Depot zum Objekt (Fahrzeit, Distanz) in der App
+  - Gesperrte Strassen erfassen (Grund, von–bis), Route umfährt sie, abgelaufene Sperrungen verschwinden
+  - Anfahrtsvorgaben pro Objekt (Zufahrt, Aufstellfläche, Sammelplatz) aus der Erfassungsmaske, auf Karte eingezeichnet und im Routing berücksichtigt
+  - Optional: Gewicht/Höhe der Fahrzeuge (TLF, ADL) berücksichtigen
+  - Routing-Dienst selbst betrieben in der Schweiz (z. B. GraphHopper/OSRM auf OpenStreetMap)
+  - Offen: ein Depot oder mehrere (Rheineck, Thal, Lutzenberg)?
+
 ## Grundsatzentscheid
 
 - **Schweizer Datenschutz muss gewährleistet sein** → Daten und Apps zu einem Schweizer Anbieter (Favorit: Infomaniak) statt Firebase/Google und GitHub Pages
