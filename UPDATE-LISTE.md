@@ -19,7 +19,7 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Offline auf den Geräten verfügbar
   - Automatischer Hinweis «Einsatzplan vorhanden», wenn die Einsatzadresse im Radius eines Objekts liegt (Radius pro Objekt einstellbar)
   - Pläne nur in Firebase hinter dem Login, nie im öffentlichen Repo
-  - Offen: Format der Pläne (PDF oder Bilder)
+  - Pläne liegen als PDF vor (Plansammlung noch im Aufbau, keine Eile)
 
 ## Ideen (noch nicht entschieden)
 
