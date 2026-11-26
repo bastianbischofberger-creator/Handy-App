@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.9.1';
+const VERSION = '0.9.2';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -100,11 +100,12 @@ async function CloudBackend(fbConfig) {
   let fs;
   try { fs = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); } catch (e) { fs = F.getFirestore(app); }
   const E = F.collection(fs, 'mf_ereignisse');
+  const fb = { F, fs };
   const fail = e => { SY.error = (e && e.code === 'permission-denied') ? 'Kein Zugriff (Firestore-Regeln prüfen)' : 'Sync-Fehler: ' + (e && (e.code || e.message)); renderSync(); };
   const w = p => p.catch(fail);
   let subs = [];
   return {
-    mode: 'cloud',
+    mode: 'cloud', fb,
     onUser: cb => Au.onAuthStateChanged(auth, cb),
     login: (e, p) => Au.signInWithEmailAndPassword(auth, e, p),
     logout: () => Au.signOut(auth),
@@ -392,6 +393,8 @@ function render() {
   if ($('#dA').open && S.sel) renderDetail();
   renderSync(); tick(); topH();
 }
+/* Status antippen = jetzt synchronisieren (gemeinsames Fenster aller FW-Apps) */
+$('#sync').addEventListener('click', () => { if (SY.mode === 'cloud' && SY.user && BE && BE.fb && window.FWSync) FWSync.open({ ...BE.fb, user: SY.user.email, onDone: () => { SY.error = ''; renderSync(); } }); });
 function renderSync() {
   const el = $('#sync'); let t, c;
   if (SY.mode === 'local') { t = 'Nur dieses Gerät'; c = ''; }

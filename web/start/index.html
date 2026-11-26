@@ -34,6 +34,7 @@ a.tile{display:flex;flex-direction:column;gap:12px;background:var(--card);color:
 a.tile:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
 a.tile:active{transform:scale(.98)}
 a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+a.tile.soon{opacity:.6;cursor:default}a.tile.soon:hover{transform:none}
 .einsatz{grid-column:1/-1;color:#fff;border-radius:14px;padding:18px 20px;border:10px solid transparent;background:linear-gradient(var(--red),var(--red)) padding-box,repeating-linear-gradient(-45deg,#f2b705 0 16px,#16181a 16px 32px) border-box;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .einsatz h2{font:700 26px/1.05 "Barlow Condensed",sans-serif;margin:0 0 12px}
 .einsatz label{display:block;font-size:14px;font-weight:600;margin-bottom:10px;color:rgba(255,255,255,.92)}
@@ -166,6 +167,30 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
       <p>Fotos pro Einsatz aufnehmen und ordnen – AdF laden per QR-Code direkt vom Handy hoch.</p>
       <span class="go">Öffnen →</span>
     </a>
+    <a class="tile" href="../strasse/" style="--c:#5b3a29">
+      <div class="head">
+        <img src="icon-192.png" alt="">
+        <h2>Strassen&shy;rettung<span class="tag">Test</span><small>Verkehrsunfall mit eingeklemmter Person</small></h2>
+      </div>
+      <p>Ablauf-Checkliste mit Uhrzeiten, Kurzhinweise zu Elektro, Gas und Wasserstoff, Rettungsdatenblatt suchen.</p>
+      <span class="go">Öffnen →</span>
+    </a>
+    <a class="tile" href="../gefahrgut/" style="--c:#f07d00">
+      <div class="head">
+        <img src="icon-192.png" alt="">
+        <h2>Gefahr&shy;gut<span class="tag">Test</span><small>Orange Tafel &amp; Absperrung</small></h2>
+      </div>
+      <p>Gefahrnummer entschlüsseln, Absperr- und Gefahrenbereich mit Wind auf der Karte, Meldung an die Chemiewehr.</p>
+      <span class="go">Öffnen →</span>
+    </a>
+    <a class="tile soon" href="#" aria-disabled="true" onclick="return false" style="--c:#44546a">
+      <div class="head">
+        <img src="icon-192.png" alt="">
+        <h2>Einsatz&shy;pläne<span class="tag">Bald</span><small>Objektpläne mit Hinweis beim Einsatz</small></h2>
+      </div>
+      <p>In Vorbereitung: startet nach dem Umzug auf einen Schweizer Server, weil die Pläne sensible Daten enthalten.</p>
+      <span class="go">In Vorbereitung</span>
+    </a>
   </div>
 
   <div class="hint" id="installHint">
@@ -174,7 +199,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.8 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.9 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>

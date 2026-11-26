@@ -18,6 +18,8 @@ const sync = () => {
   el.className = 'sync ' + c; el.textContent = t;
 };
 addEventListener('online', sync); addEventListener('offline', sync);
+/* Status antippen = jetzt synchronisieren (gemeinsames Fenster aller FW-Apps) */
+$('#sync').addEventListener('click', () => { if (F && fs && S.user && window.FWSync) FWSync.open({ F, fs, user: S.user.email, onDone: () => { S.err = ''; sync(); } }); });
 const fail = e => { S.err = e && e.code === 'permission-denied' ? 'Kein Zugriff – Regeln prüfen' : 'Sync-Fehler'; sync(); };
 
 async function boot() {

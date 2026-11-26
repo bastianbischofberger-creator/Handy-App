@@ -3,7 +3,7 @@
    (gleiches Projekt und gleiche Konten wie ASÜ und Mehrfachereignisse). */
 (function () {
 'use strict';
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 const CFG = window.JR_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -71,11 +71,12 @@ async function CloudBackend(fbConfig) {
   let fs;
   try { fs = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); } catch (e) { fs = F.getFirestore(app); }
   const J = F.collection(fs, 'journale');
+  const fb = { F, fs };
   const fail = e => { SY.error = (e && e.code === 'permission-denied') ? 'Kein Zugriff – Firestore-Regeln prüfen' : 'Sync-Fehler: ' + (e && (e.code || e.message)); renderSync(); };
   const w = p => p.catch(fail);
   let subs = [];
   return {
-    mode: 'cloud',
+    mode: 'cloud', fb,
     onUser: cb => Au.onAuthStateChanged(auth, cb),
     login: (e, p) => Au.signInWithEmailAndPassword(auth, e, p),
     logout: () => Au.signOut(auth),
@@ -123,6 +124,8 @@ function migrateLocal() {
 }
 
 /* ---------- Sync-Anzeige ---------- */
+/* Status antippen = jetzt synchronisieren (gemeinsames Fenster aller FW-Apps) */
+$('#sync').addEventListener('click', () => { if (SY.mode === 'cloud' && SY.user && BE && BE.fb && window.FWSync) FWSync.open({ ...BE.fb, user: SY.user.email, onDone: () => { SY.error = ''; renderSync(); } }); });
 function renderSync() {
   const el = $('#sync'); let cls = '', t = '';
   if (SY.mode === 'local') { cls = 'warn'; t = 'Nur dieses Gerät'; }

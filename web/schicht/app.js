@@ -371,7 +371,7 @@ function renderSync() {
   el.className = 'sync ' + cls; el.textContent = t; el.title = t;
   el.style.cursor = cloud.user ? '' : 'pointer';
 }
-$('#sync').onclick = () => { if (!cloud.user) needLogin(); };
+$('#sync').onclick = () => { if (!cloud.user) return needLogin(); if (window.FWSync) FWSync.open({ F: cloud.F, fs: cloud.fs, user: cloud.user.email, onDone: () => { cloud.err = ''; renderSync(); } }); };
 addEventListener('online', renderSync); addEventListener('offline', renderSync);
 
 /* ---------- Start ---------- */

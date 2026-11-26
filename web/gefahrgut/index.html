@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gefahrgut</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gefahrgut">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--or:#f07d00}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.top{position:sticky;top:0;z-index:1000;background:var(--red);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px}
+#clock{font:700 clamp(30px,5.5vw,46px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:14px max(3vw,14px) calc(30px + env(safe-area-inset-bottom))}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button{flex:1 1 140px;min-height:52px;font-size:17px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 10px}
+.mute{color:var(--mute)}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:12px}
+input,textarea{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+textarea{min-height:80px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.chips button{min-height:44px;padding:6px 12px}
+/* Orange Tafel */
+.tafelwrap{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:680px){.tafelwrap{grid-template-columns:1fr}}
+.tafel{background:var(--or);border:6px solid #111;border-radius:6px;display:grid;grid-template-rows:1fr 1fr;aspect-ratio:4/3;max-width:300px}
+.tafel>div{display:flex;align-items:center;justify-content:center;gap:6px}
+.tafel>div+div{border-top:5px solid #111}
+.tafel input{background:transparent;border:0;text-align:center;font:700 44px/1 "Barlow Condensed",sans-serif;color:#111;min-height:0;padding:0;margin:0;letter-spacing:2px}
+.tafel input::placeholder{color:rgba(0,0,0,.3)}
+.tafel button{min-height:40px;padding:4px 10px;font:700 22px "Barlow Condensed",sans-serif;background:rgba(255,255,255,.35);border-color:#111;color:#111}
+.tafel button.on{background:#111;color:var(--or)}
+.res h3{font:700 22px/1.15 "Barlow Condensed",sans-serif;margin:0 0 8px}
+.res ul{margin:0 0 10px;padding-left:22px}.res li{margin-bottom:4px}
+.xwarn{background:#111;color:#fff;border-radius:8px;padding:10px 14px;font-weight:700;margin-bottom:10px}
+.note{font-size:14px;color:var(--mute)}
+/* Karte */
+#map{height:min(62vh,560px);border-radius:12px;border:1px solid var(--line)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:15px;margin-top:10px}
+.legend i{display:inline-block;width:16px;height:16px;border-radius:4px;vertical-align:-3px;margin-right:6px}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:2000;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:480px){.top h1{font-size:20px}.top h1 small{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>Gefahrgut<small>Orange Tafel, Absperrung, Meldung</small></h1>
+  <div id="clock">--:--</div>
+</header>
+<main>
+  <nav class="tabs" id="tabs">
+    <button type="button" data-t="tafel" class="on">Orange Tafel</button>
+    <button type="button" data-t="karte">Absperrung</button>
+    <button type="button" data-t="meldung">Meldung</button>
+    <button type="button" data-t="setup">Kontakte</button>
+  </nav>
+
+  <!-- Orange Tafel -->
+  <section id="t-tafel">
+    <div class="card">
+      <h2>Orange Tafel eingeben</h2>
+      <div class="tafelwrap">
+        <div>
+          <div class="tafel">
+            <div><button type="button" id="bX" title="X = reagiert gefährlich mit Wasser">X</button><input id="iGn" inputmode="numeric" maxlength="3" placeholder="33" aria-label="Gefahrnummer (oben)" autocomplete="off"></div>
+            <div><input id="iUn" inputmode="numeric" maxlength="4" placeholder="1203" aria-label="UN-Nummer (unten)" autocomplete="off"></div>
+          </div>
+          <p class="note">Oben: Gefahrnummer (Kemler-Zahl) · Unten: UN-Nummer (Stoffnummer)</p>
+        </div>
+        <div class="res" id="res"><p class="mute">Gefahrnummer eingeben – die Bedeutung erscheint hier.</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Stoff nachschlagen</h2>
+      <p class="mute" style="margin-top:-4px">Diese Version enthält noch keine Stoffdatenbank. Stoffdaten über die Suche oder die Chemiewehr beschaffen.</p>
+      <div class="chips"><button type="button" class="pri" id="bUn">UN-Nummer im Web suchen</button><a id="aCw" hidden></a></div>
+      <p class="note">Entschlüsselung der Gefahrnummer nach ADR. Massgebend sind Beförderungspapiere, Stoffinfos und die Beurteilung durch die Chemiewehr.</p>
+    </div>
+  </section>
+
+  <!-- Absperrung -->
+  <section id="t-karte" hidden>
+    <div class="card">
+      <h2>Absperrung &amp; Gefahrenbereich</h2>
+      <p class="mute" style="margin-top:-4px">Karte antippen = Ereignisort setzen. Werte gemäss Erkundung bzw. Chemiewehr wählen.</p>
+      <label>Absperrbereich (Radius rund um den Ereignisort)</label>
+      <div class="chips" id="cR"></div>
+      <label>Wind kommt aus</label>
+      <div class="chips" id="cW"></div>
+      <label>Gefahrenbereich in Windrichtung (Länge)</label>
+      <div class="chips" id="cL"></div>
+      <div id="map"></div>
+      <div class="legend"><span><i style="background:rgba(200,16,46,.35);border:2px solid #c8102e"></i>Absperrbereich</span><span><i style="background:rgba(240,125,0,.35);border:2px solid #f07d00"></i>Gefahrenbereich in Windrichtung</span><span id="lgInfo" class="mute"></span></div>
+    </div>
+  </section>
+
+  <!-- Meldung -->
+  <section id="t-meldung" hidden>
+    <div class="card">
+      <h2>Meldung an Chemiewehr / Einsatzzentrale</h2>
+      <div class="row">
+        <label>Ereignis<input id="mEr" autocomplete="off"></label>
+        <label>Ort<input id="mOrt" autocomplete="off"></label>
+      </div>
+      <div class="row">
+        <label>Gefahrnummer / UN-Nummer<input id="mTafel" autocomplete="off"></label>
+        <label>Stoff, Menge, Behälter<input id="mStoff" placeholder="z. B. Tankwagen, Fass 200 l" autocomplete="off"></label>
+      </div>
+      <label>Austritt</label>
+      <div class="chips" id="cA"></div>
+      <div class="row">
+        <label>Verletzte / Betroffene<input id="mVer" autocomplete="off"></label>
+        <label>Wind / Wetter<input id="mWind" autocomplete="off"></label>
+      </div>
+      <div class="row">
+        <label>Zufahrt / Sammelplatz<input id="mZu" autocomplete="off"></label>
+        <label>Getroffene Massnahmen<input id="mMa" placeholder="z. B. Absperrung 100 m, Evakuation" autocomplete="off"></label>
+      </div>
+      <div class="chips"><button type="button" class="pri" id="bCopy">Meldung kopieren</button><button type="button" id="bCall" hidden>Chemiewehr anrufen</button><button type="button" id="bClear">Leeren</button></div>
+    </div>
+  </section>
+
+  <!-- Kontakte -->
+  <section id="t-setup" hidden>
+    <div class="card">
+      <h2>Kontakte</h2>
+      <p class="mute" style="margin-top:-4px">Gilt für dieses Gerät.</p>
+      <div class="row">
+        <label>Chemiewehr / Stützpunkt<input id="sCw" placeholder="Name" autocomplete="off"></label>
+        <label>Telefon<input id="sTel" type="tel" placeholder="+41 …" autocomplete="off"></label>
+      </div>
+      <div class="chips"><button type="button" class="pri" id="bSave">Speichern</button></div>
+    </div>
+  </section>
+</main>
+<div id="msg"></div>
+<script src="../vendor/leaflet/leaflet.js"></script>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>

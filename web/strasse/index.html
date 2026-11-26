@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Strassenrettung</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Strassenrettung">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--c:#5b3a29}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
+.top{position:sticky;top:0;z-index:5;background:var(--red);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px}
+#clock{font:700 clamp(30px,5.5vw,46px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+button{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--red);border-color:var(--red);color:#fff}
+main{max-width:900px;margin:0 auto;padding:14px max(3vw,14px) calc(30px + env(safe-area-inset-bottom))}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button{flex:1 1 140px;min-height:52px;font-size:17px}
+.tabs button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;margin:0 0 10px}
+h3{font:700 20px/1.1 "Barlow Condensed",sans-serif;margin:14px 0 6px}
+.mute{color:var(--mute)}
+.ein{border-top:6px solid var(--c)}
+.timer{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.timer b{font:700 52px/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.timer span{color:var(--mute);font-size:15px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.steps button{width:100%;justify-content:flex-start;text-align:left;min-height:64px;font-size:18px;padding:10px 14px;gap:14px}
+.steps .ck{flex:none;width:34px;height:34px;border-radius:8px;border:3px solid var(--line);display:grid;place-items:center;font-size:22px;font-weight:800;color:#fff}
+.steps .tx{flex:1}
+.steps .tm{font:700 20px "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--mute);white-space:nowrap}
+.steps .done{background:color-mix(in srgb,var(--ok) 12%,var(--card));border-color:var(--ok)}
+.steps .done .ck{background:var(--ok);border-color:var(--ok)}
+.steps .done .tm{color:var(--ok)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.drv{border-left:0;border-top:6px solid var(--dc)}
+.drv ul{margin:6px 0 0;padding-left:22px}.drv li{margin-bottom:6px}
+.warnbox{background:color-mix(in srgb,var(--warn) 22%,var(--card));border:1px solid var(--warn);border-radius:10px;padding:10px 14px;font-size:15px;margin-bottom:14px}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:12px}
+input,textarea{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+textarea{min-height:260px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 12px}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:480px){.top h1{font-size:20px}.top h1 small{display:none}.timer b{font-size:40px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>Strassenrettung<small>Ablauf, Antriebe, Rettungsdatenblätter</small></h1>
+  <div id="clock">--:--</div>
+</header>
+<main>
+  <nav class="tabs" id="tabs">
+    <button type="button" data-t="ablauf" class="on">Ablauf</button>
+    <button type="button" data-t="antriebe">Antriebe</button>
+    <button type="button" data-t="rdb">Rettungsdatenblatt</button>
+    <button type="button" data-t="setup">Checkliste anpassen</button>
+  </nav>
+
+  <!-- Ablauf -->
+  <section id="t-ablauf">
+    <div class="card ein">
+      <div class="mute" id="fwInfo">Kein aktiver Einsatz auf der Startseite</div>
+      <div class="timer"><b id="since">--:--</b><span id="sinceL">Zeit seit Start</span></div>
+      <div class="btns"><button type="button" class="pri" id="bStart">Start – Eintreffen Unfallstelle</button><button type="button" id="bCopy">Protokoll kopieren</button><button type="button" id="bReset">Neu beginnen</button></div>
+    </div>
+    <div class="card">
+      <h2>Ablauf</h2>
+      <p class="mute" style="margin:-4px 0 12px">Schritt antippen = erledigt mit Uhrzeit. Nochmals antippen = zurücksetzen.</p>
+      <ul class="steps" id="steps"></ul>
+    </div>
+  </section>
+
+  <!-- Antriebe -->
+  <section id="t-antriebe" hidden>
+    <div class="warnbox">Kurzhinweise zur Orientierung. Massgebend sind das Rettungsdatenblatt des Fahrzeugs und die Vorgaben von FKS und Kommando.</div>
+    <div class="card drv" style="--dc:#5b6166">
+      <h2>Antrieb erkennen</h2>
+      <ul>
+        <li>Schriftzug am Heck oder an der Seite (z. B. «Electric», «Hybrid», «e-», «CNG», «Hydrogen»)</li>
+        <li>Ladeklappe zusätzlich zum oder statt Tankdeckel</li>
+        <li>Orange Kabel im Motorraum oder Unterboden = Hochvolt</li>
+        <li>Fehlender Auspuff, Fahrzeug «lautlos» betriebsbereit (READY-Anzeige)</li>
+        <li>Im Zweifel: wie Hochvolt-Fahrzeug behandeln, Rettungsdatenblatt abrufen</li>
+      </ul>
+    </div>
+    <div class="card drv" style="--dc:#d96c00">
+      <h2>Elektro &amp; Hybrid (Hochvolt)</h2>
+      <ul>
+        <li>Fahrzeug gegen Wegrollen sichern (Parkstellung, Feststellbremse, Unterlegkeile)</li>
+        <li>Fahrzeug ausschalten, Schlüssel ausser Reichweite bringen</li>
+        <li>Hochvolt-System gemäss Rettungsdatenblatt deaktivieren (Trennstelle, 12-V-Batterie)</li>
+        <li>Orange Kabel und Batteriegehäuse nicht beschädigen, Schneidzonen beachten</li>
+        <li>Batterie mit Wärmebildkamera überwachen, auch nach der Rettung</li>
+        <li>Batteriebrand: grosse Wassermengen, lange Kühlung, Wiederentzündung möglich</li>
+      </ul>
+    </div>
+    <div class="card drv" style="--dc:#1565c0">
+      <h2>Gas (CNG / LPG)</h2>
+      <ul>
+        <li>Austritt (Zischen, Geruch bei LPG) → Zündquellen fernhalten, Abstand, Gasmessung</li>
+        <li>Lage der Tanks und Leitungen gemäss Rettungsdatenblatt, nicht hineinschneiden</li>
+        <li>Bei Brand: Druckentlastung / Abblasen möglich, Stichflamme – Abstand halten</li>
+      </ul>
+    </div>
+    <div class="card drv" style="--dc:#1d7a46">
+      <h2>Wasserstoff (H₂)</h2>
+      <ul>
+        <li>Flamme kaum sichtbar → Wärmebildkamera verwenden</li>
+        <li>Austritt: Bereich grossräumig meiden, Zündquellen fernhalten</li>
+        <li>Tanks und Leitungen gemäss Rettungsdatenblatt, nicht hineinschneiden</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Rettungsdatenblatt -->
+  <section id="t-rdb" hidden>
+    <div class="card">
+      <h2>Rettungsdatenblatt suchen</h2>
+      <p class="mute" style="margin-top:-4px">Zeigt Airbags, Verstärkungen, Batterie, Tanks und Trennstellen des Fahrzeugs.</p>
+      <div class="row">
+        <label>Marke<input id="rMarke" placeholder="z. B. Škoda" autocomplete="off"></label>
+        <label>Modell<input id="rModell" placeholder="z. B. Enyaq" autocomplete="off"></label>
+        <label>Jahrgang<input id="rJahr" inputmode="numeric" placeholder="z. B. 2024" autocomplete="off"></label>
+      </div>
+      <div class="btns"><button type="button" class="pri" id="bRdb">Rettungsdatenblatt im Web suchen</button></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Tipps</h3>
+      <ul style="margin:0;padding-left:22px">
+        <li>App <b>«Euro Rescue»</b> von Euro NCAP (gratis im App Store / Play Store): Rettungsdatenblätter vieler Hersteller, auch offline.</li>
+        <li>Halter und Fahrzeugdaten über das Kennzeichen: über die Polizei bzw. Einsatzzentrale abfragen lassen.</li>
+        <li>Rettungskarte oft hinter der Sonnenblende auf der Fahrerseite.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Checkliste anpassen -->
+  <section id="t-setup" hidden>
+    <div class="card">
+      <h2>Checkliste anpassen</h2>
+      <p class="mute" style="margin-top:-4px">Ein Schritt pro Zeile. Gilt für dieses Gerät.</p>
+      <label>Schritte<textarea id="setSteps"></textarea></label>
+      <div class="btns"><button type="button" class="pri" id="bSave">Speichern</button><button type="button" id="bDefault">Standard wiederherstellen</button></div>
+    </div>
+  </section>
+</main>
+<div id="msg"></div>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>

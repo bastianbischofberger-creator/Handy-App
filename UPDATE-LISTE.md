@@ -12,7 +12,7 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 
 ## Geplant
 
-- **Neue Kachel «Einsatzpläne» auf der Startseite**
+- **Neue Kachel «Einsatzpläne» auf der Startseite** (Kachel «in Vorbereitung» sichtbar seit 26.11.)
   - Liste aller Pläne mit Suche (Objekt, Adresse, Strasse)
   - Karte der Gemeinde mit allen Objekten, Tipp öffnet den Plan
   - Erfassungsmaske (nur Kader-Konten): Objekt, Typ, Adresse, PDF hochladen/ersetzen, Stand + nächste Überprüfung, Merkmale (BMA, Schlüsseldepot, Gefahrstoffe …), Bemerkung, Standort auf Karte + Radius
@@ -30,12 +30,12 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Routing-Dienst selbst betrieben in der Schweiz (z. B. GraphHopper/OSRM auf OpenStreetMap)
   - Offen: ein Depot oder mehrere (Rheineck, Thal, Lutzenberg)?
 
-- **Neue Kachel «Strassenrettung»**
+- **Neue Kachel «Strassenrettung»** – erste Version aufgeschaltet 26.11. ✓ (Checkliste, Antriebe, RDB-Suche; offen: direkt ins Einsatzjournal)
   - Rettungsdatenblätter: Suche nach Marke/Modell/Jahrgang, Verlinkung auf bestehende Herstellersammlungen (z. B. Euro Rescue)
   - Kurzhinweise alternative Antriebe (E-Auto, Hybrid, Gas, Wasserstoff)
   - Checkliste Ablauf (Sichern, Erkunden, Erstzugang, patientengerechte Rettung, Gerätedepot) mit Zeitstempel, optional ins Einsatzjournal
 
-- **Neue Kachel «Gefahrgut»**
+- **Neue Kachel «Gefahrgut»** – erste Version aufgeschaltet 26.11. ✓ (Gefahrnummer, Karte, Meldung; offen: Stoffdatenbank mit geklärter Lizenz)
   - Suche nach UN-Nummer / Gefahrnummer (orange Tafel): Stoff, Gefahren, Schutzausrüstung, Erstmassnahmen
   - Absperrradius mit Windrichtung auf der Karte
   - Alarmierung Chemiewehr/Stützpunkt mit Meldeschema
@@ -61,3 +61,8 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 
 - Lagemonitor für Grossbildschirm im KP (Entwurf vorhanden)
 - Startseite-Einsatz über Firebase synchronisieren, damit er auf allen Geräten erscheint
+
+## Aufgeschaltet am 26.11.2026 (Nachmittag)
+
+- Sync-Status antippen = jetzt synchronisieren in allen Apps mit Synchronisation (gemeinsames Fenster `shared/fwsync.js`)
+- Startseite v1.9 mit Kacheln Strassenrettung, Gefahrgut, Einsatzpläne (in Vorbereitung)
