@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RTLWiki</title>
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RTLWiki">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#efedea,#111315);--card:light-dark(#fff,#1b1e21);--ink:light-dark(#16181a,#eef0f2);--mute:light-dark(#5b6166,#9aa1a7);--line:light-dark(#d8d4ce,#30353a);--field:light-dark(#f7f6f4,#24282c);--red:#c8102e;--warn:#f2b705;--ok:light-dark(#1d7a46,#45c47a);--c:#0f6e5c;--link:light-dark(#0b5ea8,#7cb8f2)}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
+.top{position:sticky;top:0;z-index:1000;background:var(--red);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px) 10px}
+.top a.logo{flex:none;width:52px;height:54px;display:grid;place-items:center}
+.top a.logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.top h1{font:600 22px/1.1 "Barlow Condensed",sans-serif;margin:0;flex:1}
+.top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:2px}
+.sync{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#bbb;vertical-align:1px}
+.sync.ok::before{background:#5ee08f}.sync.warn::before{background:var(--warn)}.sync.err::before{background:#fff;outline:2px solid #000}
+button,.btn{font:600 16px Barlow,sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+button.pri{background:var(--c);border-color:var(--c);color:#fff}
+button.danger{color:var(--red)}
+button:disabled{opacity:.5}
+main{max-width:1200px;margin:0 auto;padding:14px max(3vw,12px) calc(30px + env(safe-area-inset-bottom))}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.bar input{flex:1 1 280px}
+input,select,textarea{display:block;width:100%;margin-top:4px;font:16px Barlow,sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips button{min-height:40px;padding:4px 12px;border-radius:999px}
+.chips button.on{background:var(--c);border-color:var(--c);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.art{display:flex;flex-direction:column;gap:4px;text-align:left;align-items:flex-start;min-height:100px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--line);border-top:5px solid var(--c)}
+.art b{font:700 21px/1.15 "Barlow Condensed",sans-serif}
+.art small{color:var(--mute);font-weight:500;font-size:14px}
+.art .snip{font-weight:400;font-size:15px;color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kat{font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--c);text-transform:uppercase}
+.empty{padding:30px;text-align:center;color:var(--mute)}
+/* Artikel */
+.view{max-width:860px;margin:0 auto}
+.vhead{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}
+.vhead h2{font:700 34px/1.1 "Barlow Condensed",sans-serif;margin:4px 0 0;flex:1 1 300px}
+.meta{color:var(--mute);font-size:14px;margin-bottom:12px}
+.md h1,.md h2,.md h3{font-family:"Barlow Condensed",sans-serif;line-height:1.15;margin:18px 0 6px}
+.md h1{font-size:30px}.md h2{font-size:25px}.md h3{font-size:21px}
+.md p{margin:0 0 10px}.md ul,.md ol{margin:0 0 10px;padding-left:24px}.md li{margin-bottom:3px}
+.md a{color:var(--link);font-weight:600}
+.md a.miss{color:var(--red);text-decoration:underline dotted}
+.md blockquote{margin:0 0 10px;padding:8px 14px;border-left:5px solid var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--card));border-radius:6px}
+.md code{background:var(--field);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.md hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+.md table{border-collapse:collapse;margin:0 0 10px;width:100%}.md td,.md th{border:1px solid var(--line);padding:6px 8px;text-align:left}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 0}.tags span{font-size:13px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--field);border:1px solid var(--line)}
+.att{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.att li{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.att li span{flex:1}.att small{color:var(--mute)}
+/* Editor */
+dialog{border:0;border-radius:14px;padding:0;width:min(1000px,96vw);background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog form{padding:18px}
+dialog h2{font:700 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 10px}
+label.f{display:block;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:10px}
+.row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 10px}
+@media(max-width:700px){.row{grid-template-columns:1fr}}
+.tb{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 6px}.tb button{min-height:38px;padding:4px 10px;font-size:15px}
+#eText{min-height:42vh;font:16px/1.5 ui-monospace,Menlo,monospace;resize:vertical}
+#ePrev{min-height:42vh;border:1px solid var(--line);border-radius:8px;padding:10px 14px;overflow:auto;max-height:60vh}
+.dbtn{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.err{color:var(--red);font-weight:600;margin:0}.err:empty{display:none}
+.hint{font-size:13px;color:var(--mute);margin:6px 0 0}
+#login{position:fixed;inset:0;z-index:3000;background:var(--bg);display:grid;place-items:center;padding:16px}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#16181a;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:4000;max-width:90vw}
+#msg:empty{display:none}
+@media(max-width:520px){.top h1 small{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../start/" title="Zur Startseite"><img src="logo.png" alt="FW RTL"></a>
+  <h1>RTLWiki<small>Wissensdatenbank Feuerwehr Rheineck-Thal-Lutzenberg</small></h1>
+  <span class="sync" id="sync">Startet …</span>
+</header>
+<main>
+  <section id="vList">
+    <div class="bar">
+      <input id="q" type="search" placeholder="Im Wiki suchen …" autocomplete="off" aria-label="Suchen">
+      <button type="button" id="bOff" title="Alle Artikel samt Anhängen auf dieses Gerät laden">Offline laden</button>
+      <button type="button" class="pri" id="bNew">+ Neuer Artikel</button>
+    </div>
+    <div class="chips" id="cKat"></div>
+    <div class="grid" id="list"></div>
+  </section>
+  <section id="vArt" class="view" hidden></section>
+</main>
+
+<dialog id="dE"><form method="dialog" id="fE">
+  <h2 id="eT">Neuer Artikel</h2>
+  <div class="row">
+    <label class="f">Titel<input name="titel" required autocomplete="off"></label>
+    <label class="f">Kategorie<input name="kat" list="katList" autocomplete="off" placeholder="z. B. Atemschutz"><datalist id="katList"></datalist></label>
+    <label class="f">Stichwörter<input name="tags" autocomplete="off" placeholder="kommagetrennt"></label>
+  </div>
+  <div class="tb" id="tb">
+    <button type="button" data-md="h2">Titel</button><button type="button" data-md="b"><b>Fett</b></button><button type="button" data-md="ul">• Liste</button><button type="button" data-md="ol">1. Liste</button>
+    <button type="button" data-md="q">Hinweis</button><button type="button" data-md="wl">[[Wiki-Link]]</button><button type="button" data-md="a">Weblink</button><button type="button" id="bPrev">Vorschau</button>
+  </div>
+  <textarea name="text" id="eText" placeholder="Text … (## Titel, **fett**, - Liste, > Hinweis, [[Anderer Artikel]])"></textarea>
+  <div id="ePrev" class="md" hidden></div>
+  <p class="hint">Anhänge (PDF, Bilder bis 8 MB) beim Speichern hochladen:</p>
+  <ul class="att" id="eAtt" style="margin-top:6px"></ul>
+  <label class="btn" style="margin-top:6px">+ Anhang wählen<input type="file" id="eFile" accept="application/pdf,image/*" multiple hidden></label>
+  <p class="err" id="eErr" style="margin-top:8px"></p>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok" id="eSave">Speichern</button></div>
+</form></dialog>
+
+<div id="login" hidden><form id="fLogin" class="card" style="width:min(380px,100%)">
+  <img src="logo.png" alt="" style="width:70px;display:block;margin:0 auto 6px"><h2 style="text-align:center;font:700 26px 'Barlow Condensed',sans-serif">Anmelden</h2>
+  <p style="margin:0 0 12px;font-size:14px;color:var(--mute)">Gleiches Konto wie ASÜ und Journal.</p>
+  <label class="f">E-Mail<input name="email" type="email" autocomplete="username" required></label>
+  <label class="f">Passwort<input name="pw" type="password" autocomplete="current-password" required></label>
+  <p class="err" id="lErr"></p>
+  <button class="pri" style="width:100%;margin-top:10px">Anmelden</button>
+</form></div>
+<div id="msg"></div>
+<script src="config.js?v=1.0.0"></script>
+<script src="../shared/fwui.js?v=1"></script>
+<script src="../shared/fwsync.js?v=2"></script>
+<script type="module" src="app.js?v=1.0.0"></script>
+</body>
+</html>
