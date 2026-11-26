@@ -41,7 +41,14 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Alarmierung Chemiewehr/Stützpunkt mit Meldeschema
   - Datenquelle mit freien Nutzungsrechten (z. B. ERG), Inhalte mit Chemiewehr-Stützpunkt / FKS abstimmen
 
-- **Offen zum Besprechen:** Tastatur auf dem iPad in der ASÜ (z. B. eigener Ziffernblock bei der Druckkontrolle)
+- **ASÜ: Sync-Status antippen = jetzt synchronisieren**
+  - Verbindung neu aufbauen, ausstehende Änderungen senden, Ergebnis anzeigen («Synchronisiert 12:41» oder Fehler im Klartext)
+  - Details: Zeit der letzten erfolgreichen Synchronisation, Anzahl offener Änderungen
+
+- **ASÜ: keine iPad-Tastatur auf dem Einsatztableau** (Entwurf «ASÜ Druckkontrolle mit Ziffernblock»)
+  - Druckkontrolle mit eigenem Ziffernblock, kein automatischer Cursor, nach 3 Ziffern zur nächsten Person
+  - Trupp anlegen: Trupp-Nr. automatisch, Namen per Auswahl aus Personal (A–Z-Leiste, aktive ausgegraut) oder QR, Anfangsdruck per Ziffernblock
+  - Normale Tastatur nur bei «Andere Person …» / Freitext und auf den übrigen Seiten
 
 ## Grundsatzentscheid
 
