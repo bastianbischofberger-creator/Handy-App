@@ -27,6 +27,11 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Gesperrte Strassen erfassen (Grund, von–bis), Route umfährt sie, abgelaufene Sperrungen verschwinden
   - Anfahrtsvorgaben pro Objekt (Zufahrt, Aufstellfläche, Sammelplatz) aus der Erfassungsmaske, auf Karte eingezeichnet und im Routing berücksichtigt
   - Optional: Gewicht/Höhe der Fahrzeuge (TLF, ADL) berücksichtigen
+  - **Strassensperren** mit Datum/Zeit von–bis auf der Karte einzeichnen (Strecke oder Gebiet), Route umfährt sie, abgelaufene verschwinden automatisch
+  - **Umleitungen** einzeichnen: bei aktiver Sperre führt die Route über die vorgegebene Umleitung
+  - **Vorgaben pro Einsatzgebiet**, z. B. «keine Bahnübergänge»: Bahnübergänge aus OpenStreetMap übernehmen, einzeln ein-/ausschaltbar, Route meidet sie
+  - Hinweis in der App, wenn Apple/Google-Navi die Sperre nicht kennt; eigene Routenanzeige ist massgebend
+  - GPS-Tracker mit SIM in den Fahrzeugen vorhanden → Positionen via Traccar (Schweizer Server) für Live-Karte, Status, Ankunftszeit (Modell/Anzahl offen)
   - Routing-Dienst selbst betrieben in der Schweiz (z. B. GraphHopper/OSRM auf OpenStreetMap)
   - Offen: ein Depot oder mehrere (Rheineck, Thal, Lutzenberg)?
 
