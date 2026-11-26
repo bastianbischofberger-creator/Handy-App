@@ -2,7 +2,7 @@
    Route ab Depot(s) zum Einsatzort. Berücksichtigt zeitlich begrenzte Strassensperren (mit optionaler Umleitung)
    und die Vorgabe «Bahnübergänge meiden». Routing: Valhalla (valhalla1.openstreetmap.de, FOSSGIS),
    Bahnübergänge: OpenStreetMap über die Overpass-API. Gemeinsame Daten: Firestore config/routing. */
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const CFG = window.RT_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
@@ -85,11 +85,14 @@ function start() {
   if (started) return; started = true;
   F.onSnapshot(ref, d => {
     const v = d.exists() ? d.data() : {};
-    D = { depots: v.depots || [], sperren: v.sperren || [], bahn: { meiden: v.bahn ? v.bahn.meiden !== false : true, list: (v.bahn && v.bahn.list) || [] } };
+    D = { depots: v.depots || [], sperren: (v.sperren || []).map(s => ({ ...s, pts: decL(s.pts), uml: decL(s.uml) })), bahn: { meiden: v.bahn ? v.bahn.meiden !== false : true, list: (v.bahn && v.bahn.list) || [] } };
     S.err = ''; sync(); renderAll();
   }, fail);
 }
-const save = () => { if (!ref) return msg('Nicht verbunden'); return F.setDoc(ref, { ...D, upd: now(), by: S.user ? S.user.email : '' }).catch(fail); };
+// Firestore kennt keine verschachtelten Listen → Punkte als {la, lo} speichern
+const encL = a => a ? a.map(p => ({ la: p[0], lo: p[1] })) : null;
+const decL = a => a ? a.map(p => Array.isArray(p) ? p : [p.la, p.lo]) : null;
+const save = () => { if (!ref) return msg('Nicht verbunden'); return F.setDoc(ref, { ...D, sperren: D.sperren.map(s => ({ ...s, pts: encL(s.pts), uml: encL(s.uml) })), upd: now(), by: S.user ? S.user.email : '' }).catch(e => { fail(e); msg('Speichern fehlgeschlagen: ' + (e.code || e.message)); }); };
 
 /* ---------- Karte ---------- */
 L.Control.Attribution.prototype.options.prefix = false;

@@ -58,7 +58,7 @@ a.tile:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .einsatz .ok{font-size:13px;font-weight:600;margin:4px 0 0;color:rgba(255,255,255,.92)}
 .einsatz .mapbox{position:relative;min-height:240px;border-radius:10px;overflow:hidden;background:#e8e8e8;border:2px solid rgba(255,255,255,.85)}
 .einsatz #eMap{position:absolute;inset:0}
-.einsatz .mapempty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:#5b6166;font-weight:600;z-index:500;pointer-events:none;background:rgba(255,255,255,.55)}
+.einsatz .mapempty{pointer-events:none;position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:#5b6166;font-weight:600;z-index:500;pointer-events:none;background:rgba(255,255,255,.55)}
 .einsatz [hidden]{display:none !important}
 .einsatz .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--red);border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
 .tile .head{display:flex;align-items:center;gap:14px}
@@ -100,7 +100,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
             <div class="bt" style="margin-top:12px"><button type="button" id="eEdit">Bearbeiten</button><button type="button" class="sec" id="eEnd">Einsatz beenden</button></div>
           </div>
         </div>
-        <div class="mapbox"><div id="eMap"></div><div class="mapempty" id="eMapEmpty">Adresse wählen – der Kartenausschnitt erscheint hier</div></div>
+        <div class="mapbox"><div id="eMap"></div><div class="mapempty" id="eMapEmpty">Adresse wählen oder Standort auf der Karte antippen</div></div>
       </div>
     </section>
     <a class="tile" href="../asue/" style="--c:#c8102e">
@@ -209,7 +209,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.12 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.13 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
@@ -251,6 +251,8 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
     if (map || !window.L) return;
     L.Control.Attribution.prototype.options.prefix = false; // nur «© swisstopo» anzeigen
     map = L.map('eMap', { zoomControl: true, attributionControl: true }).setView([47.4655, 9.5905], 14);
+    // Standort auch direkt auf der Karte setzen (z. B. Autobahn ohne Adresse)
+    map.on('click', ev => { if ($('eForm').hidden) return; pos = { lat: ev.latlng.lat, lng: ev.latlng.lng }; $('eAdrOk').textContent = '✓ Standort auf Karte gesetzt'; res = []; sug(); showPos(); });
     L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', { maxZoom: 19, maxNativeZoom: 18, attribution: '© swisstopo' }).addTo(map);
   }
   function showPos() {
@@ -271,6 +273,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   }
   function pick(i) { const a = res[i]; if (!a) return; $('eAdr').value = fmt(a.label); pos = { lat: a.lat, lng: a.lon }; res = []; sug(); $('eAdrOk').textContent = '✓ Adresse gefunden'; showPos(); }
   $('eAdr').addEventListener('input', () => {
+    if ($('eAdrOk').textContent.includes('Karte')) { clearTimeout(sT); return; } // Kartenpunkt behalten, Text frei (z. B. «A1 km 14 Ri SG»)
     pos = null; $('eAdrOk').textContent = ''; showPos(); clearTimeout(sT);
     const q = $('eAdr').value.trim(); if (q.length < 3) { res = []; sug(); return; }
     sT = setTimeout(async () => {
@@ -295,10 +298,19 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   function planHint(e) {
     if (!e || e.lat == null) return '';
     let idx = []; try { idx = (JSON.parse(localStorage.getItem('fw-plaene')) || {}).list || []; } catch (x) {}
-    const dist = o => { const R = 6371000, r = Math.PI / 180, dLa = (o.lat - e.lat) * r, dLo = (o.lng - e.lng) * r; const a = Math.sin(dLa / 2) ** 2 + Math.cos(e.lat * r) * Math.cos(o.lat * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
-    const hits = idx.map(o => ({ ...o, d: dist(o) })).filter(o => o.d <= (o.radius || 100)).sort((a, b) => a.d - b.d);
+    // Abstand Einsatzort → Objekt: Punkt, Strecke (Korridor) oder Fläche (innen = 0 m)
+    const kx = 111320 * Math.cos(e.lat * Math.PI / 180), ky = 111320;
+    const xy = p => [(p[1] - e.lng) * kx, (p[0] - e.lat) * ky];
+    const dSeg = (a, b) => { const A = xy(a), B = xy(b), dx = B[0] - A[0], dy = B[1] - A[1], L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, -(A[0] * dx + A[1] * dy) / L)) : 0; return Math.hypot(A[0] + t * dx, A[1] + t * dy); };
+    const dLine = P => { let m = Infinity; for (let i = 0; i < P.length - 1; i++) m = Math.min(m, dSeg(P[i], P[i + 1])); return m; };
+    const inside = P => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const A = xy(P[i]), B = xy(P[j]); if ((A[1] > 0) !== (B[1] > 0) && 0 < (B[0] - A[0]) * (0 - A[1]) / (B[1] - A[1]) + A[0]) c = !c; } return c; };
+    const dist = o => { const P = o.pts || [];
+      if (o.geo === 'linie' && P.length > 1) return dLine(P);
+      if (o.geo === 'flaeche' && P.length > 2) return inside(P) ? 0 : dLine([...P, P[0]]);
+      return Math.hypot(...xy([o.lat, o.lng])); };
+    const hits = idx.map(o => ({ ...o, d: dist(o) })).filter(o => o.d <= (o.geo === 'flaeche' ? (o.radius || 0) : (o.radius || 100))).sort((a, b) => a.d - b.d);
     if (!hits.length) return '';
-    return `<div class="plhint"><b>Einsatzplan vorhanden</b>${hits.map(o => `<a href="../plaene/#o=${encodeURIComponent(o.id)}"><span>${esc(o.name)}${o.tags && o.tags.length ? '<small>' + esc(o.tags.slice(0, 3).join(' · ')) + '</small>' : ''}</span><em>${Math.round(o.d)} m →</em></a>`).join('')}</div>`;
+    return `<div class="plhint"><b>Einsatzplan vorhanden</b>${hits.map(o => `<a href="../plaene/#o=${encodeURIComponent(o.id)}"><span>${esc(o.name)}${o.tags && o.tags.length ? '<small>' + esc(o.tags.slice(0, 3).join(' · ')) + '</small>' : ''}</span><em>${o.d < 1 && o.geo === 'flaeche' ? 'im Sektor' : o.geo === 'linie' ? Math.round(o.d) + ' m neben Strecke' : Math.round(o.d) + ' m'} →</em></a>`).join('')}</div>`;
   }
   function show(edit) {
     const e = get();

@@ -79,7 +79,7 @@ async function runAll(cfg) {
       await Promise.race([F.waitForPendingWrites(fs), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))]);
       if (name === '[DEFAULT]') { // Index der Einsatzpläne für den Hinweis auf der Startseite auffrischen
         try { const q = await F.getDocs(F.collection(fs, 'pl_objekte'));
-          const list = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(o => o.lat != null).map(o => ({ id: o.id, name: o.name, adr: o.adr || '', lat: o.lat, lng: o.lng, radius: o.radius || 100, stand: o.stand || '', tags: o.tags || [] }));
+          const list = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(o => o.lat != null).map(o => ({ id: o.id, name: o.name, adr: o.adr || '', lat: o.lat, lng: o.lng, radius: o.radius || 100, stand: o.stand || '', tags: o.tags || [], geo: o.geo || 'punkt', pts: (o.line || []).map(p => [p.la, p.lo]) }));
           localStorage.setItem('fw-plaene', JSON.stringify({ t: Date.now(), list })); } catch (x) {}
       }
       rows[i].t = '✓ ' + hm(Date.now()); ok++; show();

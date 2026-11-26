@@ -117,7 +117,7 @@ input[type=range]{padding:0;min-height:36px;accent-color:var(--c)}
         <label>Objektname<input name="name" required autocomplete="off"></label>
         <label>Typ<select name="typ"><option>Schule</option><option>Heim / Spital</option><option>Gewerbe / Industrie</option><option>Halle / Versammlung</option><option>Hotel</option><option>Wohnen</option><option>Tiefgarage</option><option>Landwirtschaft</option><option>Anderes</option></select></label>
       </div>
-      <div class="addr"><label>Adresse (amtliches Verzeichnis)<input name="adr" autocomplete="off" placeholder="Strasse Nr., Ort"></label><div class="sug" id="sug" hidden></div></div>
+      <div class="addr"><label>Adresse bzw. Bezeichnung<input name="adr" autocomplete="off" placeholder="Strasse Nr., Ort – oder z. B. A1 km 12–18, Ri St. Gallen"></label><div class="sug" id="sug" hidden></div></div>
       <div class="sec">2 · PLAN</div>
       <div class="drop"><span class="pdfic">PDF</span><div class="t"><b id="pdfN">Noch kein PDF</b><small id="pdfI">max. 8 MB</small></div><label class="btn" style="margin:0">PDF wählen<input type="file" id="pdf" accept="application/pdf" hidden></label></div>
       <div class="row">
@@ -129,11 +129,13 @@ input[type=range]{padding:0;min-height:36px;accent-color:var(--c)}
       <label>Bemerkung<textarea name="bem" placeholder="z. B. Zufahrt über …, Schlüsseldepot beim Haupteingang"></textarea></label>
     </div>
     <div>
-      <div class="sec">4 · STANDORT &amp; RADIUS</div>
+      <div class="sec">4 · STANDORT &amp; BEREICH</div>
+      <div class="chips" id="cGeo" style="margin-bottom:10px"><button type="button" data-geo="punkt" class="on">Punkt</button><button type="button" data-geo="linie">Strecke (z. B. Autobahn)</button><button type="button" data-geo="flaeche">Fläche / Sektor</button></div>
       <div id="fMap"></div>
-      <p class="mute" style="font-size:14px;margin:6px 0 10px">Adresse wählen oder Karte antippen, um den Punkt zu setzen.</p>
-      <label>Radius für automatischen Hinweis: <b id="rV">100 m</b><input type="range" name="radius" min="20" max="500" step="10" value="100"></label>
-      <p class="mute" style="font-size:14px;margin:0">Liegt eine Einsatzadresse in diesem Kreis, zeigt die Startseite «Einsatzplan vorhanden».</p>
+      <div class="chips" id="geoTools" style="margin:8px 0 0" hidden><button type="button" id="gUndo">Letzten Punkt löschen</button><button type="button" id="gClear">Neu zeichnen</button></div>
+      <p class="mute" style="font-size:14px;margin:6px 0 10px" id="geoHint">Adresse wählen oder Karte antippen, um den Punkt zu setzen.</p>
+      <label><span id="rL">Radius für automatischen Hinweis</span>: <b id="rV">100 m</b><input type="range" name="radius" min="20" max="500" step="10" value="100"></label>
+      <p class="mute" style="font-size:14px;margin:0" id="geoInfo">Liegt eine Einsatzadresse in diesem Kreis, zeigt die Startseite «Einsatzplan vorhanden».</p>
     </div>
   </div>
   <p class="err" id="fErr"></p>
