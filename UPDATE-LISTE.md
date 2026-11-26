@@ -21,6 +21,13 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
   - Pläne nur in Firebase hinter dem Login, nie im öffentlichen Repo
   - Pläne liegen als PDF vor (Plansammlung noch im Aufbau, keine Eile)
 
+## Grundsatzentscheid
+
+- **Schweizer Datenschutz muss gewährleistet sein** → Daten und Apps zu einem Schweizer Anbieter (Favorit: Infomaniak) statt Firebase/Google und GitHub Pages
+  - Ersatz für Login, Sync und Dateispeicher nötig (z. B. eigener kleiner Server mit PocketBase oder Supabase bei Infomaniak)
+  - Umbau schrittweise planen, zuerst mit Gemeinde/Kommando abklären, ob es Vorgaben gibt
+  - Einsatzpläne erst nach dem Umzug einbauen (sensible Daten)
+
 ## Ideen (noch nicht entschieden)
 
 - Lagemonitor für Grossbildschirm im KP (Entwurf vorhanden)
