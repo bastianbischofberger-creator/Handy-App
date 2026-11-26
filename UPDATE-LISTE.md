@@ -68,3 +68,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Startseite v1.9 mit Kacheln Strassenrettung, Gefahrgut, Einsatzpläne (in Vorbereitung)
 - Einsatzpläne Testversion mit Hinweis «Einsatzplan vorhanden» auf der Startseite (v1.10)
 - iPad: Hintergrund scrollt nicht mehr mit, wenn ein Fenster offen ist; schnellere Touch-Reaktion (`shared/fwui.js`, ASÜ 3.7.1)
+- Startseite v1.11: «Online» antippen = alle Apps auf diesem Gerät synchronisieren (inkl. Index Einsatzpläne)

@@ -33,7 +33,7 @@ function ui() {
   dlg = document.createElement('dialog'); dlg.className = 'fws';
   dlg.innerHTML = '<h3>Synchronisation</h3><p class="res"></p><dl></dl><div class="bt"><button type="button" data-a="again">Nochmals synchronisieren</button><button type="button" class="pri" data-a="close">Schliessen</button></div>';
   document.body.appendChild(dlg);
-  dlg.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'close') dlg.close(); else run(); });
+  dlg.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'close') dlg.close(); else if (ctx && ctx.all) runAll(ctx.all); else run(); });
 }
 function set(t, c) {
   const r = dlg.querySelector('.res'); r.textContent = t; r.className = 'res' + (c ? ' ' + c : '');
@@ -51,7 +51,48 @@ async function run() {
   } catch (e) { set(errText(e), 'err'); }
   busy = false;
 }
+/* Startseite: alle Apps dieses Geräts auf einmal synchronisieren.
+   Jede App hat ihren eigenen Firebase-Speicher (Name) – hier wird jeder kurz geöffnet und abgeglichen. */
+const APPS = [['[DEFAULT]', 'ASÜ, Einsatzbilder, Einsatzpläne'], ['journal', 'Einsatzjournal'], ['mehrfach', 'Mehrfachereignisse'], ['schicht', 'Schichtplanung']];
+let allBusy = false;
+async function runAll(cfg) {
+  const res = dlg.querySelector('.res'), dl = dlg.querySelector('dl');
+  const rows = APPS.map(a => ({ n: a[1], t: '…' }));
+  const show = () => { dl.innerHTML = rows.map(r => `<dt>${esc(r.n)}</dt><dd>${esc(r.t)}</dd>`).join(''); };
+  if (!navigator.onLine) { res.textContent = 'Kein Internet – die Apps gleichen ab, sobald wieder Netz da ist.'; res.className = 'res err'; rows.forEach(r => r.t = '–'); show(); return; }
+  if (allBusy) return; allBusy = true; res.textContent = 'Synchronisiere alle Apps …'; res.className = 'res'; show();
+  let M;
+  try {
+    const B = 'https://www.gstatic.com/firebasejs/10.12.2/';
+    const [appM, Au, F] = await Promise.all([import(B + 'firebase-app.js'), import(B + 'firebase-auth.js'), import(B + 'firebase-firestore.js')]);
+    M = { appM, Au, F };
+  } catch (e) { res.textContent = 'Firebase nicht erreichbar.'; res.className = 'res err'; allBusy = false; return; }
+  const { appM, Au, F } = M; let ok = 0, err = 0;
+  await Promise.all(APPS.map(async ([name], i) => {
+    try {
+      const app = appM.getApps().find(x => x.name === name) || (name === '[DEFAULT]' ? appM.initializeApp(cfg) : appM.initializeApp(cfg, name));
+      const auth = Au.getAuth(app); await Au.setPersistence(auth, Au.indexedDBLocalPersistence).catch(() => {});
+      const user = await new Promise(r => { const u = Au.onAuthStateChanged(auth, x => { u(); r(x); }); });
+      if (!user || user.isAnonymous) { rows[i].t = 'nicht angemeldet'; show(); return; }
+      let fs; try { fs = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); } catch (e) { fs = F.getFirestore(app); }
+      await F.disableNetwork(fs); await F.enableNetwork(fs);
+      await Promise.race([F.waitForPendingWrites(fs), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))]);
+      if (name === '[DEFAULT]') { // Index der Einsatzpläne für den Hinweis auf der Startseite auffrischen
+        try { const q = await F.getDocs(F.collection(fs, 'pl_objekte'));
+          const list = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(o => o.lat != null).map(o => ({ id: o.id, name: o.name, adr: o.adr || '', lat: o.lat, lng: o.lng, radius: o.radius || 100, stand: o.stand || '', tags: o.tags || [] }));
+          localStorage.setItem('fw-plaene', JSON.stringify({ t: Date.now(), list })); } catch (x) {}
+      }
+      rows[i].t = '✓ ' + hm(Date.now()); ok++; show();
+    } catch (e) { rows[i].t = errText(e); err++; show(); }
+  }));
+  lastOk = Date.now();
+  res.textContent = err ? `${ok} synchronisiert, ${err} mit Fehler` : (ok ? '✓ Alle Apps synchronisiert ' + hm(lastOk) : 'Auf diesem Gerät ist noch keine App angemeldet.');
+  res.className = 'res ' + (err ? 'err' : ok ? 'ok' : '');
+  allBusy = false;
+  if (ctx && ctx.onDone) try { ctx.onDone(); } catch (x) {}
+}
 window.FWSync = {
-  open(o) { ctx = o; ui(); if (!dlg.open) dlg.showModal(); run(); }
+  open(o) { ctx = o; ui(); if (!dlg.open) dlg.showModal(); run(); },
+  openAll(cfg, onDone) { ctx = { all: cfg, onDone }; ui(); if (!dlg.open) dlg.showModal(); runAll(cfg); }
 };
 })();

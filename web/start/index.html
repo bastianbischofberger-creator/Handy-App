@@ -24,7 +24,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system
 .top h1{font:600 26px/1.05 "Barlow Condensed",sans-serif;margin:0;flex:1}
 .top h1 small{display:block;font:500 14px Barlow,sans-serif;opacity:.9;margin-top:3px}
 #clock{font:700 clamp(30px,6vw,46px)/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.net{font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
+.net{border:0;color:#fff;cursor:pointer;font-family:Barlow,sans-serif;min-height:0;font-size:13.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.18);white-space:nowrap}
 .net::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#5ee08f;vertical-align:1px}
 .net.off::before{background:var(--warn)}
 main{max-width:1100px;margin:0 auto;padding:22px max(4vw,16px) calc(24px + env(safe-area-inset-bottom))}
@@ -77,7 +77,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
 <header class="top">
   <img src="logo.png" alt="Feuerwehr RTL">
   <h1>FW RTL Einsatz<small>Feuerwehr Rheineck-Thal-Lutzenberg</small></h1>
-  <span id="net" class="net">Online</span>
+  <button type="button" id="net" class="net" title="Antippen: alle Apps synchronisieren">Online</button>
   <div id="clock">--:--</div>
 </header>
 
@@ -200,10 +200,13 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.10 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.11 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
+<script src="../asue/config.js"></script>
+<script src="../shared/fwui.js?v=1"></script>
+<script src="../shared/fwsync.js?v=2"></script>
 <script>
 // Uhr
 const clock = document.getElementById('clock');
@@ -214,6 +217,8 @@ tick(); setInterval(tick, 10000);
 const net = document.getElementById('net');
 const upd = () => { const on = navigator.onLine; net.textContent = on ? 'Online' : 'Offline'; net.classList.toggle('off', !on); };
 addEventListener('online', upd); addEventListener('offline', upd); upd();
+// Antippen = alle Apps auf diesem Gerät synchronisieren (inkl. Index der Einsatzpläne für den Hinweis)
+net.addEventListener('click', () => { const c = window.ASUE_CONFIG && window.ASUE_CONFIG.firebase; if (!c || !window.FWSync) return; FWSync.openAll(c, () => { if (window.fwRefreshEinsatz) window.fwRefreshEinsatz(); }); });
 
 // Installations-Hinweis ausblenden, wenn bereits als App geöffnet
 if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) document.getElementById('installHint').hidden = true;
@@ -307,6 +312,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   $('eCancel').onclick = () => show(false);
   $('eEnd').onclick = () => { if (!confirm('Einsatz beenden?')) return; put(null); ['eBez', 'eAdr', 'eEl'].forEach(i => $(i).value = ''); $('eAdrOk').textContent = ''; pos = null; show(false); };
   show(false);
+  window.fwRefreshEinsatz = () => show(false);
 })();
 </script>
 </body>
