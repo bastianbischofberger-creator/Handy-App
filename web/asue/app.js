@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.6.1';
+const VERSION = '3.7.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -72,8 +72,10 @@ async function CloudBackend(fbConfig) {
   try { fs = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
   catch (e) { fs = F.getFirestore(app); }
   const E = F.collection(fs, 'einsaetze');
-  const fail = e => { SY.error = (e && e.code === 'permission-denied') ? 'Kein Zugriff (Konto nicht freigegeben)' : 'Sync-Fehler: ' + (e && (e.code || e.message)); renderSync(); };
-  const w = p => p.then(() => { if (SY.error) { SY.error = ''; renderSync(); } }, fail);
+  const fail = e => { SY.error = syErr(e); renderSync(); };
+  SY.open = 0;
+  const w = p => { SY.open++; return p.then(() => { SY.open--; SY.lastOk = Date.now(); if (SY.error) { SY.error = ''; renderSync(); } }, e => { SY.open--; fail(e); }); };
+  const seen = md => { if (!md.fromCache && !md.hasPendingWrites) SY.lastOk = Date.now(); };
   let subs = [];
   // iOS trennt die Verbindung im Hintergrund; Firestore wartet danach teils bis zu einer Minute.
   // Beim Zurückkehren in die App bzw. wenn das Netz wieder da ist: sofort neu verbinden.
@@ -94,9 +96,15 @@ async function CloudBackend(fbConfig) {
       let meta = {}, teams = [], log = []; const p = { m: false, t: false, l: false };
       const emit = () => { SY.pending = p.m || p.t || p.l; if (SY.error && !SY.pending) SY.error = ''; cb({ meta, teams, log }); renderSync(); };
       const o = { includeMetadataChanges: true };
-      subs.push(F.onSnapshot(F.doc(E, eid), o, d => { meta = d.exists() ? d.data() : {}; p.m = d.metadata.hasPendingWrites; emit(); }, fail));
-      subs.push(F.onSnapshot(F.collection(E, eid, 'teams'), o, q => { teams = q.docs.map(d => d.data()); p.t = q.metadata.hasPendingWrites; emit(); }, fail));
-      subs.push(F.onSnapshot(F.query(F.collection(E, eid, 'log'), F.orderBy('t')), o, q => { log = q.docs.map(d => d.data()); p.l = q.metadata.hasPendingWrites; emit(); }, fail));
+      subs.push(F.onSnapshot(F.doc(E, eid), o, d => { meta = d.exists() ? d.data() : {}; p.m = d.metadata.hasPendingWrites; seen(d.metadata); emit(); }, fail));
+      subs.push(F.onSnapshot(F.collection(E, eid, 'teams'), o, q => { teams = q.docs.map(d => d.data()); p.t = q.metadata.hasPendingWrites; seen(q.metadata); emit(); }, fail));
+      subs.push(F.onSnapshot(F.query(F.collection(E, eid, 'log'), F.orderBy('t')), o, q => { log = q.docs.map(d => d.data()); p.l = q.metadata.hasPendingWrites; seen(q.metadata); emit(); }, fail));
+    },
+    // «Jetzt synchronisieren»: Verbindung neu aufbauen und warten, bis der Server alle Änderungen bestätigt hat
+    async forceSync() {
+      await F.disableNetwork(fs); await F.enableNetwork(fs);
+      await Promise.race([F.waitForPendingWrites(fs), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))]);
+      SY.lastOk = Date.now();
     },
     create(meta) { const id = uid(); w(F.setDoc(F.doc(E, id), clone(meta))); return id; },
     putMeta(eid, meta) { w(F.setDoc(F.doc(E, eid), clone(meta))); },
@@ -262,6 +270,30 @@ function render() {
   document.body.classList.toggle('nobau', LP.get('bau') === 'aus');
   renderBau(); renderList(); renderSync(); tick();
 }
+function syErr(e) {
+  const c = e && e.code;
+  if (c === 'permission-denied') return 'Kein Zugriff (Konto nicht freigegeben)';
+  if (c === 'resource-exhausted') return 'Tageslimit von Firebase erreicht';
+  if (c === 'unavailable') return 'Server nicht erreichbar';
+  return 'Sync-Fehler: ' + (e && (c || e.message));
+}
+/* Status antippen = jetzt synchronisieren */
+function syInfo() {
+  $('#syInfo').innerHTML = `<dt>Letzte Bestätigung vom Server</dt><dd>${SY.lastOk ? hms(SY.lastOk) : '–'}</dd><dt>Offene Änderungen</dt><dd>${SY.mode === 'cloud' ? (SY.open || 0) : '–'}</dd><dt>Gerät</dt><dd>${esc(LP.get('dev') || '–')}</dd><dt>Konto</dt><dd>${esc(SY.user ? SY.user.email : '–')}</dd>`;
+}
+let syBusy = false;
+async function runSync() {
+  const res = $('#syRes'), set = (t, c) => { res.textContent = t; res.className = c || ''; syInfo(); };
+  if (SY.mode !== 'cloud') return set('Nur dieses Gerät – keine Synchronisation eingerichtet.');
+  if (!SY.user) return set('Nicht angemeldet.', 'err');
+  if (!navigator.onLine) return set('Kein Internet – die Änderungen werden abgeglichen, sobald wieder Netz da ist.', 'err');
+  if (syBusy) return; syBusy = true; set('Synchronisiere …'); $('#syAgain').disabled = true;
+  try { await BE.forceSync(); SY.error = ''; set('✓ Synchronisiert ' + hm(Date.now()), 'ok'); }
+  catch (e) { set(e && e.message === 'timeout' ? 'Server antwortet nicht. Internet prüfen und nochmals versuchen.' : syErr(e), 'err'); }
+  syBusy = false; $('#syAgain').disabled = false; renderSync();
+}
+$('#sync').onclick = () => { $('#dSync').showModal(); runSync(); };
+$('#syAgain').onclick = runSync;
 function renderSync() {
   const el = $('#sync'); let t, c;
   if (SY.mode === 'local') { t = 'Nur dieses Gerät'; c = ''; }
@@ -366,6 +398,7 @@ function openTeam(id) {
   if (T) { f.elements.nr.value = T.nr; f.elements.kanal.value = T.kanal || ''; f.elements.auftrag.value = T.auftrag || ''; f.elements.zusatz.value = T.zusatz || ''; T.members.forEach((m, i) => { f.elements['n' + i].value = m.name; f.elements['p' + i].value = m.full === false ? m.p0 : ''; }); }
   else { const max = S.teams.reduce((a, t) => Math.max(a, parseInt(t.nr) || 0), 0); f.elements.nr.value = max + 1; const last = S.teams[S.teams.length - 1]; f.elements.kanal.value = kanalStd() || presets()[0] || ''; f.elements.auftrag.value = ''; }
   for (let i = 0; i < 3; i++) { f.elements['p' + i].placeholder = S.settings.defP0 + '+'; const locked = T && T.status !== 'bereit'; f.elements['p' + i].disabled = !!locked; f.elements['n' + i].disabled = !!(locked && !T.members[i]); const qb = document.querySelector(`[data-qr="n${i}"]`); if (qb) qb.disabled = f.elements['n' + i].disabled; }
+  for (let i = 0; i < 3; i++) { const inp = f.elements['n' + i], pick = personal().length > 0; inp.readOnly = pick; inp.classList.toggle('np', pick); }
   f.elements.kanal.hidden = true; renderPick('kChips', 'kanal', presets(), 'Anderer …');
   fillSel('aufSel', 'auftrag', auftraege(), f.elements.auftrag.value.trim(), 'Freitext …', '– Auftrag wählen –'); syncZusatz();
   f.elements.stock.hidden = true; renderPick('sChips', 'stock', [...floors()].reverse(), 'Anderer Ort …', 'Bereit');
@@ -397,14 +430,96 @@ $('#fTeam').addEventListener('submit', e => {
   }
 });
 
+/* ---------- Ziffernblock statt iPad-Tastatur ---------- */
+const padHtml = nx => ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'nx'].map(k => k === 'del' ? '<button type="button" class="del" data-np="del" aria-label="Löschen">⌫</button>' : k === 'nx' ? `<button type="button" class="nx" data-np="nx">${nx}</button>` : `<button type="button" data-np="${k}">${k}</button>`).join('');
+const isDigit = k => /^[0-9]$/.test(k);
+let pAct = 0;
+const pInputs = () => [...$('#pRows').querySelectorAll('input')];
+function pSetAct(i) { const l = pInputs(); if (!l.length) return; pAct = (i + l.length) % l.length; l.forEach((x, j) => x.classList.toggle('act', j === pAct)); }
+function pKey(k) {
+  const l = pInputs(), inp = l[pAct]; if (!inp) return; $('#pErr').textContent = '';
+  if (k === 'del') inp.value = inp.value.slice(0, -1);
+  else if (k === 'nx') pSetAct(pAct + 1);
+  else if (inp.value.length < 3) { inp.value += k; if (inp.value.length === 3 && pAct < l.length - 1) pSetAct(pAct + 1); }
+}
+$('#pPad').innerHTML = padHtml('Weiter');
+$('#pPad').addEventListener('click', e => { const b = e.target.closest('[data-np]'); if (b) pKey(b.dataset.np); });
+$('#pRows').addEventListener('click', e => { const i = pInputs().indexOf(e.target.closest('input')); if (i >= 0) pSetAct(i); });
+// Notebook / externe Tastatur
+$('#dP').addEventListener('keydown', e => {
+  if (isDigit(e.key)) { e.preventDefault(); pKey(e.key); }
+  else if (e.key === 'Backspace') { e.preventDefault(); pKey('del'); }
+  else if (e.key === 'Tab') { e.preventDefault(); pSetAct(pAct + (e.shiftKey ? -1 : 1)); }
+  else if (e.key === 'Enter') { e.preventDefault(); $('#fP').requestSubmit($('#fP .pri')); }
+});
+/* Einzelwert per Ziffernblock (Trupp-Nr., Anfangsdruck) */
+let numCtx = null;
+function numShow() { const v = $('#numV'); v.textContent = numCtx.v || numCtx.inp.placeholder || '–'; v.style.color = numCtx.v ? '' : 'var(--mute)'; }
+function openNum(inp, title) { numCtx = { inp, v: inp.value }; $('#numT').textContent = title; numShow(); $('#dNum').returnValue = ''; $('#dNum').showModal(); }
+function numKey(k) {
+  if (k === 'del') numCtx.v = numCtx.v.slice(0, -1);
+  else if (k === 'nx') { $('#fNum').requestSubmit($('#fNum .pri')); return; }
+  else if (numCtx.v.length < 3) numCtx.v += k;
+  numShow();
+}
+$('#numPad').innerHTML = padHtml('OK');
+$('#numPad').addEventListener('click', e => { const b = e.target.closest('[data-np]'); if (b) numKey(b.dataset.np); });
+$('#dNum').addEventListener('keydown', e => {
+  if (isDigit(e.key)) { e.preventDefault(); numKey(e.key); } else if (e.key === 'Backspace') { e.preventDefault(); numKey('del'); }
+  else if (e.key === 'Enter') { e.preventDefault(); numKey('nx'); }
+});
+$('#fNum').addEventListener('submit', e => { if (e.submitter && e.submitter.value === 'ok' && numCtx) numCtx.inp.value = numCtx.v; });
+{ const f = $('#fTeam');
+  for (const [n, t] of [['nr', 'Trupp-Nr.'], ['p0', 'Anfangsdruck Name 1'], ['p1', 'Anfangsdruck Name 2'], ['p2', 'Anfangsdruck Name 3']]) {
+    const inp = f.elements[n]; inp.readOnly = true; inp.classList.add('np'); inp.setAttribute('inputmode', 'none'); inp.type = 'text';
+    inp.addEventListener('click', () => { if (!inp.disabled) openNum(inp, t + (n === 'nr' ? '' : ' (leer = ' + (S.settings.defP0 || 300) + '+)')); });
+  } }
+
+/* ---------- Personen-Auswahl statt Tastatur ---------- */
+let psIdx = 0;
+const nameInp = i => $('#fTeam').elements['n' + i];
+const psSlotOk = i => !nameInp(i).disabled;
+const nrm = x => String(x || '').trim().toLowerCase();
+function psBusy(p) { const t = S.teams.find(t => t.id !== editId && !t.hidden && t.status !== 'draussen' && t.members.some(x => nrm(x.name) === nrm(pName(p)))); return t ? t.nr : null; }
+function renderPicker() {
+  const lab = ['Truppführer', 'Name 2', 'Name 3'];
+  $('#psT').textContent = (lab[psIdx] || 'Person') + ' wählen';
+  $('#psSlots').innerHTML = [0, 1, 2].filter(psSlotOk).map(i => `<button type="button" data-slot="${i}" class="${i === psIdx ? 'on' : ''}">${lab[i]}: ${esc(nameInp(i).value || '–')}</button>`).join('');
+  const chosen = [0, 1, 2].map(i => nrm(nameInp(i).value));
+  const list = [...personal()].sort((a, b) => pName(a).localeCompare(pName(b), 'de'));
+  const inE = new Set(S.teams.flatMap(t => t.members.map(m => nrm(m.name))));
+  const btn = p => { const b = psBusy(p), sel = chosen.includes(nrm(pName(p))); return `<button type="button" data-pn="${esc(pName(p))}" class="${b ? 'busy' : ''}${sel ? ' sel' : ''}"${b ? ' disabled' : ''}><span>${esc(p.name)} ${esc(p.vorname)}</span><small>${esc([p.rang, p.nr ? 'Nr. ' + p.nr : '', b ? 'in Trupp ' + b : ''].filter(Boolean).join(' · ')) || '&nbsp;'}</small></button>`; };
+  const recent = list.filter(p => inE.has(nrm(pName(p))));
+  let html = recent.length ? `<h4>In diesem Einsatz</h4>${recent.map(btn).join('')}` : '', last = '';
+  const letters = new Set();
+  for (const p of list) { const L = (p.name || '?')[0].toUpperCase(); if (L !== last) { html += `<h4 id="ps-${esc(L)}">${esc(L)}</h4>`; last = L; letters.add(L); } html += btn(p); }
+  $('#psList').innerHTML = html;
+  $('#psAz').innerHTML = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(L => `<button type="button" data-az="${L}"${letters.has(L) ? '' : ' disabled'}>${L}</button>`).join('');
+}
+function openPicker(i) { psIdx = i; renderPicker(); $('#dPers').showModal(); $('#psList').scrollTop = 0; }
+$('#psSlots').addEventListener('click', e => { const b = e.target.closest('[data-slot]'); if (b) { psIdx = +b.dataset.slot; renderPicker(); } });
+$('#psAz').addEventListener('click', e => { const b = e.target.closest('[data-az]'); if (!b) return; const h = document.getElementById('ps-' + b.dataset.az); if (h) $('#psList').scrollTop = h.offsetTop - $('#psList').offsetTop; });
+$('#psList').addEventListener('click', e => {
+  const b = e.target.closest('[data-pn]'); if (!b || b.disabled) return;
+  const name = b.dataset.pn;
+  [0, 1, 2].forEach(i => { if (i !== psIdx && nrm(nameInp(i).value) === nrm(name)) nameInp(i).value = ''; });
+  nameInp(psIdx).value = name;
+  const next = [0, 1, 2].find(i => i > psIdx && psSlotOk(i) && !nameInp(i).value);
+  if (next === undefined) { $('#dPers').close(); return; }
+  psIdx = next; renderPicker();
+});
+$('#psClear').onclick = () => { nameInp(psIdx).value = ''; renderPicker(); };
+$('#psOther').onclick = () => { const inp = nameInp(psIdx); $('#dPers').close(); inp.readOnly = false; inp.classList.remove('np'); inp.value = ''; inp.focus(); };
+for (let i = 0; i < 3; i++) nameInp(i).addEventListener('click', () => { const inp = nameInp(i); if (inp.readOnly && !inp.disabled) openPicker(i); });
+
 let pCtx = null;
 function openP(id, mode) {
   const T = team(id); pCtx = { id, mode };
   $('#pTitle').textContent = { check: 'Druck erfassen', arr: 'Am Arbeitsort', out: 'Trupp draussen' }[mode] + ' – Trupp ' + T.nr;
   $('#pHint').textContent = { check: 'Aktuellen Druck pro Person in bar eingeben.', arr: 'Druck bei Ankunft am Arbeitsort. Daraus wird bei entsprechender Einstellung der Rückzugsdruck berechnet.', out: 'Enddruck eingeben (optional). Der Trupp wird als draussen erfasst.' }[mode];
   $('#pErr').textContent = '';
-  $('#pRows').innerHTML = T.members.map((m, i) => `<label class="prow"><span>${esc(m.name)}</span><input name="q${i}" type="number" inputmode="numeric" placeholder="${m.readings[m.readings.length - 1].p}"></label>`).join('');
-  $('#dP').showModal(); setTimeout(() => { const i = $('#pRows input'); if (i) i.focus(); }, 50);
+  $('#pRows').innerHTML = T.members.map((m, i) => `<label class="prow"><span>${esc(m.name)}</span><input name="q${i}" class="np" readonly inputmode="none" autocomplete="off" placeholder="${m.readings[m.readings.length - 1].p}"></label>`).join('');
+  $('#dP').showModal(); pSetAct(0);
 }
 $('#fP').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value !== 'ok') return;
@@ -690,6 +805,7 @@ function persMatches(q) {
 }
 function showSugg(inp) {
   const box = inp.parentElement.querySelector('.sugg'); if (!box) return;
+  if (inp.readOnly) { box.hidden = true; return; }
   const m = persMatches(inp.value);
   if (!m.length || m.some(p => pName(p) === inp.value.trim()) && m.length === 1) { box.hidden = true; return; }
   const busy = p => { const t = S.teams.find(t => t.id !== editId && !t.hidden && t.status !== 'draussen' && t.members.some(x => x.name.trim().toLowerCase() === pName(p).toLowerCase())); return t ? t.nr : null; };

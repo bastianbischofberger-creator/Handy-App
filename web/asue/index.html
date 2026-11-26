@@ -122,6 +122,25 @@ body:not(.dashmode) #dash{display:none}
 .foot{color:var(--mute);font-size:13.5px;margin-top:16px;max-width:75ch}
 dialog{border:0;border-radius:14px;padding:0;width:min(560px,94vw);background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.4)}
 dialog::backdrop{background:rgba(0,0,0,.55)}
+/* Ziffernblock (statt iPad-Tastatur) */
+.npad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.npad button{min-height:64px;font:700 28px Barlow,sans-serif;border-radius:12px;touch-action:manipulation}
+.npad button.del{background:color-mix(in srgb,var(--line) 60%,var(--field))}.npad button.nx{font-size:19px;background:var(--ink);color:var(--card);border-color:var(--ink)}
+input.np{cursor:pointer;caret-color:transparent}input.np.act{outline:4px solid var(--warn);outline-offset:0;background:color-mix(in srgb,var(--warn) 14%,var(--field))}
+#dP{width:min(820px,96vw)}.play{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+@media(max-width:640px){.play{grid-template-columns:1fr}}
+.prow{min-height:64px}.prow input{min-height:60px;font-size:34px;font-weight:700}
+#dNum{width:min(360px,94vw)}#numV{font:700 40px Barlow,sans-serif;text-align:center;min-height:60px;margin:0 0 12px}
+/* Personen-Auswahl */
+#dPers{width:min(760px,96vw)}.az{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px}.az button{min-height:40px;min-width:40px;padding:4px 6px;font-size:16px}
+.az button:disabled{opacity:.3}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;max-height:52vh;overflow:auto;padding:2px}
+.plist button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-height:62px;gap:0}.plist button small{font-size:13px;color:var(--mute);font-weight:500}
+.plist button.busy{opacity:.45}.plist button.sel{border:3px solid var(--warn)}.plist h4{grid-column:1/-1;margin:6px 0 0;font:600 18px 'Barlow Condensed',sans-serif;color:var(--mute)}
+.pslots{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}.pslots button{min-height:40px;font-size:15px}.pslots button.on{background:var(--warn);color:#1a1a1a;border-color:var(--warn)}
+.top button.sync{min-height:0;border:0;color:#fff;cursor:pointer;font:600 13.5px Barlow,sans-serif;padding:4px 10px}
+#dSync dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0 0 6px}#dSync dt{color:var(--mute)}#dSync dd{margin:0;font-weight:600}
+#syRes{font-size:20px;font-weight:700;margin:4px 0 12px}#syRes.ok{color:var(--ok)}#syRes.err{color:var(--red)}
 dialog form,.dpad{padding:18px}
 dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 14px}
 label{display:block;font-size:14px;color:var(--mute);margin-bottom:10px}
@@ -281,7 +300,7 @@ label select+input{margin-top:6px}
   <h1>Atemschutzüberwachung<small id="sub"></small></h1>
   <div id="clock">--:--:--</div>
   <div class="ez">Einsatzzeit<b id="einsatz">00:00:00</b></div>
-  <span class="sync" id="sync">Startet …</span>
+  <button type="button" class="sync" id="sync" title="Antippen: jetzt synchronisieren">Startet …</button>
   <button id="muteInd" class="muteind" hidden title="Ton ist aus – tippen zum Einschalten"></button>
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
@@ -348,7 +367,7 @@ label select+input{margin-top:6px}
 <dialog id="dP"><form method="dialog" id="fP">
   <h3 id="pTitle">Druck erfassen</h3>
   <p class="hint" id="pHint"></p>
-  <div id="pRows"></div>
+  <div class="play"><div><div id="pRows"></div><p class="hint">Feld antippen, dann Druck eingeben. Nach 3 Ziffern geht es zur nächsten Person.</p></div><div class="npad" id="pPad"></div></div>
   <p class="err" id="pErr"></p>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Speichern</button></div>
 </form></dialog>
@@ -470,6 +489,28 @@ label select+input{margin-top:6px}
     <div class="dbtn" style="margin-top:10px"><button type="button" data-n="back">Zurück</button></div>
   </div>
 </div></dialog>
+
+<dialog id="dNum"><form method="dialog" id="fNum">
+  <h3 id="numT">Wert</h3>
+  <p id="numV">–</p>
+  <div class="npad" id="numPad"></div>
+  <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok">Übernehmen</button></div>
+</form></dialog>
+
+<dialog id="dPers"><form method="dialog" id="fPers">
+  <h3 id="psT">Person wählen</h3>
+  <div class="pslots" id="psSlots"></div>
+  <div class="az" id="psAz"></div>
+  <div class="plist" id="psList"></div>
+  <div class="dbtn"><button type="button" id="psOther">Andere Person (Tastatur) …</button><button type="button" id="psClear">Feld leeren</button><button class="pri" value="ok">Fertig</button></div>
+</form></dialog>
+
+<dialog id="dSync"><form method="dialog">
+  <h3>Synchronisation</h3>
+  <p id="syRes">…</p>
+  <dl id="syInfo"></dl>
+  <div class="dbtn"><button type="button" id="syAgain">Nochmals synchronisieren</button><button class="pri" value="ok">Schliessen</button></div>
+</form></dialog>
 
 <dialog id="dC"><form method="dialog">
   <h3 id="cTitle">Sicher?</h3>
