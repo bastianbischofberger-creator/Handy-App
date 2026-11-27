@@ -2,11 +2,12 @@
    Route ab Depot(s) zum Einsatzort. Berücksichtigt zeitlich begrenzte Strassensperren (mit optionaler Umleitung)
    und die Vorgabe «Bahnübergänge meiden». Routing: Valhalla (valhalla1.openstreetmap.de, FOSSGIS),
    Bahnübergänge: OpenStreetMap über die Overpass-API. Gemeinsame Daten: Firestore config/routing. */
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 const CFG = window.RT_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+// Öffentliche OpenStreetMap-Abfragedienste – oft überlastet, darum mehrere der Reihe nach versuchen
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const TILE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg';
 const HOME = [47.4655, 9.5905];
 const W_SP = 14, W_BX = 15;          // halbe Breite Sperr-Korridor / Bahnübergangs-Quadrat in Metern
@@ -111,7 +112,9 @@ function drawBase() {
   }
   for (const x of D.bahn.list) {
     L.marker([x.lat, x.lng], { icon: L.divIcon({ className: '', html: `<div class="lx${x.ok ? ' ok' : ''}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] }) })
-      .on('click', () => { if (mode) return; x.ok = !x.ok; save(); drawBase(); msg(x.ok ? 'Bahnübergang erlaubt' : 'Bahnübergang wird gemieden'); }).addTo(gBase);
+      .on('click', () => { if (mode) return;
+        if (x.man && confirm('Von Hand gesetzten Bahnübergang löschen?\n(Abbrechen = nur zwischen «meiden» und «erlaubt» umschalten)')) { D.bahn.list = D.bahn.list.filter(y => y !== x); save(); renderAll(); return; }
+        x.ok = !x.ok; save(); drawBase(); msg(x.ok ? 'Bahnübergang erlaubt' : 'Bahnübergang wird gemieden'); }).addTo(gBase);
   }
   for (const d of D.depots) L.marker([d.lat, d.lng], { icon: pinIcon('#16181a', d.name) }).addTo(gBase);
   if (ziel) L.marker([ziel.lat, ziel.lng], { icon: pinIcon('#c8102e', 'Einsatz') }).addTo(gBase);
@@ -119,7 +122,7 @@ function drawBase() {
 
 /* ---------- Zeichnen ---------- */
 let mode = null, pts = [], drawCtx = null;
-function startDraw(m, ctx, text) { mode = m; pts = []; drawCtx = ctx; $('#drawT').textContent = text; $('#draw').hidden = false; $('#dUndo').hidden = $('#dDone').hidden = !(m === 'sperre' || m === 'uml'); drawTmp(); }
+function startDraw(m, ctx, text) { mode = m; pts = []; drawCtx = ctx; $('#drawT').textContent = text; $('#draw').hidden = false; $('#dUndo').hidden = $('#dDone').hidden = !(m === 'sperre' || m === 'uml'); $('#dCancel').textContent = m === 'bahn' ? 'Fertig' : 'Abbrechen'; drawTmp(); }
 function endDraw() { mode = null; pts = []; drawCtx = null; $('#draw').hidden = true; gDraw.clearLayers(); }
 function drawTmp() { gDraw.clearLayers(); if (pts.length) { L.polyline(pts, { color: mode === 'uml' ? '#1d7a46' : '#c8102e', weight: 7 }).addTo(gDraw); pts.forEach(p => L.circleMarker(p, { radius: 6, color: '#fff', weight: 2, fillColor: '#16181a', fillOpacity: 1 }).addTo(gDraw)); } }
 map.on('click', e => {
@@ -127,6 +130,7 @@ map.on('click', e => {
   if (mode === 'ziel') { ziel = { lat: p[0], lng: p[1], label: 'Punkt auf Karte' }; $('#zAdr').value = ''; endDraw(); drawBase(); return; }
   if (mode === 'depot') { D.depots.push({ id: uid(), name: drawCtx.name, lat: p[0], lng: p[1] }); endDraw(); save(); renderAll(); msg('Depot gespeichert'); return; }
   if (mode === 'sperre' || mode === 'uml') { pts.push(p); drawTmp(); }
+  if (mode === 'bahn') { D.bahn.list.push({ id: 'm' + uid(), lat: +p[0].toFixed(6), lng: +p[1].toFixed(6), ok: false, man: true }); save(); renderAll(); msg('Bahnübergang gesetzt'); }
 });
 $('#dUndo').onclick = () => { pts.pop(); drawTmp(); };
 $('#dCancel').onclick = endDraw;
@@ -181,15 +185,24 @@ $('#bMeiden').onchange = e => { D.bahn.meiden = e.target.checked; save(); };
 $('#bLoadBahn').onclick = async () => {
   if (map.getZoom() < 12) return msg('Bitte näher hineinzoomen (Gemeindegebiet)');
   const b = map.getBounds(), bb = [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map(v => v.toFixed(5)).join(',');
-  msg('Lade Bahnübergänge …');
+  const q = `[out:json][timeout:20];node["railway"="level_crossing"](${bb});out;`;
+  $('#bLoadBahn').disabled = true;
   try {
-    const q = `[out:json][timeout:25];node["railway"="level_crossing"](${bb});out;`;
-    const r = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    let r = null, n = 0;
+    for (const srv of OVERPASS) {
+      msg(`Lade Bahnübergänge … (Server ${++n} von ${OVERPASS.length})`);
+      const ac = new AbortController(), to = setTimeout(() => ac.abort(), 20000);
+      try { const res = await fetch(srv + '?data=' + encodeURIComponent(q), { signal: ac.signal }); if (res.ok) { r = await res.json(); clearTimeout(to); break; } } catch (e) {}
+      clearTimeout(to);
+    }
+    if (!r) throw new Error('alle Server');
     const old = new Map(D.bahn.list.map(x => [x.id, x])); let neu = 0;
     for (const n of r.elements || []) { if (!old.has('n' + n.id)) { old.set('n' + n.id, { id: 'n' + n.id, lat: n.lat, lng: n.lon, ok: false }); neu++; } }
     D.bahn.list = [...old.values()]; save(); renderAll(); msg(`${(r.elements || []).length} Bahnübergänge im Ausschnitt, ${neu} neu`);
-  } catch (e) { msg('Laden fehlgeschlagen (Internet / Overpass-Dienst)'); }
+  } catch (e) { msg('OpenStreetMap-Dienst antwortet nicht. Später nochmals versuchen oder Übergänge von Hand setzen.'); }
+  $('#bLoadBahn').disabled = false;
 };
+$('#bAddBahn').onclick = () => { if (!S.user) return msg('Zuerst anmelden'); startDraw('bahn', null, 'Bahnübergänge auf der Karte antippen – mehrere nacheinander möglich'); };
 
 /* ---------- Ziel ---------- */
 $('#bZielMap').onclick = () => startDraw('ziel', null, 'Einsatzort auf der Karte antippen');
