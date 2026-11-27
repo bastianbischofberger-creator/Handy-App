@@ -225,7 +225,7 @@ footer{margin-top:18px;text-align:center;color:var(--mute);font-size:13px}
     damit sie auch offline laufen.
   </div>
 
-  <footer>Feuerwehr RTL · Startseite v1.15 · Testversionen</footer>
+  <footer>Feuerwehr RTL · Startseite v1.16 · Testversionen</footer>
 </main>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
@@ -289,7 +289,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   }
   function pick(i) { const a = res[i]; if (!a) return; $('eAdr').value = fmt(a.label); pos = { lat: a.lat, lng: a.lon }; res = []; sug(); $('eAdrOk').textContent = '✓ Adresse gefunden'; showPos(); }
   $('eAdr').addEventListener('input', () => {
-    if ($('eAdrOk').textContent.includes('Karte')) { clearTimeout(sT); return; } // Kartenpunkt behalten, Text frei (z. B. «A1 km 14 Ri SG»)
+    if ($('eAdrOk').textContent.includes('Karte') && $('eAdr').value.trim()) { clearTimeout(sT); return; } // Kartenpunkt behalten, Text frei (z. B. «A1 km 14 Ri SG»)
     pos = null; $('eAdrOk').textContent = ''; showPos(); clearTimeout(sT);
     const q = $('eAdr').value.trim(); if (q.length < 3) { res = []; sug(); return; }
     sT = setTimeout(async () => {

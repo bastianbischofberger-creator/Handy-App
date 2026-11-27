@@ -29,6 +29,8 @@ if (document.body) start(); else document.addEventListener('DOMContentLoaded', s
 // Wischen auf dem abgedunkelten Hintergrund nie an die Seite weitergeben
 document.addEventListener('touchmove', e => {
   const d = document.querySelector('dialog[open]');
-  if (d && (e.target === d || !d.contains(e.target))) e.preventDefault();
+  if (!d || !e.touches[0]) return;
+  const r = d.getBoundingClientRect(), t = e.touches[0];
+  if (t.clientX < r.left || t.clientX > r.right || t.clientY < r.top || t.clientY > r.bottom) e.preventDefault();
 }, { passive: false });
 })();

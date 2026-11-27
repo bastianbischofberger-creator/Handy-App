@@ -1,7 +1,7 @@
 /* Einsatzpläne – Feuerwehr RTL. Objektpläne (PDF) mit Standort und Radius. Gespeichert in Firestore
    («pl_objekte», PDF in Stücken unter «chunks»), nur für Konten. Für die Startseite wird ein kleiner Index
    (Name, Adresse, Koordinaten, Radius) lokal als «fw-plaene» abgelegt → Hinweis «Einsatzplan vorhanden». */
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const CFG = window.PL_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const CHUNK = 700000, MAXPDF = 8 * 1024 * 1024;
@@ -140,9 +140,9 @@ $('#det').addEventListener('click', async e => {
 /* ---------- PDF ---------- */
 async function loadPdf(o, fromCache) {
   const get = fromCache ? F.getDocsFromCache : F.getDocs;
-  const q = await get(F.query(F.collection(O, o.id, 'chunks'), F.orderBy(F.documentId())));
+  const q = await get(o.pdf.v ? F.query(F.collection(O, o.id, 'chunks'), F.where('v', '==', o.pdf.v)) : F.query(F.collection(O, o.id, 'chunks'), F.orderBy(F.documentId())));
   if (q.size < (o.pdf.n || 1)) throw new Error('unvollständig');
-  const b64 = q.docs.map(d => d.data().d).join(''), bin = atob(b64), u8 = new Uint8Array(bin.length);
+  const b64 = [...q.docs].sort((a, b) => a.id < b.id ? -1 : 1).map(d => d.data().d).join(''), bin = atob(b64), u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return new Blob([u8], { type: 'application/pdf' });
 }
@@ -266,11 +266,11 @@ f.addEventListener('submit', async e => {
       $('#fErr').textContent = 'PDF wird hochgeladen …';
       const b64 = await toB64(pdfFile), parts = [];
       for (let i = 0; i < b64.length; i += CHUNK) parts.push(b64.slice(i, i + CHUNK));
-      if (edit && edit.pdf) { const q = await F.getDocs(F.collection(O, id, 'chunks')); await Promise.all(q.docs.map(d => F.deleteDoc(d.ref))); }
-      for (let k = 0; k < parts.length; k++) { $('#fErr').textContent = `PDF wird hochgeladen … ${k + 1}/${parts.length}`; await F.setDoc(F.doc(O, id, 'chunks', String(k).padStart(3, '0')), { d: parts[k] }); }
-      data.pdf = { name: pdfFile.name, size: pdfFile.size, n: parts.length, t: now };
+      for (let k = 0; k < parts.length; k++) { $('#fErr').textContent = `PDF wird hochgeladen … ${k + 1}/${parts.length}`; await F.setDoc(F.doc(O, id, 'chunks', now + '_' + String(k).padStart(3, '0')), { d: parts[k], v: now }); }
+      data.pdf = { name: pdfFile.name, size: pdfFile.size, n: parts.length, t: now, v: now };
     }
     await F.setDoc(F.doc(O, id), data);
+    if (pdfFile && edit && edit.pdf) { const q = await F.getDocs(F.collection(O, id, 'chunks')); await Promise.all(q.docs.filter(d => d.data().v !== now).map(d => F.deleteDoc(d.ref))); }
     $('#dF').close(); select(id, true); msg('Gespeichert');
   } catch (err) { $('#fErr').textContent = err && err.code === 'permission-denied' ? 'Kein Zugriff: In der Firebase-Konsole die Regeln (Abschnitt «Einsatzpläne») veröffentlichen.' : 'Speichern fehlgeschlagen: ' + (err.code || err.message); }
   $('#bSave').disabled = false;

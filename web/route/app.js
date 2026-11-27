@@ -2,7 +2,7 @@
    Route ab Depot(s) zum Einsatzort. Berücksichtigt zeitlich begrenzte Strassensperren (mit optionaler Umleitung)
    und die Vorgabe «Bahnübergänge meiden». Routing: Valhalla (valhalla1.openstreetmap.de, FOSSGIS),
    Bahnübergänge: OpenStreetMap über die Overpass-API. Gemeinsame Daten: Firestore config/routing. */
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 const CFG = window.RT_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
@@ -224,7 +224,11 @@ async function valhalla(locs, excl) {
 const avoidList = () => D.bahn.meiden ? D.bahn.list.filter(x => !x.ok) : [];
 async function routeFrom(dep) {
   const sp = active(), start = [dep.lat, dep.lng], end = [ziel.lat, ziel.lng];
-  const excl = [...sp.flatMap(s => segRects(s.pts, W_SP)), ...avoidList().map(x => boxRing([x.lat, x.lng], W_BX))];
+  // Umkreis Start–Ziel (+3 km) – weiter entfernte Übergänge spielen keine Rolle
+  const la = [start[0], end[0]], lo = [start[1], end[1]], m = 3000 / M_LAT, mo = 3000 / mLng(start[0]);
+  const near = x => x.lat > Math.min(...la) - m && x.lat < Math.max(...la) + m && x.lng > Math.min(...lo) - mo && x.lng < Math.max(...lo) + mo;
+  const bx = avoidList().filter(near).slice(0, 60);
+  const excl = [...sp.flatMap(s => segRects(s.pts, W_SP)), ...bx.map(x => boxRing([x.lat, x.lng], W_BX))];
   const info = { dep, warn: [], used: [] };
   // Gilt für eine aktive Sperre eine eingezeichnete Umleitung? → nur wenn der direkte Weg durch die Sperre führen würde
   let via = [];

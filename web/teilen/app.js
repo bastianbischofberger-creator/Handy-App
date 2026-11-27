@@ -2,7 +2,7 @@
    Erstellt Freigaben (Firestore «sh_freigaben», ID = geheimer Schlüssel) mit ausgewählten Feldern.
    Live: Dieses Gerät liest laufend Einsatz (Startseite), ASÜ, Journal und Sperren und schreibt eine Kopie
    der gewählten Felder in die Freigabe. Momentaufnahme: einmalige Kopie. Empfänger: ansicht.html?k=… */
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const CFG = window.SH_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const $ = s => document.querySelector(s);
@@ -14,7 +14,9 @@ const key = () => { const a = new Uint8Array(18); crypto.getRandomValues(a); ret
 function msg(t) { const m = $('#msg'); m.textContent = t; clearTimeout(msg.t); if (t) msg.t = setTimeout(() => m.textContent = '', 4000); }
 const tick = () => $('#clock').textContent = hm(Date.now()); tick(); setInterval(tick, 10000);
 const fwRead = () => { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } };
-const SAFE_MAX = 24 * 3600000; // «bis Einsatzende» läuft spätestens nach 24 h ab
+const SAFE_MAX = 24 * 3600000;
+// Geräte-Kennung: Live-Daten und «bis Einsatzende» verwaltet nur das Gerät, das die Freigabe erstellt hat
+const DEV = (() => { try { let d = localStorage.getItem('sh-dev'); if (!d) { d = Math.random().toString(36).slice(2, 12); localStorage.setItem('sh-dev', d); } return d; } catch (e) { return 'x'; } })(); // «bis Einsatzende» läuft spätestens nach 24 h ab
 
 const FIELDS = [
   ['einsatz', 'Einsatz & Alarmzeit', true], ['adresse', 'Adresse', true], ['karte', 'Standort auf Karte', true], ['el', 'Einsatzleiter', true],
@@ -123,7 +125,7 @@ function pushLive() {
   clearTimeout(liveT);
   liveT = setTimeout(() => {
     const FW = fwRead();
-    for (const sh of S.list.filter(x => x.aktiv)) {
+    for (const sh of S.list.filter(x => x.aktiv && x.dev === DEV)) {
       // Einsatz auf der Startseite beendet oder gewechselt → Freigaben «bis Einsatzende» beenden
       if (sh.bisArt === 'ende' && sh.fw && (!FW || sh.fw !== 'fw-' + FW.t)) { F.updateDoc(F.doc(SH, sh.id), { aktiv: false, endGrund: 'Einsatz beendet', upd: Date.now() }).catch(fail); continue; }
       if (Date.now() > sh.bis || sh.mode !== 'live') continue;
@@ -148,7 +150,7 @@ function renderEin() {
   const FW = fwRead();
   $('#ein').innerHTML = FW ? `<span class="mute small">LAUFENDER EINSATZ (Startseite)</span><b>${esc(FW.bez)}</b><span class="mute">${esc(FW.adr || '')} · EL ${esc(FW.el || '–')} · seit ${hm(FW.t)}</span>`
     : '<b>Kein Einsatz eröffnet</b><span class="mute">Ohne Einsatz auf der Startseite können nur Freitext-Felder (Lagemeldung, Treffpunkt, Telefon) geteilt werden.</span>';
-  const live = S.list.filter(x => x.mode === 'live' && Date.now() < x.bis);
+  const live = S.list.filter(x => x.mode === 'live' && x.dev === DEV && Date.now() < x.bis);
   $('#live').hidden = !live.length;
   $('#live').textContent = `Live-Übertragung läuft für ${live.length} Freigabe${live.length > 1 ? 'n' : ''}. Aktualisiert wird, solange diese Seite auf diesem Gerät geöffnet ist.`;
 }
@@ -158,8 +160,8 @@ function renderList() {
     return `<li><div><span class="st${abg ? ' off' : ''}">${abg ? 'ABGELAUFEN' : sh.mode === 'live' ? 'LIVE' : 'MOMENTAUFNAHME'}</span><b>${esc(sh.emp)}</b></div>
       <span class="mute small">${sh.felder.map(k => (FIELDS.find(f => f[0] === k) || [, k])[1]).join(' · ')}</span>
       <span class="small">Gültig bis ${sh.bisArt === 'ende' ? 'Einsatzende (spätestens ' + dhm(sh.bis) + ')' : dhm(sh.bis)} · Stand ${sh.upd ? hm(sh.upd) : '–'}</span>
-      ${fsLage(sh)}
-      <div class="btns"><button type="button" data-q="${sh.id}">QR / Link</button>${sh.mode === 'live' ? `<button type="button" data-l="${sh.id}">Lagemeldung ändern</button>` : ''}<button type="button" class="danger" data-x="${sh.id}">Beenden</button></div></li>`; }).join('')
+      ${sh.dev !== DEV ? '<span class="small mute">Erstellt auf einem anderen Gerät – Live-Daten kommen von dort.</span>' : ''}${fsLage(sh)}
+      <div class="btns"><button type="button" data-q="${sh.id}">QR / Link</button>${sh.mode === 'live' && sh.dev === DEV ? `<button type="button" data-l="${sh.id}">Lagemeldung ändern</button>` : ''}<button type="button" class="danger" data-x="${sh.id}">Beenden</button></div></li>`; }).join('')
     : '<li class="mute">Keine aktiven Freigaben.</li>';
 }
 const fsLage = sh => sh.felder.includes('lage') && sh.lage ? `<span class="small">Lage: ${esc(sh.lage)}</span>` : '';
@@ -184,7 +186,7 @@ $('#bNew').onclick = async () => {
   else if (bisSel === 'zeit') { const v = $('#bisZeit').value; if (!v) { $('#fErr').textContent = 'Uhrzeit wählen.'; return; } const [h, m] = v.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); if (+d <= now) d.setDate(d.getDate() + 1); bis = +d; }
   else bis = now + (+bisSel) * 3600000;
   const sh = { emp, mode, felder: [...fsel], bisArt: bisSel, bis, aktiv: true, created: now, upd: now, by: S.user.email, fw: FW ? 'fw-' + FW.t : null,
-    lage: $('#lage').value.trim(), treff: $('#treff').value.trim(), tel: $('#tel').value.trim() };
+    lage: $('#lage').value.trim(), treff: $('#treff').value.trim(), tel: $('#tel').value.trim(), dev: DEV };
   sh.data = build(sh);
   const id = key();
   try { $('#bNew').disabled = true; await F.setDoc(F.doc(SH, id), sh); showQr({ id, ...sh }); $('#lage').value = ''; }

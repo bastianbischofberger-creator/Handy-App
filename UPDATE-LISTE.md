@@ -80,3 +80,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Einsatzpläne 1.1: Bereich als Punkt, Strecke (z. B. Autobahn-Abschnitt mit Band links/rechts) oder Fläche/Sektor; Startseite v1.13: Einsatzort auch per Karte setzen (Autobahn ohne Adresse); Route 1.0.1: Speicherfehler behoben
 - Einsatzdaten teilen (Test): Freigaben live/Momentaufnahme, Feldauswahl, gültig bis Einsatzende/Dauer/Uhrzeit, QR/Link, Empfängeransicht; Firestore-Regeln «Einsatzdaten teilen» neu (Startseite v1.14)
 - RTLWiki (Test): Artikel mit Kategorien, Suche, Formatierung, [[Wiki-Links]], Anhänge, Verlauf, offline; Regeln «RTLWiki» neu (Startseite v1.15)
+- Code-Review 27.11.: Teilen nur vom erstellenden Gerät live/beenden, ASÜ leere Trupp-Nr. abgefangen, Route begrenzt Bahnübergänge auf Umkreis, Einsatzpläne PDF-Ersatz sicher, Startseite Adresse nach Kartentipp wieder suchbar, Wischen am Fensterrand

@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.7.1';
+const VERSION = '3.7.2';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -412,6 +412,7 @@ $('#fTeam').addEventListener('submit', e => {
   if (!mem.length) { e.preventDefault(); $('#tErr').textContent = 'Mindestens einen Namen erfassen.'; return; }
   { const nr = f.elements.nr.value.trim(), act = S.teams.filter(t => t.id !== editId && !t.hidden && t.status !== 'draussen');
     const norm = x => String(x || '').trim().toLowerCase();
+    if (!nr) { e.preventDefault(); $('#tErr').textContent = 'Trupp-Nr. fehlt.'; return; }
     const dupT = act.find(t => norm(t.nr) === norm(nr));
     if (dupT) { e.preventDefault(); $('#tErr').textContent = `Trupp ${nr} ist bereits aktiv (${STL[dupT.status]}). Bitte eine andere Nummer wählen.`; return; }
     const names = mem.map(m => norm(m.name)), dupN = names.find((n, i) => names.indexOf(n) !== i);
