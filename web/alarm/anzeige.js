@@ -8,6 +8,7 @@ const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
 const hm = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* Quelle News: SRF – Anzeige mit schriftlicher Zusage */
 const VORSCHAU = new URLSearchParams(location.search).has('vorschau');
 const S = { scr: null, cur: null, ruhe: {}, staff: false, lastAlarm: 0 };
 const show = id => ['vPair', 'vRuhe', 'vAlarm'].forEach(v => $('#' + v).hidden = v !== id);
@@ -63,6 +64,28 @@ async function wetter() {
   } catch (e) { /* ohne Wetter weiter – nächster Versuch in 15 Min. */ }
 }
 function wetterStart() { const k = (S.ruhe.wxOn !== false) + '|' + (S.ruhe.wxOrt || 'Thal'); if (k === wxOrt) return; wxOrt = k; clearInterval(wxT); wetter(); wxT = setInterval(wetter, 15 * 60000); }
+
+/* ---------- SRF-News (mit Zusage SRF; Feed wird per GitHub Action in Branch «news» abgelegt) ---------- */
+const NEWS_URL = 'https://raw.githubusercontent.com/bastianbischofberger-creator/Handy-App/news/news.json';
+let news = [], newsI = 0, newsT = null, newsR = null, newsOn = null;
+async function newsLaden() {
+  try { const j = await fetch(NEWS_URL + '?t=' + Math.floor(Date.now() / 300000)).then(r => { if (!r.ok) throw 0; return r.json(); });
+    const alt = Date.now() - 36 * 3600000; news = (j.items || []).filter(x => !x.ts || x.ts > alt).slice(0, 15); if (news.length && $('#news').hidden) newsZeig(); }
+  catch (e) { /* nächster Versuch später */ }
+  $('#news').hidden = !news.length;
+}
+function newsZeig() {
+  if (!news.length) return; const n = news[newsI++ % news.length], nt = $('#news .nt');
+  nt.classList.add('f');
+  setTimeout(() => { const z = n.ts ? new Date(n.ts) : null; $('#nZ').textContent = z ? String(z.getHours()).padStart(2, '0') + ':' + String(z.getMinutes()).padStart(2, '0') : '';
+    $('#nT').textContent = n.t; $('#nD').textContent = n.d || ''; nt.classList.remove('f'); }, 600);
+}
+function newsStart() {
+  const on = S.ruhe.newsOn === true; if (on === newsOn) return; newsOn = on;
+  clearInterval(newsT); clearInterval(newsR);
+  if (!on) { $('#news').hidden = true; return; }
+  newsLaden(); newsR = setInterval(newsLaden, 10 * 60000); newsT = setInterval(newsZeig, 12000);
+}
 
 /* ---------- Bildergalerie (linke Hälfte der Ruheanzeige) ---------- */
 let galT = null, galI = -1, galFront = 'gA', galKey = '';
@@ -149,7 +172,7 @@ async function boot() {
   function listen() {
     if (listen.on) return; listen.on = true;
     F.onSnapshot(F.doc(fs, 'ad_state', 'current'), d => { S.cur = d.exists() ? d.data() : null; $('#off').hidden = true; if (S.cur && !$('#vAlarm').hidden) renderAlarm(); route(); }, () => { $('#off').hidden = false; });
-    F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); galStart(); wetterStart(); }, () => {});
+    F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); galStart(); wetterStart(); newsStart(); }, () => {});
     F.onSnapshot(F.collection(fs, 'ad_bilder'), q => { S.bilder = q.docs.map(d => d.data()).sort((a, b) => (a.n || 0) - (b.n || 0)).map(b => b.d); galStart(); }, () => {});
   }
   if (S.staff) { listen(); $('#tap').hidden = false; }
@@ -158,4 +181,4 @@ async function boot() {
 addEventListener('online', () => $('#off').hidden = true); addEventListener('offline', () => $('#off').hidden = false);
 setTimeout(() => location.reload(), 6 * 3600000 + Math.random() * 600000); // alle ~6 Std. frisch laden (Speicher, Updates)
 tick(); boot();
-window.AD_TEST = { S, route, renderAlarm, renderRuhe, galStart, wetter };  // nur für automatische Tests
+window.AD_TEST = { S, route, renderAlarm, renderRuhe, galStart, wetter, newsStart };  // nur für automatische Tests

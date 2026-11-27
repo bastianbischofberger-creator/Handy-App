@@ -86,3 +86,5 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Route 1.2.0: Navigation in der App (folgt der berechneten Route mit Sperren/Umleitungen/Bahnübergängen, Sprachansage, Neuberechnung bei Abweichung, Bildschirm bleibt an), Google Maps mit Zwischenzielen
 - Alarmdisplay (Test): Verwaltung (Bildschirme koppeln per Code, Ansicht pro TV, Alarm von Hand / aus Startseite, Test-Alarm, Ruheanzeige mit Terminen, Laufschrift, Sperren), TV-Anzeige mit Karte, Route ab Depot, Einsatzplan-Hinweis, Alarmton; Regeln «Alarmdisplay» neu; shared/fwroute.js; Startseite v1.17. Offen: automatische Auslösung per Alarm-E-Mail (Schweizer Server)
 - Alarmdisplay 1.1: Bildergalerie in der Ruheanzeige (linke Hälfte, Überblenden, Takt einstellbar, Upload mit Verkleinerung); Regeln: ad_bilder
+
+- [x] Alarmdisplay 1.3.0: SRF-News («Das Neueste») als wechselnde Schlagzeile; Feed holt GitHub Action alle 15 Min. in Branch «news». Schriftliche Zusage SRF liegt bei den Akten (OneDrive) von Bastian.
