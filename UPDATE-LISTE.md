@@ -82,3 +82,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - RTLWiki (Test): Artikel mit Kategorien, Suche, Formatierung, [[Wiki-Links]], Anhänge, Verlauf, offline; Regeln «RTLWiki» neu (Startseite v1.15)
 - Code-Review 27.11.: Teilen nur vom erstellenden Gerät live/beenden, ASÜ leere Trupp-Nr. abgefangen, Route begrenzt Bahnübergänge auf Umkreis, Einsatzpläne PDF-Ersatz sicher, Startseite Adresse nach Kartentipp wieder suchbar, Wischen am Fensterrand
 - Route 1.0.3: Bahnübergänge über mehrere OpenStreetMap-Server mit Zeitlimit, zusätzlich von Hand setzen/löschen
+- Route 1.1.0: Bahnübergänge mit Zustand gesperrt (immer umfahren) / meiden / erlaubt, Bezeichnung, Warnung wenn gesperrter Übergang unvermeidbar

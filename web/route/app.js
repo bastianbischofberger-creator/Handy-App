@@ -2,7 +2,7 @@
    Route ab Depot(s) zum Einsatzort. Berücksichtigt zeitlich begrenzte Strassensperren (mit optionaler Umleitung)
    und die Vorgabe «Bahnübergänge meiden». Routing: Valhalla (valhalla1.openstreetmap.de, FOSSGIS),
    Bahnübergänge: OpenStreetMap über die Overpass-API. Gemeinsame Daten: Firestore config/routing. */
-const VERSION = '1.0.3';
+const VERSION = '1.1.0';
 const CFG = window.RT_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
@@ -55,6 +55,8 @@ function decode6(s) { // Valhalla-Polyline (Genauigkeit 6)
 /* ---------- Daten ---------- */
 let D = { depots: [], sperren: [], bahn: { meiden: true, list: [] } };
 const now = () => Date.now();
+const stOf = x => x.st || (x.ok ? 'ok' : 'meiden');
+const ST_TXT = { sperre: 'gesperrt', meiden: 'meiden', ok: 'erlaubt' };
 const sState = s => { const v = s.von ? +new Date(s.von) : 0, b = s.bis ? +new Date(s.bis) : Infinity; return now() < v ? 'plan' : now() > b ? 'alt' : 'akt'; };
 const active = () => D.sperren.filter(s => sState(s) === 'akt' && s.pts && s.pts.length > 1);
 
@@ -111,13 +113,26 @@ function drawBase() {
     if (s.uml && s.uml.length > 1) L.polyline(s.uml, { color: '#1d7a46', weight: 6, opacity: .85, dashArray: '2 10', lineCap: 'round' }).bindTooltip('Umleitung: ' + esc(s.name)).addTo(gBase);
   }
   for (const x of D.bahn.list) {
-    L.marker([x.lat, x.lng], { icon: L.divIcon({ className: '', html: `<div class="lx${x.ok ? ' ok' : ''}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] }) })
-      .on('click', () => { if (mode) return;
-        if (x.man && confirm('Von Hand gesetzten Bahnübergang löschen?\n(Abbrechen = nur zwischen «meiden» und «erlaubt» umschalten)')) { D.bahn.list = D.bahn.list.filter(y => y !== x); save(); renderAll(); return; }
-        x.ok = !x.ok; save(); drawBase(); msg(x.ok ? 'Bahnübergang erlaubt' : 'Bahnübergang wird gemieden'); }).addTo(gBase);
+    const st = stOf(x), sz = st === 'sperre' ? 20 : 16;
+    L.marker([x.lat, x.lng], { icon: L.divIcon({ className: '', html: `<div class="lx${st === 'ok' ? ' ok' : st === 'sperre' ? ' sp' : ''}"></div>`, iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2] }) })
+      .bindPopup(() => `<div class="lxpop" data-lx="${x.id}"><b>Bahnübergang${x.bez ? ': ' + esc(x.bez) : ''}</b>${['sperre', 'meiden', 'ok'].map(k => `<button type="button" data-st="${k}" class="${stOf(x) === k ? 'on' : ''}">${k === 'sperre' ? 'Gesperrt – immer umfahren' : k === 'meiden' ? 'Meiden (wenn eingeschaltet)' : 'Erlaubt'}</button>`).join('')}<button type="button" data-st="name">Bezeichnung …</button>${x.man ? '<button type="button" data-st="del" class="danger">Löschen</button>' : ''}</div>`)
+      .addTo(gBase);
   }
   for (const d of D.depots) L.marker([d.lat, d.lng], { icon: pinIcon('#16181a', d.name) }).addTo(gBase);
   if (ziel) L.marker([ziel.lat, ziel.lng], { icon: pinIcon('#c8102e', 'Einsatz') }).addTo(gBase);
+}
+
+// Auswahl im Popup eines Bahnübergangs
+// (Leaflet stoppt Klicks im Popup → Handler direkt am Popup anhängen)
+map.on('popupopen', ev => { const el = ev.popup.getElement(); if (el && !el._lx) { el._lx = 1; el.addEventListener('click', lxClick); } });
+function lxClick(e) {
+  const b = e.target.closest('.lxpop [data-st]'); if (!b) return;
+  const x = D.bahn.list.find(y => y.id === b.closest('.lxpop').dataset.lx); if (!x) return;
+  const k = b.dataset.st;
+  if (k === 'del') { if (!confirm('Bahnübergang löschen?')) return; D.bahn.list = D.bahn.list.filter(y => y !== x); }
+  else if (k === 'name') { const t = prompt('Bezeichnung (z. B. «Bahnhofstrasse»)', x.bez || ''); if (t == null) return; x.bez = t.trim(); }
+  else { x.st = k; delete x.ok; msg('Bahnübergang: ' + ST_TXT[k]); }
+  map.closePopup(); save(); renderAll();
 }
 
 /* ---------- Zeichnen ---------- */
@@ -130,7 +145,7 @@ map.on('click', e => {
   if (mode === 'ziel') { ziel = { lat: p[0], lng: p[1], label: 'Punkt auf Karte' }; $('#zAdr').value = ''; endDraw(); drawBase(); return; }
   if (mode === 'depot') { D.depots.push({ id: uid(), name: drawCtx.name, lat: p[0], lng: p[1] }); endDraw(); save(); renderAll(); msg('Depot gespeichert'); return; }
   if (mode === 'sperre' || mode === 'uml') { pts.push(p); drawTmp(); }
-  if (mode === 'bahn') { D.bahn.list.push({ id: 'm' + uid(), lat: +p[0].toFixed(6), lng: +p[1].toFixed(6), ok: false, man: true }); save(); renderAll(); msg('Bahnübergang gesetzt'); }
+  if (mode === 'bahn') { D.bahn.list.push({ id: 'm' + uid(), lat: +p[0].toFixed(6), lng: +p[1].toFixed(6), st: 'sperre', man: true }); save(); renderAll(); msg('Gesperrter Bahnübergang gesetzt'); }
 });
 $('#dUndo').onclick = () => { pts.pop(); drawTmp(); };
 $('#dCancel').onclick = endDraw;
@@ -157,8 +172,8 @@ function renderDepots() {
 }
 function renderBahn() {
   $('#bMeiden').checked = D.bahn.meiden;
-  const n = D.bahn.list.length, ok = D.bahn.list.filter(x => x.ok).length;
-  $('#bInfo').textContent = n ? `${n} Bahnübergänge gespeichert, davon ${ok} erlaubt.` : 'Noch keine Bahnübergänge geladen.';
+  const n = D.bahn.list.length, c = k => D.bahn.list.filter(x => stOf(x) === k).length;
+  $('#bInfo').textContent = n ? `${n} Bahnübergänge: ${c('sperre')} gesperrt, ${c('meiden')} meiden, ${c('ok')} erlaubt.` : 'Noch keine Bahnübergänge erfasst.';
 }
 function renderAll() { renderSperren(); renderDepots(); renderBahn(); drawBase(); }
 $('#sList').addEventListener('click', e => {
@@ -197,7 +212,7 @@ $('#bLoadBahn').onclick = async () => {
     }
     if (!r) throw new Error('alle Server');
     const old = new Map(D.bahn.list.map(x => [x.id, x])); let neu = 0;
-    for (const n of r.elements || []) { if (!old.has('n' + n.id)) { old.set('n' + n.id, { id: 'n' + n.id, lat: n.lat, lng: n.lon, ok: false }); neu++; } }
+    for (const n of r.elements || []) { if (!old.has('n' + n.id)) { old.set('n' + n.id, { id: 'n' + n.id, lat: n.lat, lng: n.lon, st: 'meiden' }); neu++; } }
     D.bahn.list = [...old.values()]; save(); renderAll(); msg(`${(r.elements || []).length} Bahnübergänge im Ausschnitt, ${neu} neu`);
   } catch (e) { msg('OpenStreetMap-Dienst antwortet nicht. Später nochmals versuchen oder Übergänge von Hand setzen.'); }
   $('#bLoadBahn').disabled = false;
@@ -234,7 +249,7 @@ async function valhalla(locs, excl) {
   const path = j.trip.legs.flatMap(l => decode6(l.shape));
   return { path, km: j.trip.summary.length, min: j.trip.summary.time / 60 };
 }
-const avoidList = () => D.bahn.meiden ? D.bahn.list.filter(x => !x.ok) : [];
+const avoidList = () => D.bahn.list.filter(x => stOf(x) === 'sperre' || (D.bahn.meiden && stOf(x) === 'meiden'));
 async function routeFrom(dep) {
   const sp = active(), start = [dep.lat, dep.lng], end = [ziel.lat, ziel.lng];
   // Umkreis Start–Ziel (+3 km) – weiter entfernte Übergänge spielen keine Rolle
@@ -261,7 +276,9 @@ async function routeFrom(dep) {
   }
   // Kontrolle: führt die Route trotzdem über einen gemiedenen Bahnübergang?
   const hit = avoidList().filter(x => distLine([x.lat, x.lng], r.path) < 12);
-  if (hit.length) info.warn.push(`${hit.length} Bahnübergang${hit.length > 1 ? 'e' : ''} nicht vermeidbar – auf der Karte rot markiert.`);
+  const hs = hit.filter(x => stOf(x) === 'sperre');
+  if (hs.length) info.warn.push(`ACHTUNG: ${hs.length} gesperrte${hs.length > 1 ? '' : 'r'} Bahnübergang nicht vermeidbar – auf der Karte rot markiert.`);
+  if (hit.length > hs.length) info.warn.push(`${hit.length - hs.length} Bahnübergang${hit.length - hs.length > 1 ? 'e' : ''} (meiden) nicht vermeidbar.`);
   return { ...r, ...info, hit };
 }
 let routes = [], selR = 0;
