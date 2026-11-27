@@ -1,7 +1,7 @@
 /* Alarmdisplay – Verwaltung. Bildschirme koppeln (Code vom TV), Ansicht pro TV, Alarm auslösen / Test / beenden,
    Ruheanzeige (Infotext, Termine, Sperren). Zustand für die TVs: Firestore ad_state/current und ad_state/ruhe.
    Beim Alarm wird hier die Route ab Depot berechnet (inkl. Sperren/Bahnübergänge) und mitgegeben. */
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const CFG = window.AD_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const TILE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg';

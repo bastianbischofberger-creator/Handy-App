@@ -123,6 +123,12 @@ async function boot() {
   const fs = F.getFirestore(app);
   let user = await new Promise(r => { const u = Au.onAuthStateChanged(auth, x => { u(); r(x); }); });
   if (VORSCHAU && user && !user.isAnonymous) S.staff = true;
+  else if (VORSCHAU) {   // Vorschau ohne Anmeldung: nicht als TV registrieren, sondern auf das Login verweisen
+    show('vPair'); $('#code').textContent = '🔒';
+    $('#vPair p').textContent = 'Vorschau: zuerst in der Kachel «Alarmdisplay» anmelden.';
+    $('#vPair p:last-of-type').innerHTML = '<a href="./" style="color:#fff">Zur Anmeldung</a> – danach diese Seite neu laden.';
+    return;
+  }
   else { if (!user) user = (await Au.signInAnonymously(auth)).user;
     const ref = F.doc(fs, 'ad_screens', user.uid);
     let snap = null; try { snap = await F.getDoc(ref); } catch (e) {}
