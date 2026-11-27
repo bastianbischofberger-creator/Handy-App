@@ -76,6 +76,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 .test{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-12deg);font:800 18vh/1 "Barlow Condensed",sans-serif;color:rgba(255,255,255,.18);pointer-events:none;z-index:900}
 #tap{position:fixed;left:2vw;bottom:2vh;z-index:2000;background:rgba(0,0,0,.8);border:2px solid #f2b705;border-radius:1.5vh;padding:1.5vh 2vw;font:600 2.4vh Barlow,sans-serif;cursor:pointer;max-width:40vw}
 #tap b{display:block;font:700 3vh "Barlow Condensed",sans-serif;color:#f2b705}
+#st{position:fixed;top:.8vh;right:1.2vw;z-index:1600;display:flex;align-items:center;gap:.6vw;font:500 1.7vh Barlow,sans-serif;color:#9aa7b4;opacity:.75}
+#st i{width:1.2vh;height:1.2vh;border-radius:50%;background:#f2b705}#st.ok i{background:#2ecc71}#st.err i{background:#ff4d4d}#st.err{opacity:1;color:#ff8080}
 #off{position:fixed;right:2vw;bottom:2vh;z-index:1500;background:#f2b705;color:#111;font-weight:700;border-radius:1vh;padding:1vh 2vw;font-size:2.4vh}
 .leaflet-container{background:#1b222b}
 </style>
@@ -112,9 +114,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 <div class="test" id="testMark" hidden>TEST</div>
 <div id="tap" hidden><b>Einmal OK drücken bzw. antippen</b>damit der TV den Alarmton abspielen darf</div>
 <div id="off" hidden>Keine Verbindung</div>
+<div id="st" class="w"><i></i><span id="stT">Verbinde …</span></div>
 <script src="config.js?v=1.0.0"></script>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="../shared/fwroute.js?v=1"></script>
-<script type="module" src="anzeige.js?v=1.3.0"></script>
+<script type="module" src="anzeige.js?v=1.3.1"></script>
 </body>
 </html>

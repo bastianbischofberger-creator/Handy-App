@@ -135,11 +135,18 @@ function route() {
   else if ($('#vRuhe').hidden) { show('vRuhe'); renderRuhe(); }
 }
 
+/* ---------- Verbindungsstatus (diskret oben rechts) ---------- */
+let stZ = 'wait';
+function stat(z) { if (z) stZ = z; const el = $('#st'), off = !navigator.onLine;
+  const [c, t] = off ? ['err', 'Offline'] : stZ === 'ok' ? ['ok', 'Verbunden'] : stZ === 'cache' ? ['w', 'Verbinde … (zwischengespeichert)'] : stZ === 'denied' ? ['err', 'Kein Zugriff – Regeln veröffentlichen'] : stZ === 'err' ? ['err', 'Verbindungsfehler'] : stZ === 'pair' ? ['ok', 'Verbunden – wartet auf Kopplung'] : ['w', 'Verbinde …'];
+  el.className = c; $('#stT').textContent = t; }
+addEventListener('online', () => stat()); addEventListener('offline', () => stat());
+
 /* ---------- Firebase ---------- */
 async function boot() {
   let appM, Au, F;
   try { [appM, Au, F] = await Promise.all([import(FBV + 'firebase-app.js'), import(FBV + 'firebase-auth.js'), import(FBV + 'firebase-firestore.js')]); }
-  catch (e) { $('#off').hidden = false; setTimeout(() => location.reload(), 60000); return; }
+  catch (e) { $('#off').hidden = false; stat('err'); setTimeout(() => location.reload(), 60000); return; }
   // Vorschau auf einem Gerät mit Konto: Standard-App (gleiches Login wie die Verwaltung); TV: eigene anonyme App-Instanz
   const app = VORSCHAU ? (appM.getApps().find(x => x.name === '[DEFAULT]') || appM.initializeApp(CFG.firebase)) : appM.initializeApp(CFG.firebase, 'alarmdisplay');
   const auth = Au.getAuth(app); await Au.setPersistence(auth, Au.indexedDBLocalPersistence).catch(() => {});
@@ -160,18 +167,19 @@ async function boot() {
     let lastReload = null;
     F.onSnapshot(ref, d => {
       if (!d.exists()) { location.reload(); return; }          // entfernt → neu anmelden, neuer Code
+      if (!d.data().paired) stat('pair');
       const v = d.data(); const was = S.scr && S.scr.paired; S.scr = v; $('#code').textContent = v.code || '······';
       if (lastReload === null) lastReload = v.reload || 0; else if (v.reload && v.reload !== lastReload) location.reload();
       if (v.paired && !was) { listen(); $('#tap').hidden = false; }
       if (S.cur) { mapKey = ''; if (!$('#vAlarm').hidden) renderAlarm(); }
       route();
-    }, () => {});
+    }, e => stat(e && e.code === 'permission-denied' ? 'denied' : 'err'));
     setInterval(() => F.updateDoc(ref, { seen: Date.now() }).catch(() => {}), 60000);
     F.updateDoc(ref, { seen: Date.now() }).catch(() => {});
   }
   function listen() {
     if (listen.on) return; listen.on = true;
-    F.onSnapshot(F.doc(fs, 'ad_state', 'current'), d => { S.cur = d.exists() ? d.data() : null; $('#off').hidden = true; if (S.cur && !$('#vAlarm').hidden) renderAlarm(); route(); }, () => { $('#off').hidden = false; });
+    F.onSnapshot(F.doc(fs, 'ad_state', 'current'), { includeMetadataChanges: true }, d => { stat(d.metadata.fromCache ? 'cache' : 'ok'); if (d.metadata.hasPendingWrites) return; S.cur = d.exists() ? d.data() : null; $('#off').hidden = true; if (S.cur && !$('#vAlarm').hidden) renderAlarm(); route(); }, e => { $('#off').hidden = false; stat(e && e.code === 'permission-denied' ? 'denied' : 'err'); });
     F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); galStart(); wetterStart(); newsStart(); }, () => {});
     F.onSnapshot(F.collection(fs, 'ad_bilder'), q => { S.bilder = q.docs.map(d => d.data()).sort((a, b) => (a.n || 0) - (b.n || 0)).map(b => b.d); galStart(); }, () => {});
   }
