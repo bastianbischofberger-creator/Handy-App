@@ -1,7 +1,7 @@
 /* Alarmdisplay – Verwaltung. Bildschirme koppeln (Code vom TV), Ansicht pro TV, Alarm auslösen / Test / beenden,
    Ruheanzeige (Infotext, Termine, Sperren). Zustand für die TVs: Firestore ad_state/current und ad_state/ruhe.
    Beim Alarm wird hier die Route ab Depot berechnet (inkl. Sperren/Bahnübergänge) und mitgegeben. */
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const CFG = window.AD_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const TILE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg';
@@ -46,6 +46,7 @@ function start() {
   F.onSnapshot(F.collection(fs, 'ad_screens'), q => { S.screens = q.docs.map(d => ({ id: d.id, ...d.data() })); S.err = ''; sync(); renderScreens(); }, fail);
   F.onSnapshot(F.doc(fs, 'ad_state', 'current'), d => { S.cur = d.exists() ? d.data() : null; renderState(); }, fail);
   F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); }, fail);
+  F.onSnapshot(F.collection(fs, 'ad_bilder'), q => { S.bilder = q.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.n || 0) - (b.n || 0)); renderGal(); }, fail);
   F.onSnapshot(F.doc(fs, 'config', 'routing'), d => { S.routing = d.exists() ? d.data() : {}; syncSperren(); }, () => {});
   setInterval(() => { renderScreens(); renderState(); }, 30000);
 }
@@ -164,12 +165,37 @@ $('#sList').addEventListener('click', e => {
 });
 $('#bPrev').onclick = () => window.open('anzeige.html?vorschau=1', '_blank', 'noopener');
 
+/* ---------- Bildergalerie ---------- */
+let galInt = 10;
+const INT = [[6, '6 s'], [10, '10 s'], [20, '20 s'], [30, '30 s'], [60, '1 Min.']];
+function renderInt() { $('#cInt').innerHTML = 'Wechsel alle ' + INT.map(([s, l]) => `<button type="button" data-int="${s}" class="${galInt === s ? 'on' : ''}">${l}</button>`).join(''); }
+$('#cInt').addEventListener('click', e => { const b = e.target.closest('[data-int]'); if (b) { galInt = +b.dataset.int; renderInt(); msg('Mit «Ruheanzeige speichern» übernehmen'); } });
+function renderGal() {
+  const l = S.bilder || [];
+  $('#gal').innerHTML = l.map(b => `<figure><img src="${b.d}" alt=""><button type="button" data-gd="${b.id}" aria-label="Bild entfernen">✕</button><figcaption>${esc(b.name || '')}</figcaption></figure>`).join('');
+  $('#galInfo').textContent = l.length ? `${l.length} Bild${l.length > 1 ? 'er' : ''} – werden auf den TVs abwechselnd gezeigt.` : 'Noch keine Bilder.';
+}
+$('#gal').addEventListener('click', e => { const b = e.target.closest('[data-gd]'); if (b && confirm('Bild aus der Galerie entfernen?')) F.deleteDoc(F.doc(fs, 'ad_bilder', b.dataset.gd)).catch(fail); });
+// Bilder auf max. 1600 px verkleinern (JPEG) – passt so in ein Firestore-Dokument
+function shrink(file) { return new Promise((ok, no) => { const img = new Image(), u = URL.createObjectURL(file);
+  img.onload = () => { const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); let q = .82, d = c.toDataURL('image/jpeg', q); while (d.length > 900000 && q > .4) { q -= .1; d = c.toDataURL('image/jpeg', q); } ok(d); };
+  img.onerror = () => { URL.revokeObjectURL(u); no(new Error('Bild nicht lesbar')); }; img.src = u; }); }
+$('#galFile').addEventListener('change', async e => {
+  if (!S.user) return msg('Zuerst anmelden');
+  const files = [...e.target.files]; e.target.value = ''; let n = (S.bilder || []).reduce((m, b) => Math.max(m, b.n || 0), 0), k = 0;
+  for (const f of files) { msg(`Lade Bild ${++k} von ${files.length} …`);
+    try { const d = await shrink(f); await F.setDoc(F.doc(fs, 'ad_bilder', Date.now().toString(36) + Math.random().toString(36).slice(2, 6)), { d, name: f.name, n: ++n, t: Date.now(), by: S.user.email }); }
+    catch (err) { msg(`«${f.name}»: ${err.code === 'permission-denied' ? 'kein Zugriff – Regeln veröffentlichen' : 'konnte nicht hochgeladen werden'}`); } }
+  msg('Bilder hinzugefügt');
+});
+
 /* ---------- Ruheanzeige ---------- */
 let terms = [];
 let ruheGeladen = false;
 function renderRuhe() { // nur beim ersten Laden ins Formular übernehmen – sonst würde laufende Eingabe überschrieben
   if (ruheGeladen) return; ruheGeladen = true;
-  $('#info').value = S.ruhe.info || ''; $('#showSp').checked = S.ruhe.showSp !== false; terms = [...(S.ruhe.termine || [])]; renderTerms();
+  $('#info').value = S.ruhe.info || ''; $('#showSp').checked = S.ruhe.showSp !== false; $('#galOn').checked = S.ruhe.galOn !== false; galInt = S.ruhe.galInt || 10; renderInt(); terms = [...(S.ruhe.termine || [])]; renderTerms();
 }
 function renderTerms() {
   $('#terms').innerHTML = terms.sort((a, b) => a.d.localeCompare(b.d)).map((t, i) => `<div class="term"><span>${esc(t.d.split('-').reverse().join('.'))}</span><span>${esc(t.text)}</span><button type="button" class="danger" data-ti="${i}">Entfernen</button></div>`).join('') || '<p class="small mute" style="margin:0">Keine Termine.</p>';
@@ -177,7 +203,7 @@ function renderTerms() {
 $('#terms').addEventListener('click', e => { const b = e.target.closest('[data-ti]'); if (b) { terms.splice(+b.dataset.ti, 1); renderTerms(); } });
 $('#tAdd').onclick = () => { const d = $('#tDat').value, t = $('#tTxt').value.trim(); if (!d || !t) return msg('Datum und Text eingeben'); terms.push({ d, text: t }); $('#tTxt').value = ''; renderTerms(); };
 $('#bRuhe').onclick = () => { if (!S.user) return msg('Zuerst anmelden');
-  F.setDoc(F.doc(fs, 'ad_state', 'ruhe'), { info: $('#info').value.trim(), termine: terms, showSp: $('#showSp').checked, upd: Date.now() }, { merge: true }).then(() => msg('Ruheanzeige gespeichert')).catch(fail); };
+  F.setDoc(F.doc(fs, 'ad_state', 'ruhe'), { info: $('#info').value.trim(), termine: terms, showSp: $('#showSp').checked, galOn: $('#galOn').checked, galInt, upd: Date.now() }, { merge: true }).then(() => msg('Ruheanzeige gespeichert')).catch(fail); };
 // Aktive Sperren für die TVs kopieren (die TVs haben keinen Zugriff auf config/routing)
 let spLast = '';
 function syncSperren() {
@@ -187,7 +213,7 @@ function syncSperren() {
   F.setDoc(F.doc(fs, 'ad_state', 'ruhe'), { sperren: sp, spUpd: Date.now() }, { merge: true }).catch(() => {});
 }
 
-renderForm(); renderState(); boot();
+renderForm(); renderState(); renderInt(); boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }

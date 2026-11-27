@@ -115,6 +115,11 @@ service cloud.firestore {
       allow update: if staff() || (request.auth != null && request.auth.uid == sid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen', 'ua', 'code']));
     }
+    match /ad_bilder/{bid} {
+      allow read: if staff() || (request.auth != null
+        && get(/databases/$(database)/documents/ad_screens/$(request.auth.uid)).data.paired == true);
+      allow write: if staff();
+    }
     match /ad_state/{doc} {
       allow read: if staff() || (request.auth != null
         && get(/databases/$(database)/documents/ad_screens/$(request.auth.uid)).data.paired == true);

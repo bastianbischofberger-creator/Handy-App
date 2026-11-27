@@ -39,6 +39,22 @@ function renderRuhe() {
   $('#marq').hidden = !R.info; $('#marqT').textContent = R.info || '';
 }
 
+/* ---------- Bildergalerie (linke Hälfte der Ruheanzeige) ---------- */
+let galT = null, galI = -1, galFront = 'gA', galKey = '';
+function galStart() {
+  const B = S.bilder || [], on = S.ruhe.galOn !== false && B.length > 0, iv = Math.max(4, S.ruhe.galInt || 10) * 1000;
+  $('#galv').hidden = !on; $('#rgrid').classList.toggle('mitgal', on);
+  const k = on + '|' + iv + '|' + B.length; if (k === galKey) return; galKey = k;
+  clearInterval(galT); if (!on) return;
+  galNext(); if (B.length > 1) galT = setInterval(galNext, iv);
+}
+function galNext() {
+  const B = S.bilder || []; if (!B.length || $('#vRuhe').hidden) return;
+  galI = (galI + 1) % B.length; const back = galFront === 'gA' ? 'gB' : 'gA', img = $('#' + back);
+  img.onload = () => { img.classList.add('on'); $('#' + galFront).classList.remove('on'); galFront = back; };
+  img.src = B[galI];
+}
+
 /* ---------- Alarm ---------- */
 let map = null, lay = null, mapKey = '';
 function renderAlarm() {
@@ -102,7 +118,8 @@ async function boot() {
   function listen() {
     if (listen.on) return; listen.on = true;
     F.onSnapshot(F.doc(fs, 'ad_state', 'current'), d => { S.cur = d.exists() ? d.data() : null; $('#off').hidden = true; if (S.cur && !$('#vAlarm').hidden) renderAlarm(); route(); }, () => { $('#off').hidden = false; });
-    F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); }, () => {});
+    F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); galStart(); }, () => {});
+    F.onSnapshot(F.collection(fs, 'ad_bilder'), q => { S.bilder = q.docs.map(d => d.data()).sort((a, b) => (a.n || 0) - (b.n || 0)).map(b => b.d); galStart(); }, () => {});
   }
   if (S.staff) { listen(); $('#tap').hidden = false; }
   route();
@@ -110,4 +127,4 @@ async function boot() {
 addEventListener('online', () => $('#off').hidden = true); addEventListener('offline', () => $('#off').hidden = false);
 setTimeout(() => location.reload(), 6 * 3600000 + Math.random() * 600000); // alle ~6 Std. frisch laden (Speicher, Updates)
 tick(); boot();
-window.AD_TEST = { S, route, renderAlarm, renderRuhe };  // nur für automatische Tests
+window.AD_TEST = { S, route, renderAlarm, renderRuhe, galStart };  // nur für automatische Tests

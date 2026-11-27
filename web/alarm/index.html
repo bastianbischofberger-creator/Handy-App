@@ -64,6 +64,11 @@ textarea{min-height:70px;resize:vertical}
 .items b{font-size:18px}
 .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;background:#9aa1a7}.dot.on{background:#1d9e55}
 .url{font-size:14px;word-break:break-all;background:var(--field);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:6px 0}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+.gal figure{margin:0;position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3;background:var(--field)}
+.gal img{width:100%;height:100%;object-fit:cover;display:block}
+.gal button{position:absolute;right:4px;top:4px;min-height:32px;padding:2px 8px;font-size:13px;background:rgba(0,0,0,.7);color:#fff;border:0}
+.gal figcaption{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .term{display:grid;grid-template-columns:140px minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:6px}
 @media(max-width:520px){.term{grid-template-columns:1fr}}
 #login{position:fixed;inset:0;z-index:3000;background:var(--bg);display:grid;place-items:center;padding:16px}
@@ -114,6 +119,12 @@ textarea{min-height:70px;resize:vertical}
     <div id="terms"></div>
     <div class="term"><input id="tDat" type="date"><input id="tTxt" placeholder="z. B. Atemschutzübung" autocomplete="off"><button type="button" id="tAdd">Hinzufügen</button></div>
     <label class="f" style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:16px"><input type="checkbox" id="showSp" style="width:24px;height:24px;min-height:0;margin:0"> Aktive Strassensperren anzeigen</label>
+    <div class="sec">BILDERGALERIE (LINKE HÄLFTE)</div>
+    <label class="f" style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:16px;margin-top:0"><input type="checkbox" id="galOn" style="width:24px;height:24px;min-height:0;margin:0"> Bildergalerie anzeigen</label>
+    <div class="chips" id="cInt" style="margin-top:8px"></div>
+    <div class="gal" id="gal"></div>
+    <label class="btn" style="margin-top:8px">+ Bilder hinzufügen<input type="file" id="galFile" accept="image/*" multiple hidden></label>
+    <p class="small mute" id="galInfo" style="margin:6px 0 0"></p>
     <div class="btns"><button type="button" class="pri" id="bRuhe">Ruheanzeige speichern</button></div>
   </section>
 </main>
@@ -132,6 +143,6 @@ textarea{min-height:70px;resize:vertical}
 <script src="../shared/fwui.js?v=1"></script>
 <script src="../shared/fwsync.js?v=2"></script>
 <script src="../shared/fwroute.js?v=1"></script>
-<script type="module" src="app.js?v=1.0.0"></script>
+<script type="module" src="app.js?v=1.1.0"></script>
 </body>
 </html>
