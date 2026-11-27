@@ -39,8 +39,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 .news>b{background:#af001e;color:#fff;font:700 2.4vh/1 Barlow,sans-serif;padding:1vh 1vw;border-radius:.8vh;letter-spacing:.1em;white-space:nowrap}
 .news .nz{font:600 3vh/1 "Barlow Condensed",sans-serif;color:#9aa7b4}
 .news .nt{flex:1;min-width:0;transition:opacity .6s}.news .nt.f{opacity:0}
-#nT{font:700 3.4vh/1.15 Barlow,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#nD{font-size:2.4vh;color:#9aa7b4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.5vh}
+#nT{font:700 3.4vh/1.15 Barlow,sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#nD{font-size:2.7vh;line-height:1.3;color:#c5ced8;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-top:.6vh}
 .rgrid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:3vh 3vw}
 .rbox{background:#121922;border-radius:2vh;padding:2vh 2vw;overflow:hidden}
 .rbox h2{font:700 3.2vh/1 "Barlow Condensed",sans-serif;letter-spacing:.1em;color:#9aa7b4;margin:0 0 1.4vh}
@@ -118,6 +118,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 <script src="config.js?v=1.0.0"></script>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="../shared/fwroute.js?v=1"></script>
-<script type="module" src="anzeige.js?v=1.3.2"></script>
+<script type="module" src="anzeige.js?v=1.3.3"></script>
 </body>
 </html>

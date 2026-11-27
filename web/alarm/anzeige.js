@@ -84,7 +84,7 @@ function newsStart() {
   const on = S.ruhe.newsOn !== false; if (on === newsOn) return; newsOn = on;
   clearInterval(newsT); clearInterval(newsR);
   if (!on) { $('#news').hidden = true; return; }
-  newsLaden(); newsR = setInterval(newsLaden, 10 * 60000); newsT = setInterval(newsZeig, 12000);
+  newsLaden(); newsR = setInterval(newsLaden, 10 * 60000); newsT = setInterval(newsZeig, 18000);
 }
 
 /* ---------- Bildergalerie (linke Hälfte der Ruheanzeige) ---------- */

@@ -12,7 +12,7 @@ for it in root.iter('item'):
     d = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', d)).strip()
     try: ts = int(parsedate_to_datetime(it.findtext('pubDate')).timestamp() * 1000)
     except Exception: ts = 0
-    if t: items.append({'t': t, 'd': d[:220], 'ts': ts, 'l': (it.findtext('link') or '').strip()})
+    if t: items.append({'t': t, 'd': d[:600], 'ts': ts, 'l': (it.findtext('link') or '').strip()})
 items.sort(key=lambda x: -x['ts'])
 json.dump({'quelle': 'SRF', 'feed': URL, 'stand': max([i['ts'] for i in items] or [0]), 'items': items[:20]},
           open(sys.argv[1] if len(sys.argv) > 1 else 'news.json', 'w'), ensure_ascii=False)
