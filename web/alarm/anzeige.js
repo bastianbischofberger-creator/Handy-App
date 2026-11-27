@@ -39,6 +39,31 @@ function renderRuhe() {
   $('#marq').hidden = !R.info; $('#marqT').textContent = R.info || '';
 }
 
+/* ---------- Wetter (Open-Meteo, frei nutzbar, ohne Schlüssel) ---------- */
+const ORTE = { Rheineck: [47.4659, 9.5915], Thal: [47.4667, 9.5667], Lutzenberg: [47.4617, 9.5856] };
+const WMO = c => c === 0 ? ['☀️', 'Sonnig'] : c <= 2 ? ['🌤️', 'Leicht bewölkt'] : c === 3 ? ['☁️', 'Bedeckt'] : c <= 48 ? ['🌫️', 'Nebel'] : c <= 57 ? ['🌦️', 'Nieselregen'] : c <= 67 ? ['🌧️', 'Regen'] : c <= 77 ? ['🌨️', 'Schnee'] : c <= 82 ? ['🌧️', 'Regenschauer'] : c <= 86 ? ['🌨️', 'Schneeschauer'] : ['⛈️', 'Gewitter'];
+const WT2 = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+let wxT = null, wxOrt = '';
+async function wetter() {
+  const R = S.ruhe || {}, ort = R.wxOrt || 'Thal', on = R.wxOn !== false;
+  if (!on) { $('#wx').hidden = true; $('#glatt').hidden = true; return; }
+  const [la, lo] = ORTE[ort] || ORTE.Thal;
+  try {
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation&hourly=temperature_2m,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FZurich&forecast_days=4&forecast_hours=12`;
+    const w = await fetch(u).then(r => { if (!r.ok) throw 0; return r.json(); });
+    const c = w.current, [ic, tx] = WMO(c.weather_code), d = w.daily;
+    $('#wxI').textContent = ic; $('#wxT').textContent = Math.round(c.temperature_2m) + '°';
+    $('#wxD').textContent = `${ort} · ${tx} · ${Math.round(d.temperature_2m_min[0])}° / ${Math.round(d.temperature_2m_max[0])}°` + (c.wind_gusts_10m >= 50 ? ` · Böen ${Math.round(c.wind_gusts_10m)} km/h` : '');
+    $('#wxDays').innerHTML = [1, 2, 3].map(i => `<div>${WT2[new Date(d.time[i]).getDay()]}<b>${WMO(d.weather_code[i])[0]}</b><span>${Math.round(d.temperature_2m_max[i])}°</span> ${Math.round(d.temperature_2m_min[i])}°</div>`).join('');
+    // Glätte: Temperatur nahe/unter 0 °C in den nächsten 12 Std. und Niederschlag bzw. Nässe
+    const tmin = Math.min(c.temperature_2m, ...w.hourly.temperature_2m), nass = c.precipitation > 0 || w.hourly.precipitation.some(p => p > 0);
+    const g = tmin <= 1 && nass ? 'Glättegefahr: um 0 °C mit Niederschlag' : tmin <= 0 ? 'Frost: stellenweise Glätte möglich' : c.wind_gusts_10m >= 70 ? `Sturmböen bis ${Math.round(c.wind_gusts_10m)} km/h.` : '';
+    $('#glatt').hidden = !g; $('#glatt').textContent = g ? '⚠ ' + g : '';
+    $('#wx').hidden = false;
+  } catch (e) { /* ohne Wetter weiter – nächster Versuch in 15 Min. */ }
+}
+function wetterStart() { const k = (S.ruhe.wxOn !== false) + '|' + (S.ruhe.wxOrt || 'Thal'); if (k === wxOrt) return; wxOrt = k; clearInterval(wxT); wetter(); wxT = setInterval(wetter, 15 * 60000); }
+
 /* ---------- Bildergalerie (linke Hälfte der Ruheanzeige) ---------- */
 let galT = null, galI = -1, galFront = 'gA', galKey = '';
 function galStart() {
@@ -118,7 +143,7 @@ async function boot() {
   function listen() {
     if (listen.on) return; listen.on = true;
     F.onSnapshot(F.doc(fs, 'ad_state', 'current'), d => { S.cur = d.exists() ? d.data() : null; $('#off').hidden = true; if (S.cur && !$('#vAlarm').hidden) renderAlarm(); route(); }, () => { $('#off').hidden = false; });
-    F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); galStart(); }, () => {});
+    F.onSnapshot(F.doc(fs, 'ad_state', 'ruhe'), d => { S.ruhe = d.exists() ? d.data() : {}; renderRuhe(); galStart(); wetterStart(); }, () => {});
     F.onSnapshot(F.collection(fs, 'ad_bilder'), q => { S.bilder = q.docs.map(d => d.data()).sort((a, b) => (a.n || 0) - (b.n || 0)).map(b => b.d); galStart(); }, () => {});
   }
   if (S.staff) { listen(); $('#tap').hidden = false; }
@@ -127,4 +152,4 @@ async function boot() {
 addEventListener('online', () => $('#off').hidden = true); addEventListener('offline', () => $('#off').hidden = false);
 setTimeout(() => location.reload(), 6 * 3600000 + Math.random() * 600000); // alle ~6 Std. frisch laden (Speicher, Updates)
 tick(); boot();
-window.AD_TEST = { S, route, renderAlarm, renderRuhe, galStart };  // nur für automatische Tests
+window.AD_TEST = { S, route, renderAlarm, renderRuhe, galStart, wetter };  // nur für automatische Tests

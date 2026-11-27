@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'ad-1.1.0';
+const CACHE = 'ad-1.2.0';
 const SHELL = ['./', './index.html', './app.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './config.js', './anzeige.html', './anzeige.js', '../vendor/leaflet/leaflet.js', '../vendor/leaflet/leaflet.css', '../vendor/qrcode-generator/qrcode.js', '../shared/fwsync.js', '../shared/fwui.js', '../shared/fwroute.js'];
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const EXTRA = [];

@@ -25,6 +25,16 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 .rh .t{flex:1;font:600 3.6vh/1.1 "Barlow Condensed",sans-serif;color:#9aa7b4}
 .rh .clock{font:700 16vh/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
 .rh .date{font-size:3.2vh;color:#9aa7b4;text-align:right}
+.wxrow{display:flex;gap:2vw;align-items:stretch}.wxrow:has(#wx[hidden]):has(#glatt[hidden]){display:none}
+.wx{display:flex;align-items:center;gap:2.5vw;background:#121922;border-radius:2vh;padding:1.6vh 2vw}
+.wxnow{display:flex;align-items:center;gap:1.2vw}
+.wxi{font-size:7vh;line-height:1}
+.wxt{font:700 6.5vh/1 "Barlow Condensed",sans-serif}
+.wxd{font-size:2.4vh;color:#9aa7b4;white-space:nowrap}
+.wxnow>div{min-width:0}
+.wxdays{display:flex;gap:1.4vw;border-left:1px solid #26313d;padding-left:2vw}
+.wxdays div{text-align:center;white-space:nowrap;font-size:2.4vh;color:#9aa7b4}.wxdays b{display:block;font-size:4.5vh;line-height:1.2}.wxdays span{color:#e8edf2;font-weight:700}
+.glatt{flex:1;display:flex;align-items:center;background:#f2b705;color:#111;border-radius:1.5vh;padding:1.4vh 2vw;font:700 4.2vh/1.15 Barlow,sans-serif}
 .rgrid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:3vh 3vw}
 .rbox{background:#121922;border-radius:2vh;padding:3vh 2.5vw;overflow:hidden}
 .rbox h2{font:700 3.2vh/1 "Barlow Condensed",sans-serif;letter-spacing:.1em;color:#9aa7b4;margin:0 0 2vh}
@@ -74,7 +84,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 </div>
 
 <div class="v" id="vRuhe" hidden><div id="ruheIn" style="display:flex;flex-direction:column;gap:3vh;height:100%">
-  <div class="rh"><img src="logo.png" alt=""><div class="t">Feuerwehr<br>Rheineck · Thal · Lutzenberg</div><div><div class="clock" id="clock">--:--</div><div class="date" id="date"></div></div></div>
+  <div class="rh"><img src="logo.png" alt=""><div class="t">Feuerwehr<br>Rheineck · Thal · Lutzenberg</div>
+    <div><div class="clock" id="clock">--:--</div><div class="date" id="date"></div></div></div>
+  <div class="wxrow"><div class="wx" id="wx" hidden><div class="wxnow"><span class="wxi" id="wxI"></span><div><div class="wxt" id="wxT"></div><div class="wxd" id="wxD"></div></div></div><div class="wxdays" id="wxDays"></div></div><div class="glatt" id="glatt" hidden></div></div>
   <div class="rgrid" id="rgrid">
     <div class="galv" id="galv" hidden><img id="gA" alt=""><img id="gB" alt=""></div>
     <div class="rbox"><h2>TERMINE</h2><ul id="termine"></ul></div>
@@ -96,6 +108,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e8edf2;
 <script src="config.js?v=1.0.0"></script>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script src="../shared/fwroute.js?v=1"></script>
-<script type="module" src="anzeige.js?v=1.1.0"></script>
+<script type="module" src="anzeige.js?v=1.2.0"></script>
 </body>
 </html>

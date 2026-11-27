@@ -1,7 +1,7 @@
 /* Alarmdisplay – Verwaltung. Bildschirme koppeln (Code vom TV), Ansicht pro TV, Alarm auslösen / Test / beenden,
    Ruheanzeige (Infotext, Termine, Sperren). Zustand für die TVs: Firestore ad_state/current und ad_state/ruhe.
    Beim Alarm wird hier die Route ab Depot berechnet (inkl. Sperren/Bahnübergänge) und mitgegeben. */
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CFG = window.AD_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const TILE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg';
@@ -165,6 +165,11 @@ $('#sList').addEventListener('click', e => {
 });
 $('#bPrev').onclick = () => window.open('anzeige.html?vorschau=1', '_blank', 'noopener');
 
+/* ---------- Wetter-Ort ---------- */
+let wxOrt = 'Thal';
+function renderOrt() { $('#cOrt').innerHTML = 'Ort: ' + ['Rheineck', 'Thal', 'Lutzenberg'].map(o => `<button type="button" data-ort="${o}" class="${wxOrt === o ? 'on' : ''}">${o}</button>`).join(''); }
+$('#cOrt').addEventListener('click', e => { const b = e.target.closest('[data-ort]'); if (b) { wxOrt = b.dataset.ort; renderOrt(); msg('Mit «Ruheanzeige speichern» übernehmen'); } });
+
 /* ---------- Bildergalerie ---------- */
 let galInt = 10;
 const INT = [[6, '6 s'], [10, '10 s'], [20, '20 s'], [30, '30 s'], [60, '1 Min.']];
@@ -195,7 +200,7 @@ let terms = [];
 let ruheGeladen = false;
 function renderRuhe() { // nur beim ersten Laden ins Formular übernehmen – sonst würde laufende Eingabe überschrieben
   if (ruheGeladen) return; ruheGeladen = true;
-  $('#info').value = S.ruhe.info || ''; $('#showSp').checked = S.ruhe.showSp !== false; $('#galOn').checked = S.ruhe.galOn !== false; galInt = S.ruhe.galInt || 10; renderInt(); terms = [...(S.ruhe.termine || [])]; renderTerms();
+  $('#info').value = S.ruhe.info || ''; $('#showSp').checked = S.ruhe.showSp !== false; $('#galOn').checked = S.ruhe.galOn !== false; galInt = S.ruhe.galInt || 10; renderInt(); $('#wxOn').checked = S.ruhe.wxOn !== false; wxOrt = S.ruhe.wxOrt || 'Thal'; renderOrt(); terms = [...(S.ruhe.termine || [])]; renderTerms();
 }
 function renderTerms() {
   $('#terms').innerHTML = terms.sort((a, b) => a.d.localeCompare(b.d)).map((t, i) => `<div class="term"><span>${esc(t.d.split('-').reverse().join('.'))}</span><span>${esc(t.text)}</span><button type="button" class="danger" data-ti="${i}">Entfernen</button></div>`).join('') || '<p class="small mute" style="margin:0">Keine Termine.</p>';
@@ -203,7 +208,7 @@ function renderTerms() {
 $('#terms').addEventListener('click', e => { const b = e.target.closest('[data-ti]'); if (b) { terms.splice(+b.dataset.ti, 1); renderTerms(); } });
 $('#tAdd').onclick = () => { const d = $('#tDat').value, t = $('#tTxt').value.trim(); if (!d || !t) return msg('Datum und Text eingeben'); terms.push({ d, text: t }); $('#tTxt').value = ''; renderTerms(); };
 $('#bRuhe').onclick = () => { if (!S.user) return msg('Zuerst anmelden');
-  F.setDoc(F.doc(fs, 'ad_state', 'ruhe'), { info: $('#info').value.trim(), termine: terms, showSp: $('#showSp').checked, galOn: $('#galOn').checked, galInt, upd: Date.now() }, { merge: true }).then(() => msg('Ruheanzeige gespeichert')).catch(fail); };
+  F.setDoc(F.doc(fs, 'ad_state', 'ruhe'), { info: $('#info').value.trim(), termine: terms, showSp: $('#showSp').checked, galOn: $('#galOn').checked, galInt, wxOn: $('#wxOn').checked, wxOrt, upd: Date.now() }, { merge: true }).then(() => msg('Ruheanzeige gespeichert')).catch(fail); };
 // Aktive Sperren für die TVs kopieren (die TVs haben keinen Zugriff auf config/routing)
 let spLast = '';
 function syncSperren() {
@@ -213,7 +218,7 @@ function syncSperren() {
   F.setDoc(F.doc(fs, 'ad_state', 'ruhe'), { sperren: sp, spUpd: Date.now() }, { merge: true }).catch(() => {});
 }
 
-renderForm(); renderState(); renderInt(); boot();
+renderForm(); renderState(); renderInt(); renderOrt(); boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }

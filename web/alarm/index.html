@@ -119,6 +119,9 @@ textarea{min-height:70px;resize:vertical}
     <div id="terms"></div>
     <div class="term"><input id="tDat" type="date"><input id="tTxt" placeholder="z. B. Atemschutzübung" autocomplete="off"><button type="button" id="tAdd">Hinzufügen</button></div>
     <label class="f" style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:16px"><input type="checkbox" id="showSp" style="width:24px;height:24px;min-height:0;margin:0"> Aktive Strassensperren anzeigen</label>
+    <div class="sec">WETTER</div>
+    <label class="f" style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:16px;margin-top:0"><input type="checkbox" id="wxOn" style="width:24px;height:24px;min-height:0;margin:0"> Wetter mit Glätte-/Frosthinweis anzeigen</label>
+    <div class="chips" id="cOrt" style="margin-top:8px"></div>
     <div class="sec">BILDERGALERIE (LINKE HÄLFTE)</div>
     <label class="f" style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:16px;margin-top:0"><input type="checkbox" id="galOn" style="width:24px;height:24px;min-height:0;margin:0"> Bildergalerie anzeigen</label>
     <div class="chips" id="cInt" style="margin-top:8px"></div>
@@ -143,6 +146,6 @@ textarea{min-height:70px;resize:vertical}
 <script src="../shared/fwui.js?v=1"></script>
 <script src="../shared/fwsync.js?v=2"></script>
 <script src="../shared/fwroute.js?v=1"></script>
-<script type="module" src="app.js?v=1.1.0"></script>
+<script type="module" src="app.js?v=1.2.0"></script>
 </body>
 </html>
