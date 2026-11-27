@@ -1,7 +1,7 @@
 /* Alarmdisplay – Verwaltung. Bildschirme koppeln (Code vom TV), Ansicht pro TV, Alarm auslösen / Test / beenden,
    Ruheanzeige (Infotext, Termine, Sperren). Zustand für die TVs: Firestore ad_state/current und ad_state/ruhe.
    Beim Alarm wird hier die Route ab Depot berechnet (inkl. Sperren/Bahnübergänge) und mitgegeben. */
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 const CFG = window.AD_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const TILE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg';
@@ -200,7 +200,7 @@ let terms = [];
 let ruheGeladen = false;
 function renderRuhe() { // nur beim ersten Laden ins Formular übernehmen – sonst würde laufende Eingabe überschrieben
   if (ruheGeladen) return; ruheGeladen = true;
-  $('#info').value = S.ruhe.info || ''; $('#showSp').checked = S.ruhe.showSp !== false; $('#galOn').checked = S.ruhe.galOn !== false; galInt = S.ruhe.galInt || 10; renderInt(); $('#wxOn').checked = S.ruhe.wxOn !== false; $('#newsOn').checked = S.ruhe.newsOn === true; wxOrt = S.ruhe.wxOrt || 'Thal'; renderOrt(); terms = [...(S.ruhe.termine || [])]; renderTerms();
+  $('#info').value = S.ruhe.info || ''; $('#showSp').checked = S.ruhe.showSp !== false; $('#galOn').checked = S.ruhe.galOn !== false; galInt = S.ruhe.galInt || 10; renderInt(); $('#wxOn').checked = S.ruhe.wxOn !== false; $('#newsOn').checked = S.ruhe.newsOn !== false; wxOrt = S.ruhe.wxOrt || 'Thal'; renderOrt(); terms = [...(S.ruhe.termine || [])]; renderTerms();
 }
 function renderTerms() {
   $('#terms').innerHTML = terms.sort((a, b) => a.d.localeCompare(b.d)).map((t, i) => `<div class="term"><span>${esc(t.d.split('-').reverse().join('.'))}</span><span>${esc(t.text)}</span><button type="button" class="danger" data-ti="${i}">Entfernen</button></div>`).join('') || '<p class="small mute" style="margin:0">Keine Termine.</p>';

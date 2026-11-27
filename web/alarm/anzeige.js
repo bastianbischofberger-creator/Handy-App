@@ -81,7 +81,7 @@ function newsZeig() {
     $('#nT').textContent = n.t; $('#nD').textContent = n.d || ''; nt.classList.remove('f'); }, 600);
 }
 function newsStart() {
-  const on = S.ruhe.newsOn === true; if (on === newsOn) return; newsOn = on;
+  const on = S.ruhe.newsOn !== false; if (on === newsOn) return; newsOn = on;
   clearInterval(newsT); clearInterval(newsR);
   if (!on) { $('#news').hidden = true; return; }
   newsLaden(); newsR = setInterval(newsLaden, 10 * 60000); newsT = setInterval(newsZeig, 12000);
