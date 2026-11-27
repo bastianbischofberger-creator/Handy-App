@@ -2,7 +2,7 @@
    Route ab Depot(s) zum Einsatzort. Berücksichtigt zeitlich begrenzte Strassensperren (mit optionaler Umleitung)
    und die Vorgabe «Bahnübergänge meiden». Routing: Valhalla (valhalla1.openstreetmap.de, FOSSGIS),
    Bahnübergänge: OpenStreetMap über die Overpass-API. Gemeinsame Daten: Firestore config/routing. */
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CFG = window.RT_CONFIG || {};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
@@ -246,8 +246,10 @@ async function valhalla(locs, excl) {
   const r = await fetch(VALHALLA, { method: 'POST', body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.trip) { const e = new Error(j.error || ('HTTP ' + r.status)); e.code = j.error_code; throw e; }
-  const path = j.trip.legs.flatMap(l => decode6(l.shape));
-  return { path, km: j.trip.summary.length, min: j.trip.summary.time / 60 };
+  const path = [], man = [];
+  for (const l of j.trip.legs) { const off = path.length, s = decode6(l.shape); path.push(...s);
+    for (const m of l.maneuvers || []) man.push({ idx: off + m.begin_shape_index, text: m.instruction, say: m.verbal_pre_transition_instruction || m.instruction, type: m.type }); }
+  return { path, man, km: j.trip.summary.length, min: j.trip.summary.time / 60 };
 }
 const avoidList = () => D.bahn.list.filter(x => stOf(x) === 'sperre' || (D.bahn.meiden && stOf(x) === 'meiden'));
 async function routeFrom(dep) {
@@ -296,11 +298,17 @@ function renderRes() {
   $('#res').innerHTML = head + routes.map((r, i) => r.err ? `<div class="errl">${esc(r.dep.name)}: ${esc(r.err)}</div>`
     : `<button type="button" class="rt${i === selR ? ' sel' : ''}" data-r="${i}"><span class="mute small">ab ${esc(r.dep.name)}</span><br><b>${Math.round(r.min)} Min</b> · ${r.km.toFixed(1)} km
       ${r.used.length ? `<div class="small okl">Über Umleitung: ${esc(r.used.join(', '))}</div>` : ''}${r.warn.map(w => `<div class="warnl" style="margin-top:6px">${esc(w)}</div>`).join('')}</button>`).join('')
-    + (routes.some(r => !r.err) ? `<div class="btns"><button type="button" id="bApple">Apple Karten</button><button type="button" id="bGoogle">Google Maps</button></div>
-      ${sp.length || av ? '<div class="warnl">Achtung: Apple/Google kennen eure Sperren und Vorgaben nicht. Massgebend ist die blaue Route auf der Karte.</div>' : ''}` : '');
+    + (routes.some(r => !r.err) ? `<div class="btns"><button type="button" class="pri" id="bNav">▶ Navigation starten (diese Route)</button></div>
+      <div class="btns"><button type="button" id="bGoogle">Google Maps (mit Zwischenzielen)</button><button type="button" id="bApple">Apple Karten</button></div>
+      ${sp.length || av ? '<div class="warnl">Google folgt der Route über Zwischenziele nur ungefähr, Apple kennt eure Sperren gar nicht. Sicher ist «Navigation starten».</div>' : ''}` : '');
   const go = u => window.open(u, '_blank', 'noopener');
   if ($('#bApple')) $('#bApple').onclick = () => go(`https://maps.apple.com/?daddr=${ziel.lat},${ziel.lng}&dirflg=d`);
-  if ($('#bGoogle')) $('#bGoogle').onclick = () => go(`https://www.google.com/maps/dir/?api=1&destination=${ziel.lat},${ziel.lng}&travelmode=driving`);
+  if ($('#bGoogle')) $('#bGoogle').onclick = () => { const r = routes[selR]; if (!r || r.err) return;
+    // bis 8 Zwischenziele gleichmässig entlang der berechneten Route → Google folgt ihr weitgehend
+    const P = r.path, cum = [0]; for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(...toXY(P[i], P[i - 1])));
+    const L = cum[cum.length - 1], wp = []; for (let k = 1; k <= 8; k++) { const t = L * k / 9; const i = cum.findIndex(c => c >= t); if (i > 0) wp.push(P[i].map(v => v.toFixed(5)).join(',')); }
+    go(`https://www.google.com/maps/dir/?api=1&origin=${r.dep.lat},${r.dep.lng}&destination=${ziel.lat},${ziel.lng}&waypoints=${encodeURIComponent(wp.join('|'))}&travelmode=driving&dir_action=navigate`); };
+  if ($('#bNav')) $('#bNav').onclick = () => navStart(routes[selR]);
 }
 $('#res').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (!b) return; selR = +b.dataset.r; renderRes(); drawRoutes(); });
 $('#bRoute').onclick = async () => {
@@ -318,6 +326,67 @@ $('#bRoute').onclick = async () => {
   $('#bRoute').disabled = false; renderRes(); drawRoutes();
 };
 
+/* ---------- Navigation in der App (folgt genau der berechneten Route) ---------- */
+const NV = { on: false, r: null, i: 0, watch: null, me: null, line: null, done: null, snd: true, said: {}, off: 0, busy: false, lock: null, pos: null };
+const ARROW = t => ({ 9: '↗', 10: '→', 11: '↘', 12: '↩', 13: '↩', 14: '↙', 15: '←', 16: '↖', 4: '⚑', 5: '⚑', 6: '⚑', 26: '⟳', 27: '⟳' })[t] || '↑';
+const say = t => { if (!NV.snd || !window.speechSynthesis) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'de-CH'; speechSynthesis.speak(u); } catch (e) {} };
+const fmtD = m => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : (m < 50 ? Math.round(m / 5) * 5 : Math.round(m / 10) * 10) + ' m';
+function navCum(r) { r.cum = [0]; for (let i = 1; i < r.path.length; i++) r.cum.push(r.cum[i - 1] + Math.hypot(...toXY(r.path[i], r.path[i - 1]))); }
+function navLoad(r) {
+  NV.r = r; NV.i = 0; NV.said = {}; NV.off = 0; navCum(r);
+  if (NV.line) NV.line.remove(); if (NV.done) NV.done.remove();
+  NV.line = L.polyline(r.path, { color: '#1565c0', weight: 9, opacity: .95 }).addTo(map);
+  NV.done = L.polyline([], { color: '#8aa4c4', weight: 9, opacity: .9 }).addTo(map);
+  const hs = (r.hit || []).filter(x => stOf(x) === 'sperre');
+  $('#navWarn').hidden = !hs.length; $('#navWarn').textContent = hs.length ? 'ACHTUNG: Route führt über einen gesperrten Bahnübergang!' : '';
+}
+async function navStart(r) {
+  if (!r || r.err) return;
+  if (!navigator.geolocation) return msg('Dieses Gerät liefert keinen Standort');
+  NV.on = true; document.body.classList.add('nav'); ['navTop', 'navBot'].forEach(i => $('#' + i).hidden = false);
+  gRoute.clearLayers(); navLoad(r); setTimeout(() => map.invalidateSize(), 60);
+  try { NV.lock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  say('Navigation gestartet.' + (r.used && r.used.length ? ' Route über Umleitung.' : ''));
+  NV.watch = navigator.geolocation.watchPosition(navPos, e => { $('#navTxt').textContent = e.code === 1 ? 'Standort nicht erlaubt – in den Einstellungen freigeben' : 'Warte auf GPS …'; }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+}
+function navStop() {
+  NV.on = false; if (NV.watch != null) navigator.geolocation.clearWatch(NV.watch); NV.watch = null;
+  try { NV.lock && NV.lock.release(); } catch (e) {} NV.lock = null; try { speechSynthesis.cancel(); } catch (e) {}
+  [NV.me, NV.line, NV.done].forEach(l => l && l.remove()); NV.me = NV.line = NV.done = null;
+  document.body.classList.remove('nav'); ['navTop', 'navBot', 'navWarn'].forEach(i => $('#' + i).hidden = true);
+  setTimeout(() => { map.invalidateSize(); drawRoutes(); }, 60);
+}
+function navPos(p) {
+  if (!NV.on) return; const r = NV.r, me = [p.coords.latitude, p.coords.longitude]; NV.pos = me;
+  if (!NV.me) NV.me = L.marker(me, { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000 }).addTo(map); else NV.me.setLatLng(me);
+  // nächsten Punkt auf der Route suchen (nur vorwärts, kleines Fenster)
+  let best = NV.i, bd = Infinity;
+  for (let i = Math.max(0, NV.i - 5); i < Math.min(r.path.length - 1, NV.i + 400); i++) { const d = distSeg(me, r.path[i], r.path[i + 1]); if (d < bd) { bd = d; best = i; } }
+  NV.i = best; NV.done.setLatLngs(r.path.slice(0, best + 1).concat([me]));
+  map.setView(me, Math.max(map.getZoom(), 17), { animate: true });
+  const seg = r.cum[best + 1] - r.cum[best], along = r.cum[best] + Math.min(seg, Math.hypot(...toXY(me, r.path[best])));  // Fortschritt innerhalb des Abschnitts
+  const rest = Math.max(0, r.cum[r.cum.length - 1] - along), eta = new Date(Date.now() + rest / Math.max(r.km * 1000, 1) * r.min * 60000);
+  $('#navEta').innerHTML = `${fmtD(rest)}<small>Ankunft ca. ${pad(eta.getHours())}:${pad(eta.getMinutes())} · ${Math.max(1, Math.round(rest / Math.max(r.km * 1000, 1) * r.min))} Min</small>`;
+  if (rest < 40) { $('#navDist').textContent = 'Ziel'; $('#navTxt').textContent = 'Einsatzort erreicht'; $('#navAr').textContent = '⚑'; if (!NV.said.end) { NV.said.end = 1; say('Einsatzort erreicht.'); } return; }
+  // von der Route abgekommen? (3 Messungen > 60 m, Genauigkeit beachten)
+  if (bd > Math.max(60, (p.coords.accuracy || 0) * 1.5)) { if (++NV.off >= 3 && !NV.busy) navReroute(); } else NV.off = 0;
+  const m = r.man.find(x => x.idx > best) || r.man[r.man.length - 1]; if (!m) return;
+  const dm = Math.max(0, r.cum[Math.min(m.idx, r.cum.length - 1)] - along);
+  $('#navDist').textContent = fmtD(dm); $('#navTxt').textContent = m.text; $('#navAr').textContent = ARROW(m.type);
+  const k = r.man.indexOf(m);
+  if (dm < 350 && dm > 120 && !NV.said[k + 'a']) { NV.said[k + 'a'] = 1; say('In ' + fmtD(dm).replace(',', ' Komma ') + ' ' + m.say); }
+  if (dm <= 60 && !NV.said[k + 'b']) { NV.said[k + 'b'] = 1; say(m.say); }
+}
+async function navReroute() {
+  if (!NV.pos || !navigator.onLine) return; NV.busy = true; $('#navTxt').textContent = 'Route wird neu berechnet …'; say('Route wird neu berechnet.');
+  try { const r = await routeFrom({ lat: NV.pos[0], lng: NV.pos[1], name: 'Standort' }); navLoad(r); } catch (e) { $('#navTxt').textContent = 'Neuberechnung fehlgeschlagen – der blauen Linie folgen'; }
+  NV.busy = false; NV.off = 0;
+}
+$('#navEnd').onclick = navStop;
+$('#navRe').onclick = () => navReroute();
+$('#navSnd').onclick = () => { NV.snd = !NV.snd; $('#navSnd').textContent = NV.snd ? 'Ton aus' : 'Ton an'; if (!NV.snd) try { speechSynthesis.cancel(); } catch (e) {} };
+document.addEventListener('visibilitychange', async () => { if (NV.on && !document.hidden) try { NV.lock = await navigator.wakeLock.request('screen'); } catch (e) {} });
+
 /* ---------- Tabs ---------- */
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('[data-t]'); if (!b) return;
@@ -332,3 +401,4 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 window.RT_VERSION = VERSION;
+window.RT_TEST = { navStart, navStop };  // nur für automatische Tests

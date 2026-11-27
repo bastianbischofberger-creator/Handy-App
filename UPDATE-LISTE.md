@@ -83,3 +83,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Code-Review 27.11.: Teilen nur vom erstellenden Gerät live/beenden, ASÜ leere Trupp-Nr. abgefangen, Route begrenzt Bahnübergänge auf Umkreis, Einsatzpläne PDF-Ersatz sicher, Startseite Adresse nach Kartentipp wieder suchbar, Wischen am Fensterrand
 - Route 1.0.3: Bahnübergänge über mehrere OpenStreetMap-Server mit Zeitlimit, zusätzlich von Hand setzen/löschen
 - Route 1.1.0: Bahnübergänge mit Zustand gesperrt (immer umfahren) / meiden / erlaubt, Bezeichnung, Warnung wenn gesperrter Übergang unvermeidbar
+- Route 1.2.0: Navigation in der App (folgt der berechneten Route mit Sperren/Umleitungen/Bahnübergängen, Sprachansage, Neuberechnung bei Abweichung, Bildschirm bleibt an), Google Maps mit Zwischenzielen
