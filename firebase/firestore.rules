@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Firestore-Regeln für ASÜ-App, Mehrfachereignisse, Einsatzjournal, Schichtplanung, Einsatzbilder, Einsatzpläne, Einsatzdaten teilen und RTLWiki (Projekt asue-e0f21)
+// Firestore-Regeln für ASÜ-App, Mehrfachereignisse, Einsatzjournal, Schichtplanung, Einsatzbilder, Einsatzpläne, Einsatzdaten teilen, RTLWiki und Alarmdisplay (Projekt asue-e0f21)
 // In der Firebase-Konsole unter Firestore > Regeln einfügen und «Veröffentlichen».
 // WICHTIG: Zuerst diese Regeln veröffentlichen, erst danach die anonyme Anmeldung einschalten.
 // «staff» = angemeldet mit E-Mail/Passwort (eure Konten). Anonyme Anmeldung (QR-Code im Depot)
@@ -101,6 +101,24 @@ service cloud.firestore {
           && request.resource.data.name is string && request.resource.data.name.size() <= 60
           && request.resource.data.tel is string && request.resource.data.tel.size() <= 30);
       }
+    }
+
+    // ---------- Alarmdisplay ----------
+    // TVs melden sich anonym an und legen sich mit einem Kopplungscode selbst an; gekoppelt (paired) werden sie nur durch Konten.
+    // Gekoppelte TVs dürfen den Anzeige-Zustand lesen und ihr «zuletzt gesehen» aktualisieren.
+    match /ad_screens/{sid} {
+      allow get: if staff() || (request.auth != null && request.auth.uid == sid);
+      allow list, delete: if staff();
+      allow create: if request.auth != null && request.auth.uid == sid
+        && request.resource.data.keys().hasOnly(['code', 't', 'ua', 'seen'])
+        && request.resource.data.code is string && request.resource.data.code.size() == 6;
+      allow update: if staff() || (request.auth != null && request.auth.uid == sid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen', 'ua', 'code']));
+    }
+    match /ad_state/{doc} {
+      allow read: if staff() || (request.auth != null
+        && get(/databases/$(database)/documents/ad_screens/$(request.auth.uid)).data.paired == true);
+      allow write: if staff();
     }
 
     // ---------- RTLWiki ----------
