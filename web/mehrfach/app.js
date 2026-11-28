@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.9.2';
+const VERSION = '0.10.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 

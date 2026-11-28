@@ -64,7 +64,7 @@ function showMain() {
   $('#evName').textContent = PUB.name || 'Ereignis'; greet();
   const inn = MY && MY.status === 'an';
   $('#inForm').hidden = inn; $('#inDone').hidden = !inn; $('#mErr').textContent = ''; $('#dErr').textContent = '';
-  if (inn) { $('#since').textContent = 'seit ' + hm(MY.tIn || MY.t) + ' Uhr'; watchInbox(); } else { stopInbox(); setTimeout(() => $('#code').focus(), 50); }
+  if (inn) { $('#since').textContent = 'seit ' + hm(MY.tIn || MY.t) + ' Uhr'; renderAl(); wachHalten(); watchInbox(); } else { stopInbox(); setTimeout(() => $('#code').focus(), 50); }
 }
 
 /* Begrüssung nach Uhrzeit */
@@ -121,8 +121,51 @@ function renderAuftrag() {
     ${!a.fuehrung ? '<p class="mute">Rückmeldungen macht der Teamchef (fett).</p>' : ''}
     <div class="btns">${btns}</div></div>`;
   if (!$('#fl').hidden) renderFiles();
-  if (lastAid !== a.aid) { lastAid = a.aid; try { navigator.vibrate && navigator.vibrate(a.dringend ? [500, 150, 500, 150, 500] : [300, 150, 300]); } catch (e) {} }
+  if (lastAid !== a.aid) { lastAid = a.aid; neuerAuftrag(a); }
 }
+/* ---------- Ton, Vibration & Benachrichtigung bei neuem Auftrag ---------- */
+let AC = null, wake = null;
+const alOn = () => P.alarm === true;
+function renderAl() {
+  const n = 'Notification' in window ? Notification.permission : 'nein';
+  $('#alarmBox').classList.toggle('on', alOn());
+  $('#alSt').textContent = !alOn() ? 'Aus – du hörst neue Aufträge nicht' : 'Ton an' + (n === 'granted' ? ' · Mitteilung an' : n === 'denied' ? ' · Mitteilungen blockiert' : '') + (wake ? ' · Bildschirm bleibt an' : '');
+  $('#bAl').textContent = alOn() ? 'Testen' : 'Einschalten';
+}
+function unlockAudio() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {} }
+function ton(dringend) {
+  if (!AC) return; const t0 = AC.currentTime + .05, g = AC.createGain(); g.connect(AC.destination); g.gain.value = 0;
+  const o = AC.createOscillator(); o.type = 'square'; o.connect(g); o.start(t0);
+  if (dringend) { for (let i = 0; i < 6; i++) { const t = t0 + i * .5; o.frequency.setValueAtTime(i % 2 ? 660 : 990, t); g.gain.setValueAtTime(.35, t); } g.gain.setValueAtTime(0, t0 + 3); o.stop(t0 + 3.1); }
+  else { o.frequency.value = 880; for (let i = 0; i < 3; i++) { const t = t0 + i * .45; g.gain.setValueAtTime(.3, t); g.gain.setValueAtTime(0, t + .25); } o.stop(t0 + 1.5); }
+}
+async function wachHalten() { try { if ('wakeLock' in navigator && !wake && alOn()) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; renderAl(); }); } } catch (e) {} renderAl(); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { wachHalten(); unlockAudio(); } });
+$('#bAl').onclick = async () => {
+  unlockAudio();
+  if (!alOn()) { P.alarm = true; saveP(); try { if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission(); } catch (e) {} await wachHalten(); }
+  ton(false); try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {} renderAl();
+};
+async function mitteilung(a) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const title = (a.dringend ? 'DRINGEND – ' : '') + (a.rolle === 'reko' ? 'Reko-Auftrag ' : 'Neuer Auftrag ') + a.nr, body = [a.art, a.adresse].filter(Boolean).join(' · ');
+  const opt = { body, tag: 'mf-auftrag', renotify: true, requireInteraction: !!a.dringend, vibrate: a.dringend ? [500, 150, 500, 150, 500] : [300, 150, 300], icon: 'icon-192.png', data: { url: location.href } };
+  try { const r = await navigator.serviceWorker?.getRegistration(); if (r) return r.showNotification(title, opt); new Notification(title, opt); } catch (e) {}
+}
+function neuerAuftrag(a) {
+  const k = 'mf-gemeldet'; let schon = ''; try { schon = localStorage.getItem(k) || ''; } catch (e) {}
+  if (schon === a.aid) return; try { localStorage.setItem(k, a.aid); } catch (e) {}   // nach Neuladen nicht nochmals alarmieren
+  try { navigator.vibrate && navigator.vibrate(a.dringend ? [500, 150, 500, 150, 500, 150, 500] : [300, 150, 300]); } catch (e) {}
+  if (!alOn()) return;
+  ton(!!a.dringend); mitteilung(a);
+  $('#alT').textContent = (a.dringend ? 'DRINGEND · ' : '') + (a.rolle === 'reko' ? 'Reko-Auftrag ' : 'Neuer Auftrag ') + a.nr;
+  $('#alS').textContent = [a.art, a.adresse].filter(Boolean).join(' · '); $('#alFlash').hidden = false;
+  if (a.dringend) { let n = 0; const iv = setInterval(() => { if ($('#alFlash').hidden || ++n > 3) return clearInterval(iv); ton(true); }, 4000); }
+}
+$('#bAlOk').onclick = () => { $('#alFlash').hidden = true; window.scrollTo(0, 0); };
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+document.addEventListener('pointerdown', unlockAudio, { once: true });
+
 const kbs = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 function b64ToBlob(b64, type) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || 'application/octet-stream' }); }
 let fvUrl = null;
@@ -259,3 +302,4 @@ $('#bOut').onclick = async () => {
   $('#bOut').disabled = false;
 };
 boot();
+window.MF_TEST = { neuerAuftrag, renderAl, ton };

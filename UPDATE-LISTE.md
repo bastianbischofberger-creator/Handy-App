@@ -89,3 +89,5 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 
 - [x] Alarmdisplay 1.3.0: SRF-News («Das Neueste») als wechselnde Schlagzeile; Feed holt GitHub Action alle 15 Min. in Branch «news». Schriftliche Zusage SRF liegt bei den Akten (OneDrive) von Bastian.
 - [x] ASÜ 3.8.0: Ansicht «Mini» (4–5 Trupps pro Zeile auf dem iPad quer), Schnellumschalter «▦» in der Leiste: Kompakt → Mini → Gross
+- [x] Mehrfachereignisse 0.10.0: AdF-Handy – Ton (dringend: Sirenenton), Vibration, Vollbild-Hinweis und Mitteilung bei neuem Auftrag, Bildschirm bleibt an (solange Seite offen)
+- [ ] Echte Push-Nachricht auch bei gesperrtem Handy / geschlossener Seite → braucht Server (Web Push), mit Schweizer Server umsetzen

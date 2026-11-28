@@ -60,6 +60,13 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 .new{animation:pulse 1s ease-in-out 4}@keyframes pulse{50%{box-shadow:0 0 0 10px rgba(200,16,46,.25)}}
 </style>
 </head>
+<style>
+.almb{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #d9d4cc;border-radius:12px;padding:10px 12px;background:#fff}
+.almb>div{display:flex;flex-direction:column;gap:2px;font-size:15px}.almb .mute{font-size:13px}.almb button{min-height:44px;white-space:nowrap}
+.almb.on{border-color:#1d7a46}.almb.on button{background:#fff;color:#16181a;border:1px solid #d9d4cc}
+#alFlash{position:fixed;inset:0;z-index:70;background:#c8102e;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;font:700 30px/1.2 system-ui,sans-serif}
+#alFlash small{font-size:18px;font-weight:500}#alFlash button{font-size:20px;min-height:56px;padding:0 28px;background:#fff;color:#c8102e;border:0;border-radius:12px;font-weight:700}
+</style>
 <body>
 <main class="card">
   <div class="hd"><img src="logo.png" alt="Logo Feuerwehr"><h1 id="org">Feuerwehr</h1></div>
@@ -95,6 +102,7 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
         <div class="big">Du bist angemeldet</div><div class="mute" id="since"></div></div>
       <p class="err" id="dErr"></p>
       <div id="auftrag" hidden></div>
+      <div id="alarmBox" class="almb"><div><b>Ton &amp; Benachrichtigung</b><span id="alSt" class="mute"></span></div><button type="button" id="bAl" class="blue">Einschalten</button></div>
       <div id="noAuftrag" class="mute" style="text-align:center">Noch kein Auftrag. Lass diese Seite offen – ein Auftrag erscheint hier automatisch.</div>
       <button id="bOut" type="button" class="anhb">Abmelden (ich gehe)</button>
     </div>
@@ -146,8 +154,9 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
     </div>
   </section>
 </main>
+<div id="alFlash" hidden><div id="alT">Neuer Auftrag</div><small id="alS"></small><button type="button" id="bAlOk">Anzeigen</button></div>
 <div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.9.0"></script>
+<script type="module" src="checkin.js?v=0.10.0"></script>
 </body>
 </html>

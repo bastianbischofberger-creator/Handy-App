@@ -1,6 +1,6 @@
 /* Service Worker: macht die App offline verfügbar.
    Nach jedem Update der App-Dateien hier die Versionsnummer erhöhen. */
-const CACHE = 'mf-0.9.9';
+const CACHE = 'mf-0.10.0';
 const SHELL = ['./', './index.html', './app.js', './config.js', './logo.png', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './vendor/jspdf.umd.min.js', '../vendor/leaflet/leaflet.js', '../vendor/leaflet/leaflet.css',
   '../vendor/qrcode-generator/qrcode.js', './checkin.html', './checkin.js', '../shared/fwform.js', '../shared/fwsync.js', '../shared/fwui.js'];
@@ -55,3 +55,9 @@ async function trim(c) {
   try { const ks = await c.keys(); if (ks.length > MAXTILES) await Promise.all(ks.slice(0, ks.length - MAXTILES).map(k => c.delete(k))); } catch (e) {}
   trimming = false;
 }
+
+/* Tipp auf die Mitteilung «Neuer Auftrag» → Seite öffnen */
+self.addEventListener('notificationclick', e => {
+  e.notification.close(); const url = (e.notification.data && e.notification.data.url) || './checkin.html';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => { const c = cs.find(x => x.url.includes('checkin')); return c ? c.focus() : self.clients.openWindow(url); }));
+});
