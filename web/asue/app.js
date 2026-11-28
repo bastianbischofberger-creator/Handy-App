@@ -2,7 +2,7 @@
    Offline-fähige Web-App mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '3.7.2';
+const VERSION = '3.8.0';
 const CFG = window.ASUE_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -263,7 +263,8 @@ function render() {
   $('#kanaele').innerHTML = [...new Set([...presets(), ...S.teams.map(t => t.kanal).filter(Boolean)])].map(k => `<option value="${esc(k)}">`).join('');
   const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
   { const mi = $('#muteInd'); mi.hidden = !LP.get('mute'); mi.innerHTML = SPK + '<path d="M17 9l5 6M22 9l-5 6"/></svg>Ton aus'; }
-  const cmp = LP.get('view') !== 'gross'; document.body.classList.toggle('compact', cmp);
+  const vw = LP.get('view') || 'kompakt'; document.body.classList.toggle('compact', vw !== 'gross'); document.body.classList.toggle('mini', vw === 'mini');
+  $('#bView').textContent = '▦ ' + ({ mini: 'Mini', kompakt: 'Kompakt', gross: 'Gross' }[vw] || 'Kompakt');
   const st = $('#eState'); st.textContent = S.eid ? (S.meta.closed ? 'Abgeschlossen' : 'Laufend') : 'Kein Einsatz'; st.className = 'tag' + (S.eid && !S.meta.closed ? ' on' : '');
   $('#bClose').hidden = !S.eid || !!S.meta.closed;
   $('#log').innerHTML = S.log.length ? [...S.log].reverse().map(l => `<li${l.prio ? ' class="prio"' : ''}><time>${hms(l.t)}</time><span>${esc(l.text)}</span>${l.dev ? `<em>${esc(l.dev)}</em>` : ''}</li>`).join('') : '<li><span style="color:var(--mute)">Noch keine Einträge.</span></li>';
@@ -543,7 +544,7 @@ function openSettings() {
   { const dv = LP.get('dev') || '', opts = ['Atemschutzüberwacher', 'Atemschutzoffizier'];
     f.elements.dev.value = dv; f.elements.devSel.value = !dv ? '' : opts.includes(dv) ? dv : '__other'; f.elements.dev.hidden = f.elements.devSel.value !== '__other'; }
   $('#sAdmin').hidden = true; $('#bAdmin').hidden = false;
-  f.elements.ton.value = LP.get('mute') ? 'aus' : 'an'; f.elements.view.value = LP.get('view') === 'gross' ? 'gross' : 'kompakt'; f.elements.bau.value = LP.get('bau') === 'aus' ? 'aus' : 'an';
+  f.elements.ton.value = LP.get('mute') ? 'aus' : 'an'; f.elements.view.value = ['mini', 'gross'].includes(LP.get('view')) ? LP.get('view') : 'kompakt'; f.elements.bau.value = LP.get('bau') === 'aus' ? 'aus' : 'an';
   $('#bLogout').hidden = SY.mode !== 'cloud' || !SY.user;
   $('#sInfo').textContent = `Version ${VERSION} · ${SY.mode === 'cloud' ? 'Synchronisation über Firebase' + (SY.user ? ' · angemeldet als ' + SY.user.email : '') : 'Nur lokal (keine Firebase-Konfiguration)'}`;
   $('#dS').showModal();
@@ -887,6 +888,7 @@ function publishLage() {
   clearTimeout(pubT); pubT = setTimeout(() => BE.putPublic(k, { ...d, upd: Date.now() }), 400);
 }
 $('#bXClose').onclick = () => $('#dX').close();
+$('#bView').onclick = () => { const o = ['kompakt', 'mini', 'gross'], v = LP.get('view') || 'kompakt'; LP.set('view', o[(o.indexOf(v) + 1) % 3]); render(); };
 for (const k of ['view', 'bau']) $('#fS').elements[k].addEventListener('change', e => { LP.set(k, e.target.value); render(); });
 $('#bSet').onclick = openSettings;
 /* Logo: im Tableau → Dashboard, im Dashboard → Startseite */

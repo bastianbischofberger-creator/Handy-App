@@ -292,6 +292,22 @@ label select+input{margin-top:6px}
 @media(max-width:1000px){.compact .board{grid-template-columns:190px minmax(0,1fr)}}
 @media(max-width:700px){.compact .board{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.top h1{flex-basis:100%}.nr{font-size:38px}.kpis b{font-size:21px}.mt .n{font-size:17px}}
+/* Mini: 4–5 Trupps pro Zeile (iPad quer) */
+.compact.mini .board{grid-template-columns:180px minmax(0,1fr);gap:8px}
+.compact.mini .grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,205px),1fr));gap:6px}
+.compact.mini .card header{padding:4px 7px;gap:6px}
+.compact.mini .nr{font-size:24px;min-width:24px;padding-top:1px}.compact.mini .nri{display:none}
+.compact.mini .auftrag{font-size:13px}
+.compact.mini .kanal,.compact.mini .st,.compact.mini .lbl,.compact.mini .stk,.compact.mini .notf{font-size:11.5px;padding:0 5px}
+.compact.mini .mt td{font-size:13px;padding:0 8px}.compact.mini .mt .n{font-size:14px}.compact.mini .mt .n b{font-size:16px}
+.compact.mini .kpis div{padding:2px 6px}.compact.mini .kpis b{font-size:15px}.compact.mini .card .kpis span[data-s]::after{font-size:10px}
+.compact.mini .btns{padding:4px 5px;gap:4px}.compact.mini .btns button{min-height:36px;padding:2px 4px}
+.compact.mini .card [data-s]::after{font-size:13px}
+.compact.mini .btns [data-a=rz],.compact.mini .btns [data-a=out],.compact.mini .btns [data-a=hide],.compact.mini .btns [data-a=del]{font-size:0}
+.compact.mini .btns [data-a=rz]::after{content:"RZ";font-size:13px}.compact.mini .btns [data-a=out]::after{content:"Raus";font-size:13px}
+.compact.mini .btns [data-a=hide]::after{content:"Ausblenden";font-size:13px}.compact.mini .btns [data-a=del]::after{content:"✕";font-size:15px}
+.compact.mini .innotbar{font-size:12px;padding:2px 6px}
+#bView{white-space:nowrap}
 </style>
 </head>
 <body class="dashmode">
@@ -305,7 +321,7 @@ label select+input{margin-top:6px}
   <div class="tb">
     <button class="add" id="bAdd">+ Trupp</button>
     <button id="bList">Dashboard</button>
-    <button id="bSet">Einstellungen</button>
+    <button id="bSet">Einstellungen</button><button id="bView" title="Ansicht wechseln"></button>
     <button id="bExp" class="icob" title="Lage per QR-Code teilen" aria-label="Lage teilen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
   </div>
 </div>
@@ -379,7 +395,7 @@ label select+input{margin-top:6px}
     <input name="dev" placeholder="z. B. iPad 1" hidden></label>
   <label>Ton (Alarme)<select name="ton"><option value="an">An</option><option value="aus">Aus</option></select></label>
   <div class="g2">
-    <label>Ansicht<select name="view"><option value="kompakt">Kompakt</option><option value="gross">Gross</option></select></label>
+    <label>Ansicht<select name="view"><option value="mini">Mini (am meisten Trupps)</option><option value="kompakt">Kompakt</option><option value="gross">Gross</option></select></label>
     <label>Gebäude anzeigen<select name="bau"><option value="an">An</option><option value="aus">Aus</option></select></label>
   </div>
   <p class="hint" id="sInfo"></p>
@@ -525,6 +541,6 @@ label select+input{margin-top:6px}
 <script src="icons.js?v=2"></script>
 <script src="../shared/fwform.js?v=1"></script>
 <script src="../shared/fwui.js?v=1"></script>
-<script src="app.js?v=3.6.0"></script>
+<script src="app.js?v=3.8.0"></script>
 </body>
 </html>

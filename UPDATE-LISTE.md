@@ -88,3 +88,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - Alarmdisplay 1.1: Bildergalerie in der Ruheanzeige (linke Hälfte, Überblenden, Takt einstellbar, Upload mit Verkleinerung); Regeln: ad_bilder
 
 - [x] Alarmdisplay 1.3.0: SRF-News («Das Neueste») als wechselnde Schlagzeile; Feed holt GitHub Action alle 15 Min. in Branch «news». Schriftliche Zusage SRF liegt bei den Akten (OneDrive) von Bastian.
+- [x] ASÜ 3.8.0: Ansicht «Mini» (4–5 Trupps pro Zeile auf dem iPad quer), Schnellumschalter «▦» in der Leiste: Kompakt → Mini → Gross
