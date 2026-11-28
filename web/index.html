@@ -284,6 +284,10 @@
   <script>
   (function () {
     // ---------- Einstellungen ----------
+    // Die gleiche Datei läuft auch als «Lagekarte Privat» (private Zweit-App, web/privat/, erzeugt von tools/build-privat.sh).
+    // Dort setzt window.LAGE_CFG einen eigenen Speicher-Präfix, damit die Zeichnungen nie gemischt werden.
+    const CFG = Object.assign({ prefix: 'einsatzkarte.', privat: false }, window.LAGE_CFG || {});
+    const PFX = CFG.prefix;
     const BASE_MAPS = {
       // SWISSIMAGE gibt es bis Zoomstufe 20 (ca. 15 cm pro Bildpunkt); bisher wurde ab 18 nur vergrössert
       luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg', nativeMax: 20 },
@@ -359,8 +363,8 @@
       { c: '#D32F2F', n: 'Rot' }, { c: '#1565C0', n: 'Blau' }, { c: '#000000', n: 'Schwarz' }, { c: '#2E7D32', n: 'Grün' },
       { c: '#F57C00', n: 'Orange' }, { c: '#FFD600', n: 'Gelb' }, { c: '#7B1FA2', n: 'Violett' }, { c: '#FFFFFF', n: 'Weiss' },
     ];
-    const PEN_KEY = 'einsatzkarte.stiftfarbe';
-    const TEXT_COLOR_KEY = 'einsatzkarte.textfarbe';
+    const PEN_KEY = PFX + 'stiftfarbe';
+    const TEXT_COLOR_KEY = PFX + 'textfarbe';
     let textColor = (() => { try { return localStorage.getItem(TEXT_COLOR_KEY) || '#000000'; } catch (e) { return '#000000'; } })();
     const isPenColor = (c) => PEN_COLORS.some((pc) => pc.c === c);
     let penColor = (() => { try { return localStorage.getItem(PEN_KEY) || PEN_COLORS[0].c; } catch (e) { return PEN_COLORS[0].c; } })();
@@ -383,7 +387,7 @@
       : m.kind === 'signatur' ? m.group : m.kind);
     // Signaturen und Fahrzeuge teilen sich die gleiche Technik (drehbar), aber getrennte Auswahl
     const groupOf = (t) => (t.text ? 'text' : t.vehicle ? 'fahrzeug' : 'signatur');
-    const STORAGE_KEY = 'einsatzkarte.zeichnung.v1';
+    const STORAGE_KEY = PFX + 'zeichnung.v1';
 
     const findSymbol = (id) => ITEM_TYPES.find((s) => s.id === id) || PLACEABLE[0];
     const findLine = (id) => LINE_TYPES.find((l) => l.id === id) || LINE_TYPES[0];
@@ -432,8 +436,8 @@
 
     // ---------- Mehrere Skizzen ----------
     // Jede Skizze liegt unter einem eigenen Schlüssel; STORAGE_KEY ist die Arbeitskopie der aktiven Skizze.
-    const IDX_KEY = 'einsatzkarte.skizzen.v1', ACT_KEY = 'einsatzkarte.aktiv';
-    const SK = (id) => 'einsatzkarte.skizze.' + id;
+    const IDX_KEY = PFX + 'skizzen.v1', ACT_KEY = PFX + 'aktiv';
+    const SK = (id) => PFX + 'skizze.' + id;
     const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
     const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
     const nE = (n) => (n || 0) + ((n || 0) === 1 ? ' Eintrag' : ' Einträge');
@@ -538,7 +542,7 @@
     let useCors = true;
     let detailFailed = false;
     // v2: Standard ist neu das Luftbild (frühere Wahl Karte/Grau/Vektor wird nicht übernommen)
-    const BASE_KEY = 'einsatzkarte.basiskarte.v2';
+    const BASE_KEY = PFX + 'basiskarte.v2';
     function setBase(key) {
       baseKey = key;
       try { localStorage.setItem(BASE_KEY, key); } catch (e) {}
@@ -2263,7 +2267,7 @@
       if (disabled) b.disabled = true; else b.onclick = onClick;
       return b;
     }
-    function fwRead() { try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
+    function fwRead() { if (CFG.privat) return null; try { const e = JSON.parse(localStorage.getItem('fw-einsatz')); return e && e.bez ? e : null; } catch (e) { return null; } }
     function renderDash() {
       const act = activeId && findSketch(activeId), FW = fwRead(), key = FW && 'fw-' + FW.t;
       const fwSk = key && sketches.filter((x) => x.fw === key).sort((a, b) => b.updated - a.updated)[0];
@@ -2310,6 +2314,7 @@
     }
     // Neue Lageskizze: gemeinsames Fenster wie auf der Startseite (Bezeichnung, Adresse, Einsatzleiter)
     async function newSketchForm() {
+      if (CFG.privat) return newPrivatSketch();
       const r = await window.FWForm.open({ app: 'Lagekarte', title: 'Neue Lageskizze', ok: 'Skizze starten', adrPflicht: false, elPflicht: false });
       if (!r) return;
       createSketch(r.bez, r.adr, r.fw || undefined);
@@ -2317,6 +2322,20 @@
       if (r.lat != null) placePin(r.lat, r.lng, r.adr, 'address');
       else if (r.adr) searchAddress(r.adr);
       else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
+    }
+    // Privat: einfaches Fenster ohne Einsatzleiter und ohne Verbindung zu den Feuerwehr-Apps
+    function newPrivatSketch() {
+      dialog('Neue Skizze', '', [{ label: 'Skizze starten', primary: true, onClick: () => {
+        const adr = inpO.value.trim();
+        createSketch(inp.value.trim() || 'Skizze vom ' + fmtDT(Date.now()), adr);
+        setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();
+        if (adr) searchAddress(adr);
+        else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
+      } }], true);
+      const extra = document.getElementById('dialogExtra');
+      const inp = document.createElement('input'); inp.className = 'searchInput'; inp.placeholder = 'Bezeichnung (z. B. Wanderung)';
+      const inpO = document.createElement('input'); inpO.className = 'searchInput'; inpO.placeholder = 'Adresse / Ort (freiwillig)'; inpO.style.marginTop = '8px';
+      extra.append(inp, inpO); inp.focus();
     }
     function createSketch(name, ort, fw) {
       const id = newId(), now = Date.now();
@@ -2360,6 +2379,13 @@
     document.getElementById('logo').onclick = () => { if (viewOnly) return; showDash(); };
 
     // ---------- Start ----------
+    if (CFG.privat) {
+      // keine Feuerwehr-Startseite, kein «Test»-Schild, eigener Name
+      const dTop = document.querySelector('#dash .dTop');
+      dTop.style.background = '#1565C0'; // blau wie das App-Symbol, damit man die Apps nicht verwechselt
+      dTop.querySelector('a').removeAttribute('href');
+      dTop.querySelector('h1').innerHTML = esc(CFG.name || 'Lagekarte Privat') + '<small>Eigene Skizzen auf der Landeskarte</small>';
+    }
     setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'luftbild'; } catch (e) { return 'luftbild'; } })());
     const hadLink = /^#lage=/.test(location.hash);
     openLageLink();
