@@ -167,6 +167,23 @@ body.startmode .top{display:none}
 .acard.ready{border-color:var(--ok)}
 .acard.sel{border-color:var(--red)}
 .acard.flash{outline:4px solid var(--warn)}
+.trl{display:flex;flex-direction:column;gap:8px}.trl .tr{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.trl .tr b{font-size:15px}.trl .chips button{min-height:38px;font-size:14px}.trl .fr{font-size:13px;color:var(--mute)}
+.tag.s-rueck{background:#0f766e;color:#fff}.tag.s-abh{background:#5b6166;color:#fff}
+.acard .h{min-width:0}.acard .h .tag{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+.acard .row{min-width:0}.acard .row .tag{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Kompakte Ansicht Ereignisbewältigung */
+.kmp .col{min-height:40vh}.kmp .col h3{padding:7px 9px;font-size:17px}
+.kmp .cards{gap:5px;padding:0 6px 8px}
+.kmp #board .acard{padding:5px 8px;gap:2px;border-radius:7px}
+.kmp #board .acard .h .nr{font-size:21px}.kmp #board .acard .h time{font-size:13px}
+.kmp #board .acard b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kmp #board .acard .ad{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kmp #board .acard .inf{display:none}
+.kmp #board .acard .row{flex-wrap:nowrap;overflow:hidden}
+.kmp #board .acard .tag{font-size:11px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.kmp #board .acard .go{font-size:11.5px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bKmp{white-space:nowrap}
 
 /* Karte */
 .mapwrap{display:grid;grid-template-columns:360px minmax(0,1fr);gap:12px;height:calc(100vh - var(--toph,70px) - 36px);min-height:420px}
@@ -242,6 +259,7 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
   <span class="sync" id="sync">Startet …</span>
   <div class="tb">
     <button class="wh" id="bNewA" hidden>+ Auftrag</button>
+    <button id="bKmp" hidden title="Ansicht wechseln"></button>
     <button id="bExp" title="Rapport als PDF">PDF</button>
     <button id="bSet" title="Einstellungen" aria-label="Einstellungen"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
@@ -355,6 +373,8 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
   <span class="flab" id="pkPL">Personal</span><div class="pick" id="pkP"></div>
   <p class="hint" id="pkLead"></p>
   <div id="pkMW"><span class="flab">Fahrzeuge &amp; Geräte</span><div class="pick" id="pkM"></div></div>
+  <div id="pkTrW" hidden><span class="flab">Fahrzeuge nach der Ankunft</span><div id="pkTr" class="trl"></div>
+    <p class="hint" style="margin:4px 0 0">«Nur Transport»: Sobald der Trupp «Vor Ort» meldet, sind Fahrzeug und Fahrer wieder disponierbar (Rückfahrt) – auch direkt für einen Folgeauftrag.</p></div>
   <label id="pkExtraL">Weitere / externe Mittel (optional)<input name="extra" placeholder="z. B. Nachbarfeuerwehr, Firma …"></label>
   <p class="err" id="pkErr"></p>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="pri" value="ok" id="pkOk">OK</button></div>
@@ -409,6 +429,8 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
     <span class="flab">Nacharbeiten nötig?</span><div class="chips dk" id="abgNach"><button type="button" data-n="0">Nein</button><button type="button" data-n="1">Ja</button></div>
     <label id="abgNachL" hidden>Was ist noch zu tun?<input name="nachT" placeholder="z. B. Baum zerkleinern, Wurzelstock entfernen"></label>
     <div class="note" id="abgHint" hidden>Es entsteht automatisch ein Folgeauftrag in der Spalte «Nacharbeiten».</div>
+    <div id="abgAbhW"><span class="flab">Abholung nötig?</span><div class="chips dk" id="abgAbh"><button type="button" data-h="0">Nein</button><button type="button" data-h="1">Ja</button></div>
+    <div class="note" id="abgAbhHint" hidden>Es entsteht ein Transportauftrag «Abholung» in «Pendent». Das Team bleibt bis zur Abholung gebunden.</div></div>
   </div>
   <p class="hint">Alle zugewiesenen Leute und Mittel werden wieder als verfügbar gemeldet (ausser belassenes Material).</p>
   <div class="dbtn"><button value="cancel" formnovalidate>Abbrechen</button><button class="okb" value="ok">Auftrag abschliessen</button></div>
@@ -467,6 +489,6 @@ dialog h3{font:600 26px/1.1 "Barlow Condensed",sans-serif;margin:0 0 12px}
 <script src="../shared/fwform.js?v=1"></script>
 <script src="../shared/fwsync.js?v=1"></script>
 <script src="../shared/fwui.js?v=1"></script>
-<script src="app.js?v=0.10.0"></script>
+<script src="app.js?v=0.11.0"></script>
 </body>
 </html>

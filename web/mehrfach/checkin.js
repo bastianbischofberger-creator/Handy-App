@@ -207,7 +207,7 @@ async function reply(extra) {
 }
 const TIT = { lage: 'Lagebeurteilung', zw: 'Zwischenmeldung', erledigt: 'Auftrag erledigt', rekoEnd: 'Reko abschliessen' };
 function openRm(typ) {
-  RM = { typ, adf: 0, mittel: {}, dauer: '', fotos: [], bel: new Set(), nach: false };
+  RM = { typ, adf: 0, mittel: {}, dauer: '', fotos: [], bel: new Set(), nach: false, abh: typ === 'erledigt' && !inbox.fzVorOrt && !inbox.abholung };
   $('#sMain').hidden = true; $('#sRm').hidden = false; window.scrollTo(0, 0);
   $('#rmTitle').textContent = `Auftrag ${inbox.nr}: ${TIT[typ]}`;
   $('#rmReko').hidden = !(typ === 'lage' || typ === 'zw'); $('#rmErl').hidden = typ !== 'erledigt'; $('#rmConf').hidden = typ !== 'rekoEnd'; $('#rmFotos').hidden = typ === 'rekoEnd';
@@ -229,9 +229,11 @@ function renderRm() {
   $('#rmBel').innerHTML = ml.length ? ml.map(m => `<button type="button" data-b="${esc(m.id)}" class="${RM.bel.has(m.id) ? 'on' : ''}">${esc(m.name)}</button>`).join('') : '<span class="mute">Keine Mittel zugewiesen.</span>';
   document.querySelectorAll('#rmNach button').forEach(b => b.classList.toggle('on', (b.dataset.n === '1') === RM.nach));
   $('#rmNachL').hidden = !RM.nach;
+  $('#rmAbhW').hidden = !(RM.typ === 'erledigt' && !inbox.fzVorOrt && !inbox.abholung); document.querySelectorAll('#rmAbh button').forEach(b => b.classList.toggle('on', (b.dataset.h === '1') === RM.abh));
   $('#rmFolgeHint').hidden = !(RM.nach || RM.bel.size || $('#rmBelFrei').value.trim());
 }
 $('#rmBel').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; RM.bel.has(b.dataset.b) ? RM.bel.delete(b.dataset.b) : RM.bel.add(b.dataset.b); renderRm(); });
+$('#rmAbh').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (!b) return; RM.abh = b.dataset.h === '1'; renderRm(); });
 $('#rmNach').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (!b) return; RM.nach = b.dataset.n === '1'; renderRm(); if (RM.nach) $('#rmNachT').focus(); });
 $('#rmBelFrei').addEventListener('input', () => renderRm());
 $('#rmMinus').onclick = () => { RM.adf = Math.max(0, RM.adf - 1); renderRm(); };
@@ -274,7 +276,7 @@ async function sendRm(keinEinsatz) {
   else if (RM.typ === 'zw') { x = { typ: 'zw', text: $('#rmLage').value.trim(), adf: RM.adf, mittel: RM.mittel, dauer: RM.dauer };
     if (!x.text && !x.adf && !Object.keys(x.mittel).length && !x.dauer) { $('#rmErr').textContent = 'Bitte eine Meldung, Nachforderung oder Restdauer angeben.'; return; } }
   else if (RM.typ === 'rekoEnd') x = { typ: 'rekoEnd', keinEinsatz: !!keinEinsatz };
-  else { x = { typ: 'erledigt', text: $('#rmText').value.trim(), belassen: [...RM.bel], belassenFrei: $('#rmBelFrei').value.trim(), nach: RM.nach, nachText: $('#rmNachT').value.trim() };
+  else { x = { typ: 'erledigt', text: $('#rmText').value.trim(), belassen: [...RM.bel], belassenFrei: $('#rmBelFrei').value.trim(), nach: RM.nach, nachText: $('#rmNachT').value.trim(), abholen: !$('#rmAbhW').hidden && RM.abh };
     if (RM.nach && !x.nachText) { $('#rmErr').textContent = 'Bitte kurz beschreiben, was noch zu tun ist.'; return; } }
   if (RM.fotos.length && RM.typ !== 'rekoEnd') x.fotos = RM.fotos;
   $('#rmSend').disabled = true; if (await reply(x)) { if (RM.typ === 'lage') inbox.lageT = inbox.lageT || Date.now(); closeRm(); toast('✓ An das KP gesendet'); } $('#rmSend').disabled = false;

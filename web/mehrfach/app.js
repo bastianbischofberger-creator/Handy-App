@@ -2,7 +2,7 @@
    Offline-fähige Web-App (Vorbild: Atemschutzüberwachung) mit optionaler Synchronisation über Firebase. */
 (function () {
 'use strict';
-const VERSION = '0.10.0';
+const VERSION = '0.11.0';
 const CFG = window.MF_CONFIG || {};
 const FB_VERSION = '10.12.2';
 
@@ -232,7 +232,7 @@ function applyReply(c) {
   if (fotos.length && m.typ !== 'foto') log(`Auftrag ${a.nr}: ${fotos.length} Foto${fotos.length > 1 ? 's' : ''} von ${who}`);
   if (m.typ === 'vorort') {
     if (a.status === 'reko') { if (a.reko) a.reko.vorOrt = m.t; log(`Auftrag ${a.nr}: Reko vor Ort (${who}, Handy)`); }
-    else if (a.status === 'bew' && a.sub !== 'vorort') { a.sub = 'vorort'; a.tVorOrt = m.t; log(`Auftrag ${a.nr}: vor Ort tätig (${who}, Handy)`); }
+    else if (a.status === 'bew' && a.sub !== 'vorort') { a.sub = 'vorort'; a.tVorOrt = m.t; log(`Auftrag ${a.nr}: vor Ort tätig (${who}, Handy)`); transportFrei(a, m.t); }
   } else if (m.typ === 'lage' && a.status === 'reko') {
     a.lageReko = m.lage || ''; a.bedarf = { adf: m.adf || 0, m: m.mittel || {} }; a.dauer = m.dauer || ''; a.lageT = m.t;
     log(`Auftrag ${a.nr}: Lagebeurteilung (${who}, Handy): ${m.lage || '–'} · Benötigt: ${bedarfText(a.bedarf) || '–'}${a.dauer ? ', ca. ' + a.dauer : ''}`);
@@ -242,7 +242,7 @@ function applyReply(c) {
   } else if (m.typ === 'zw' && a.status === 'bew') {
     zwischen(a, { t: m.t, text: m.text || '', adf: m.adf || 0, m: m.mittel || {}, rest: m.dauer || '', von: who });
   } else if (m.typ === 'erledigt' && a.status === 'bew') {
-    finishA(a, { t: m.t, text: m.text || '', belassen: m.belassen || [], belassenFrei: m.belassenFrei || '', nach: !!m.nach, nachText: m.nachText || '', von: who + ', Handy', fid: 'fo_' + m.id });
+    finishA(a, { t: m.t, text: m.text || '', belassen: m.belassen || [], belassenFrei: m.belassenFrei || '', nach: !!m.nach, nachText: m.nachText || '', abholen: !!m.abholen, hid: 'ab_' + m.id, von: who + ', Handy', fid: 'fo_' + m.id });
   } else if (m.typ === 'text') { log(`Auftrag ${a.nr}: Meldung von ${who}: ${m.text}`); }
   else if (m.typ === 'foto') { log(`Auftrag ${a.nr}: ${fotos.length} Foto${fotos.length > 1 ? 's' : ''} von ${who}`); }
   else log(`Auftrag ${a.nr}: Meldung «${m.typ}» von ${who} nicht übernommen (Auftrag ist ${STL[a.status]})`);
@@ -268,7 +268,18 @@ function finishA(a, o) {
   /* Material, das bei einem Folgeauftrag draussen war, ist jetzt zurück */
   (a.belassen || []).forEach(id => { const r = resOf(id, 'm'); if (r.status === 'belassen' && r.auftrag === a.id) setRes(id, 'm', { status: 'verfuegbar', auftrag: null }); });
   if ((a.belassen || []).length) log(`Material zurück (Auftrag ${a.nr}): ${a.belassen.map(resName).join(', ')}`);
+  const team = (a.assigned || []).filter(i => personal().some(p => p.id === i));
   a.status = 'abg'; a.tAbg = o.t; a.abschluss = o.text; a.nachf = null;
+  if (o.abholen && team.length) {
+    const hid = o.hid || 'ab_' + uid();
+    if (!S.A.some(x => x.id === hid)) {
+      const mat = [...bel.map(resName), o.belassenFrei].filter(Boolean).join(', ');
+      const h = { id: hid, nr: nextNr(), tEin: o.t, quelle: 'Abholung', art: 'Abholung Team', adresse: a.adresse, lat: a.lat ?? null, lng: a.lng ?? null, prio: 'P2', melder: '', tel: '',
+        text: `Team von Auftrag ${a.nr} abholen: ${team.map(resName).join(', ')}${mat ? ' · Material: ' + mat : ''}`, anh: [], status: 'pendent', sub: null, assigned: team, abholung: true, parent: a.id, parentNr: a.nr, bedarf: { adf: 0, m: {} } };
+      saveA(h); team.forEach(i => setRes(i, 'p', { status: 'einsatz', auftrag: h.id }));
+      a.abholNr = h.nr; log(`Auftrag ${a.nr}: Abholung angefordert → Transportauftrag ${h.nr} (${team.length} AdF)`);
+    }
+  }
   let txt = `Auftrag ${a.nr} erledigt (${o.von})${o.text ? ': ' + o.text : ''}`;
   if (bel.length || o.belassenFrei || o.nach) {
     const fid = o.fid || 'fo_' + uid();
@@ -305,7 +316,7 @@ function syncInbox() {
         lageT: rolle === 'reko' ? a.lageT || null : null, lage: rolle === 'reko' && a.lageT ? { text: a.lageReko || '', adf: (a.bedarf || {}).adf || 0, m: (a.bedarf || {}).m || {}, dauer: a.dauer || '' } : null,
         zwN: (a.zw || []).length, mittelList: (a.assigned || []).filter(i => mittel().some(m => m.id === i)).map(i => ({ id: i, name: resName(i) })),
         gattungen: gattungen(), anh: (a.anh || []).filter(f => f.cloud).map(f => ({ id: f.id, name: f.name, type: f.type || '', size: f.size || 0 })),
-        anhLokal: (a.anh || []).filter(f => !f.cloud).length };
+        anhLokal: (a.anh || []).filter(f => !f.cloud).length, abholung: !!a.abholung, fzVorOrt: (a.assigned || []).some(i => mittel().some(m => m.id === i)) };
     }
     const k = JSON.stringify(doc); if (inboxSent[c.id] === k) continue; inboxSent[c.id] = k;
     BE.put(S.eid, 'inbox', c.id, { ...doc, t: Date.now() });
@@ -332,7 +343,7 @@ const rankOf = id => { const p = personal().find(x => x.id === id); const c = ci
 const pickLead = ids => { const ps = ids.filter(i => personal().some(p => p.id === i)); return ps.reduce((b, i) => b == null || rankOf(i) > rankOf(b) ? i : b, null); };
 const pShort = p => `${p.name}${p.vorname ? ' ' + p.vorname[0] + '.' : ''}`;
 const resOf = (id, kind) => S.res[id] || { id, kind, status: kind === 'p' ? 'abwesend' : 'verfuegbar', auftrag: null };
-function setRes(id, kind, patch) { const r = { ...resOf(id, kind), ...patch, kind, t: Date.now() }; S.res[id] = r; BE.put(S.eid, 'res', id, r); }
+function setRes(id, kind, patch) { const r = { ...resOf(id, kind), ...patch, kind, t: Date.now() }; if (patch.status && patch.status !== 'verfuegbar') r.unterwegs = null; S.res[id] = r; BE.put(S.eid, 'res', id, r); }
 const freeP = () => personal().filter(p => resOf(p.id, 'p').status === 'verfuegbar');
 const freeM = () => mittel().filter(m => resOf(m.id, 'm').status === 'verfuegbar');
 const resName = id => { const p = personal().find(x => x.id === id); if (p) return pShort(p); const m = mittel().find(x => x.id === id); return m ? m.name : '?'; };
@@ -348,6 +359,21 @@ function isReady(a) {
   const fm = freeM(); return Object.entries(b.m || {}).every(([g, n]) => fm.filter(m => (m.gattung || m.name) === g).length >= n);
 }
 function release(a, ids) { (ids || a.assigned || []).forEach(id => { const k = personal().some(p => p.id === id) ? 'p' : 'm'; const r = resOf(id, k); if (r.auftrag === a.id) setRes(id, k, { status: 'verfuegbar', auftrag: null }); }); }
+/* «Nur Transport»: Fahrzeug + Fahrer sind nach «Vor Ort» wieder disponierbar (Rückfahrt) */
+function transportFrei(a, t) {
+  const tr = a.transp || {}, ids = Object.keys(tr).filter(m => (a.assigned || []).includes(m)); if (!ids.length) return;
+  const weg = []; ids.forEach(m => { weg.push(m); if (tr[m]) weg.push(tr[m]); });
+  a.assigned = (a.assigned || []).filter(i => !weg.includes(i)); a.lead = pickLead(a.assigned);
+  ids.forEach(m => { const f = tr[m]; const u = { aid: a.id, nr: a.nr, t, fahrer: f || null, fz: m };
+    setRes(m, 'm', { status: 'verfuegbar', auftrag: null, unterwegs: u }); if (f) setRes(f, 'p', { status: 'verfuegbar', auftrag: null, unterwegs: u }); });
+  a.transpLog = [...(a.transpLog || []), ...ids.map(m => ({ m: resName(m), f: tr[m] ? resName(tr[m]) : '', t }))]; a.transp = {};
+  log(`Auftrag ${a.nr}: ${ids.map(m => resName(m) + (tr[m] ? ' (Fahrer ' + resName(tr[m]) + ')' : '')).join(', ')} auf Rückfahrt – wieder disponierbar`);
+}
+function imDepot(id) {
+  const r = resOf(id, 'm'), u = r.unterwegs; if (!u) return;
+  setRes(id, 'm', { unterwegs: null }); if (u.fahrer) { const rf = resOf(u.fahrer, 'p'); if (rf.unterwegs && rf.unterwegs.fz === id) setRes(u.fahrer, 'p', { unterwegs: null }); }
+  log(`${resName(id)} zurück im Depot`);
+}
 function nextNr() { return S.A.reduce((m, a) => Math.max(m, a.nr || 0), 0) + 1; }
 const subOf = a => a.status === 'bew' ? (a.sub === 'vorort' ? 'vorort' : 'disp') : a.status;
 const prioCls = p => ({ D: 'pd', P1: 'p1', P2: 'p2', P3: 'p3' }[p] || 'p0');
@@ -378,6 +404,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-go]'
 $('#bHome').onclick = () => { if (S.view === 'dash' || S.view === 'start') location.href = '../start/'; else go(S.eid ? 'dash' : 'start'); };
 $('#bBack').onclick = () => go('dash');
 $('#bNewA').onclick = () => go('erfassen');
+$('#bKmp').onclick = () => { LP.set('kmp', LP.get('kmp') !== true); render(); };
 
 /* ---------- Darstellung ---------- */
 function render() {
@@ -386,6 +413,7 @@ function render() {
   $('#segLage').hidden = !(v === 'lage' || v === 'karte');
   $$('#segLage button').forEach(b => b.classList.toggle('on', b.dataset.go === v));
   $('#bNewA').hidden = !(v === 'lage' || v === 'karte' || v === 'mittel');
+  $('#bKmp').hidden = v !== 'lage'; const km = LP.get('kmp') === true; document.body.classList.toggle('kmp', km); $('#bKmp').textContent = '▦ ' + (km ? 'Kompakt' : 'Normal');
   $('#title').firstChild.textContent = TITLES[v] || 'Mehrfachereignisse';
   set('sub', [S.meta.name, S.meta.el ? 'Einsatzleiter: ' + S.meta.el : '', S.meta.closed ? 'abgeschlossen' : ''].filter(Boolean).join(' · '));
   if (v === 'start') renderStart(); else if (v === 'dash') renderDash(); else if (v === 'erfassen') renderErf();
@@ -627,7 +655,9 @@ function drawPins() {
 function cardHtml(a) {
   const st = subOf(a); let extra = '';
   if (a.status === 'reko' && a.reko) extra += `<span class="tag s-reko">Reko: ${esc(a.reko.wer.join(', '))}</span>${a.reko.vorOrt ? `<span class="tag s-vorort">vor Ort ${hm(a.reko.vorOrt)}</span>` : ''}`;
-  if (a.status === 'pendent') extra += a.rekoDone ? `<span class="tag s-reko">Reko erfolgt${a.reko ? ' · ' + esc(a.reko.wer.join(', ')) : ''}</span>` : '<span class="tag s-ohne">Ohne Reko</span>';
+  if (a.abholung && a.status === 'pendent') extra += `<span class="tag s-abh">Abholung · ${(a.assigned || []).filter(i => personal().some(p => p.id === i)).length} AdF</span>`;
+  else if (a.status === 'pendent') extra += a.rekoDone ? `<span class="tag s-reko">Reko erfolgt${a.reko ? ' · ' + esc(a.reko.wer.join(', ')) : ''}</span>` : '<span class="tag s-ohne">Ohne Reko</span>';
+  if (a.status === 'bew' && Object.keys(a.transp || {}).length && st !== 'vorort') extra += `<span class="tag s-rueck">${Object.keys(a.transp).length}× nur Transport</span>`;
   if (a.status === 'bew') extra += st === 'vorort' ? `<span class="tag s-vorort">Vor Ort tätig · seit ${hm(a.tVorOrt)}</span>` : '<span class="tag s-disp">Disponiert</span>';
   let inf = '';
   if (a.status === 'offen') inf = [a.quelle + (a.melder ? ' · ' + a.melder : '')].join('');
@@ -680,14 +710,14 @@ function renderMittel() {
       einsatz: a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}${a.status === 'reko' ? ' (Reko)' : ''}</button>` : '<button data-pa="in">Freigeben</button>' }[r.status]
       + (r.status === 'verfuegbar' ? '<button data-pa="zu" class="blue">Zuweisen</button>' : '');
     const ci = ciOf(p.id), det = ci ? [ci.masch && !p.gast ? 'Maschinist' : '', ci.tel ? 'Tel. ' + ci.tel : '', p.gast ? 'nicht in Stammliste' : ''].filter(Boolean).join(' · ') : '';
-    return `<li data-p="${p.id}"><span class="rg">${esc(p.rang || '')}</span><span><b style="font-weight:600">${esc(p.name)} ${esc(p.vorname)}</b> <span class="fk">${esc(p.fkt || '')}</span>${ci ? `<br><span class="fk"><span class="tag" title="per QR-Code">QR ${ci.status === 'an' ? hm(ci.t) : 'ab ' + hm(ci.t)}</span> ${esc(det)}</span>` : ''}</span><span class="acts"><span class="tag st-${r.status}">${PST[r.status]}</span>${b}</span></li>`;
+    return `<li data-p="${p.id}"><span class="rg">${esc(p.rang || '')}</span><span><b style="font-weight:600">${esc(p.name)} ${esc(p.vorname)}</b> <span class="fk">${esc(p.fkt || '')}</span>${ci ? `<br><span class="fk"><span class="tag" title="per QR-Code">QR ${ci.status === 'an' ? hm(ci.t) : 'ab ' + hm(ci.t)}</span> ${esc(det)}</span>` : ''}</span><span class="acts">${r.status === 'verfuegbar' && r.unterwegs ? `<span class="tag s-rueck" title="Fährt ${esc(resName(r.unterwegs.fz))} zurück">Rückfahrt</span>` : `<span class="tag st-${r.status}">${PST[r.status]}</span>`}${b}</span></li>`;
   }).join('') : '<li class="empty">Noch kein Personal erfasst (Einstellungen → Stammdaten).</li>';
   $('#mGrid').innerHTML = mittel().map(m => {
     const r = resOf(m.id, 'm'), a = r.auftrag && A(r.auftrag);
-    const b = r.status === 'verfuegbar' ? '<button data-ma="aus" class="ghost">Ausser Betrieb</button>' : r.status === 'ausser' ? '<button data-ma="ok">Wieder verfügbar</button>'
+    const b = r.status === 'verfuegbar' && r.unterwegs ? '<button data-ma="depot">Zurück im Depot</button>' : r.status === 'verfuegbar' ? '<button data-ma="aus" class="ghost">Ausser Betrieb</button>' : r.status === 'ausser' ? '<button data-ma="ok">Wieder verfügbar</button>'
       : (a ? `<button data-a="${a.id}" class="ghost">Auftrag ${a.nr}</button>` : '') + (r.status === 'belassen' ? '<button data-ma="ok">Zurück</button>' : (a ? '' : '<button data-ma="ok">Freigeben</button>'));
-    const inf = (r.status === 'einsatz' || r.status === 'belassen') && a ? `${r.status === 'belassen' ? 'Vor Ort belassen – ' : ''}Auftrag ${a.nr} · ${a.adresse}` : (m.info || m.gattung || '');
-    return `<div class="mcard${r.status === 'verfuegbar' ? ' av' : ''}" data-m="${m.id}"><div class="h"><b>${esc(m.name)}</b><span class="tag st-${r.status}">${PST[r.status]}</span></div><span class="inf">${esc(inf)}</span><div class="acts">${b}</div></div>`;
+    const inf = r.status === 'verfuegbar' && r.unterwegs ? `Rückfahrt von Auftrag ${r.unterwegs.nr} seit ${hm(r.unterwegs.t)}${r.unterwegs.fahrer ? ' · Fahrer ' + resName(r.unterwegs.fahrer) : ''} – disponierbar` : (r.status === 'einsatz' || r.status === 'belassen') && a ? `${r.status === 'belassen' ? 'Vor Ort belassen – ' : ''}Auftrag ${a.nr} · ${a.adresse}` : (m.info || m.gattung || '');
+    return `<div class="mcard${r.status === 'verfuegbar' ? ' av' : ''}" data-m="${m.id}"><div class="h"><b>${esc(m.name)}</b>${r.status === 'verfuegbar' && r.unterwegs ? '<span class="tag s-rueck">Rückfahrt</span>' : `<span class="tag st-${r.status}">${PST[r.status]}</span>`}</div><span class="inf">${esc(inf)}</span><div class="acts">${b}</div></div>`;
   }).join('') || '<p class="empty">Noch keine Fahrzeuge erfasst.</p>';
 }
 $('#pList').addEventListener('click', e => {
@@ -701,6 +731,7 @@ $('#pList').addEventListener('click', e => {
 $('#mGrid').addEventListener('click', e => {
   const ab = e.target.closest('[data-a]'); if (ab) return openDetail(ab.dataset.a);
   const b = e.target.closest('[data-ma]'); if (!b) return; const id = b.closest('[data-m]').dataset.m, m = mittel().find(x => x.id === id);
+  if (b.dataset.ma === 'depot') { imDepot(id); return render(); }
   if (b.dataset.ma === 'aus') { setRes(id, 'm', { status: 'ausser', auftrag: null }); log(`${m.name} ausser Betrieb`); } else { setRes(id, 'm', { status: 'verfuegbar', auftrag: null }); log(`${m.name} wieder verfügbar`); }
   render();
 });
@@ -762,7 +793,7 @@ $('#dABody').addEventListener('click', e => {
   if (act === 'abg') return openAbg(a);
   if (act === 'rekoCancel') return confirmBox('Reko abbrechen?', 'Der Auftrag geht zurück nach «Offen», die Reko-Leute werden wieder verfügbar.', () => {
     release(a, a.reko ? a.reko.ids : []); a.status = 'offen'; a.reko = null; saveA(a); log(`Auftrag ${a.nr}: Reko abgebrochen`); });
-  if (act === 'vorort') { a.sub = 'vorort'; a.tVorOrt = now; saveA(a); log(`Auftrag ${a.nr}: vor Ort tätig`); return; }
+  if (act === 'vorort') { a.sub = 'vorort'; a.tVorOrt = now; log(`Auftrag ${a.nr}: vor Ort tätig`); transportFrei(a, now); saveA(a); return; }
   if (act === 'back') return confirmBox('Zurück nach «Pendent»?', 'Alle zugewiesenen Leute und Mittel werden wieder verfügbar.', () => {
     release(a); a.assigned = []; a.extra = ''; a.status = 'pendent'; a.sub = null; a.tVorOrt = null; saveA(a); log(`Auftrag ${a.nr}: zurück nach Pendent, Mittel freigegeben`); });
   if (act === 'reopen') { a.status = 'offen'; a.tAbg = null; saveA(a); log(`Auftrag ${a.nr} wieder geöffnet`); }
@@ -804,7 +835,7 @@ let PK = null;
 function openPick(a, mode) {
   const cur = new Set(mode === 'disp' ? (a.assigned || []) : []);
   const ordered = mode === 'disp' && a.lead && cur.has(a.lead) ? [a.lead, ...[...cur].filter(i => i !== a.lead)] : [...cur];
-  PK = { id: a.id, mode, sel: new Set(ordered) };
+  PK = { id: a.id, mode, sel: new Set(ordered), tr: mode === 'disp' ? { ...(a.transp || {}) } : {} };
   $('#pkTitle').textContent = `Auftrag ${a.nr}: ${mode === 'reko' ? 'Reko schicken' : a.status === 'bew' ? 'Mittel ändern' : 'Disponieren'}`;
   $('#pkMW').hidden = mode === 'reko'; $('#pkExtraL').hidden = mode === 'reko'; $('#pkPL').textContent = mode === 'reko' ? 'Wer macht die Reko?' : 'Personal';
   $('#fPick').elements.extra.value = mode === 'disp' ? (a.extra || '') : '';
@@ -812,15 +843,27 @@ function openPick(a, mode) {
   $('#pkErr').textContent = ''; renderPick(); $('#dPick').showModal();
 }
 function renderPick() {
+  const ru = (id, k) => { const r = resOf(id, k); return r.status === 'verfuegbar' && r.unterwegs ? ' <span class="x">↩ Rückfahrt</span>' : ''; };
   const a = A(PK.id), mine = id => (a.assigned || []).includes(id);
   const ps = personal().filter(p => resOf(p.id, 'p').status === 'verfuegbar' || (PK.mode === 'disp' && mine(p.id)));
   const ms = mittel().filter(m => resOf(m.id, 'm').status === 'verfuegbar' || (PK.mode === 'disp' && mine(m.id)));
-  const lead = pickLead([...PK.sel]);
-  $('#pkP').innerHTML = ps.map(p => `<button type="button" data-id="${p.id}" class="${PK.sel.has(p.id) ? 'on' : ''}">${p.id === lead ? '★ ' : ''}${esc(pName(p))}${ciOf(p.id) && ciOf(p.id).status === 'an' ? ' <span class="x">📱</span>' : ''}${(p.fkt || (ciOf(p.id) || {}).masch) ? ` <span class="x">${esc(p.fkt || 'Maschinist')}</span>` : ''}</button>`).join('') || '<span class="hint">Niemand verfügbar. Personal unter «Personal & Mittel» einrücken.</span>';
-  $('#pkM').innerHTML = ms.map(m => `<button type="button" data-id="${m.id}" class="${PK.sel.has(m.id) ? 'on' : ''}">${esc(m.name)}</button>`).join('') || '<span class="hint">Keine Mittel verfügbar.</span>';
+  const drv = Object.values(PK.tr || {}).filter(Boolean), lead = pickLead([...PK.sel].filter(i => !drv.includes(i))) || pickLead([...PK.sel]);
+  $('#pkP').innerHTML = ps.map(p => `<button type="button" data-id="${p.id}" class="${PK.sel.has(p.id) ? 'on' : ''}">${p.id === lead ? '★ ' : ''}${esc(pName(p))}${ciOf(p.id) && ciOf(p.id).status === 'an' ? ' <span class="x">📱</span>' : ''}${(p.fkt || (ciOf(p.id) || {}).masch) ? ` <span class="x">${esc(p.fkt || 'Maschinist')}</span>` : ''}${ru(p.id, 'p')}</button>`).join('') || '<span class="hint">Niemand verfügbar. Personal unter «Personal & Mittel» einrücken.</span>';
+  $('#pkM').innerHTML = ms.map(m => `<button type="button" data-id="${m.id}" class="${PK.sel.has(m.id) ? 'on' : ''}">${esc(m.name)}${ru(m.id, 'm')}</button>`).join('') || '<span class="hint">Keine Mittel verfügbar.</span>';
   $('#pkLead').textContent = lead ? '★ Führung: ' + pName(personal().find(p => p.id === lead)) + ' – macht die Rückmeldungen auf dem Handy. Es führt der höchste Rang (Of vor Uof vor Soldat), bei gleichem Rang wer zuerst gewählt wurde.' : 'Es führt der höchste Rang (★).';
+  const selM = ms.filter(m => PK.sel.has(m.id)), selP = ps.filter(p => PK.sel.has(p.id));
+  Object.keys(PK.tr).forEach(m => { if (!PK.sel.has(m)) delete PK.tr[m]; else if (PK.tr[m] && !PK.sel.has(PK.tr[m])) PK.tr[m] = ''; });
+  $('#pkTrW').hidden = PK.mode === 'reko' || !selM.length;
+  $('#pkTr').innerHTML = selM.map(m => { const t = m.id in PK.tr, f = PK.tr[m.id];
+    const fahr = t ? `<span class="fr">Fahrer (fährt zurück):</span><div class="chips dk">${selP.map(p => `<button type="button" data-trf="${m.id}" data-p="${p.id}" class="${f === p.id ? 'on' : ''}">${esc(pShort(p))}${(ciOf(p.id) || {}).masch ? ' 🚒' : ''}</button>`).join('') || '<span class="hint">Zuerst Personal wählen</span>'}</div>` : '';
+    return `<div class="tr"><b>${esc(m.name)}</b><div class="chips dk"><button type="button" data-tr="${m.id}" data-v="0" class="${t ? '' : 'on'}">Bleibt vor Ort</button><button type="button" data-tr="${m.id}" data-v="1" class="${t ? 'on' : ''}">Nur Transport</button></div>${fahr}</div>`; }).join('');
   const np = ps.filter(p => PK.sel.has(p.id)).length; $('#pkOk').textContent = PK.mode === 'reko' ? 'Reko schicken' : `Disponieren${np ? ' (' + np + ' AdF)' : ''}`;
 }
+$('#pkTr').addEventListener('click', e => {
+  const t = e.target.closest('[data-tr]'), f = e.target.closest('[data-trf]');
+  if (t) { if (t.dataset.v === '1') { if (!(t.dataset.tr in PK.tr)) { const ms = [...PK.sel].filter(i => personal().some(p => p.id === i)); PK.tr[t.dataset.tr] = ms.find(i => (ciOf(i) || {}).masch && !Object.values(PK.tr).includes(i)) || ''; } } else delete PK.tr[t.dataset.tr]; renderPick(); }
+  if (f) { PK.tr[f.dataset.trf] = PK.tr[f.dataset.trf] === f.dataset.p ? '' : f.dataset.p; renderPick(); }
+});
 for (const id of ['#pkP', '#pkM']) $(id).addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (!b) return; const i = b.dataset.id; PK.sel.has(i) ? PK.sel.delete(i) : PK.sel.add(i); renderPick(); });
 $('#fPick').addEventListener('submit', e => {
   if (!e.submitter || e.submitter.value !== 'ok') return;
@@ -833,9 +876,13 @@ $('#fPick').addEventListener('submit', e => {
   const before = a.assigned || [], removed = before.filter(i => !ids.includes(i));
   release(a, removed);
   ids.forEach(id => setRes(id, personal().some(p => p.id === id) ? 'p' : 'm', { status: 'einsatz', auftrag: a.id }));
-  const wasBew = a.status === 'bew'; a.assigned = ids; a.extra = extra; a.lead = pickLead(ids);
+  const wasBew = a.status === 'bew'; a.assigned = ids; a.extra = extra;
+  a.transp = Object.fromEntries(Object.entries(PK.tr).filter(([m]) => ids.includes(m)));
+  const fahrer = Object.values(a.transp).filter(Boolean); a.lead = pickLead(ids.filter(i => !fahrer.includes(i))) || pickLead(ids);
   if (!wasBew) { a.status = 'bew'; a.sub = 'disp'; a.tDisp = now; }
-  saveA(a); log(`Auftrag ${a.nr} ${wasBew ? 'Mittel geändert' : 'disponiert'}: ${assignedText(a) || '–'}`);
+  const trTxt = Object.keys(a.transp).length ? ' · nur Transport: ' + Object.entries(a.transp).map(([m, f]) => resName(m) + (f ? ' (Fahrer ' + resName(f) + ')' : '')).join(', ') : '';
+  if (wasBew && a.sub === 'vorort') transportFrei(a, now);
+  saveA(a); log(`Auftrag ${a.nr} ${wasBew ? 'Mittel geändert' : 'disponiert'}: ${assignedText(a) || '–'}${trTxt}`);
 });
 
 /* Reko-Ergebnis / Benötigte Mittel */
@@ -885,7 +932,7 @@ $('#fBed').addEventListener('submit', e => {
 let ABG = null;
 let ABEL = new Set(), ANACH = false;
 function openAbg(a) {
-  ABG = a.id; ABEL = new Set(); ANACH = false; $('#abgTitle').textContent = `Auftrag ${a.nr}: ${a.status === 'bew' ? 'Auftrag erledigt' : 'abschliessen'}`; $('#fAbg').reset();
+  ABG = a.id; ABEL = new Set(); ANACH = false; AABH = !(a.assigned || []).some(i => mittel().some(m => m.id === i)) && !a.abholung; $('#abgTitle').textContent = `Auftrag ${a.nr}: ${a.status === 'bew' ? 'Auftrag erledigt' : 'abschliessen'}`; $('#fAbg').reset();
   $('#abgExtra').hidden = a.status !== 'bew'; renderAbg(); $('#dAbg').showModal();
 }
 function renderAbg() {
@@ -893,15 +940,18 @@ function renderAbg() {
   $('#abgBel').innerHTML = ml.length ? ml.map(i => `<button type="button" data-b="${i}" class="${ABEL.has(i) ? 'on' : ''}">${esc(resName(i))}</button>`).join('') : '<span class="hint">Keine Mittel zugewiesen.</span>';
   $$('#abgNach button').forEach(b => b.classList.toggle('on', (b.dataset.n === '1') === ANACH)); $('#abgNachL').hidden = !ANACH;
   $('#abgHint').hidden = !(ANACH || ABEL.size || $('#fAbg').elements.belFrei.value.trim());
+  $('#abgAbhW').hidden = !!a.abholung || !(a.assigned || []).some(i => personal().some(p => p.id === i)); $$('#abgAbh button').forEach(b => b.classList.toggle('on', (b.dataset.h === '1') === AABH)); $('#abgAbhHint').hidden = !AABH;
 }
 $('#abgBel').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; ABEL.has(b.dataset.b) ? ABEL.delete(b.dataset.b) : ABEL.add(b.dataset.b); renderAbg(); });
+let AABH = false;
+$('#abgAbh').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (!b) return; AABH = b.dataset.h === '1'; renderAbg(); });
 $('#abgNach').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (!b) return; ANACH = b.dataset.n === '1'; renderAbg(); });
 $('#fAbg').elements.belFrei.addEventListener('input', renderAbg);
 $('#fAbg').addEventListener('submit', e => {
   if (!e.submitter || e.submitter.value !== 'ok') return;
   const a = A(ABG), f = e.target.elements;
   if (ANACH && !f.nachT.value.trim()) { e.preventDefault(); f.nachT.focus(); return; }
-  finishA(a, { t: Date.now(), text: f.txt.value.trim(), belassen: [...ABEL], belassenFrei: f.belFrei.value.trim(), nach: ANACH, nachText: f.nachT.value.trim(), von: 'KP' });
+  finishA(a, { t: Date.now(), text: f.txt.value.trim(), belassen: [...ABEL], belassenFrei: f.belFrei.value.trim(), nach: ANACH, nachText: f.nachT.value.trim(), abholen: AABH && !$('#abgAbhW').hidden, von: 'KP' });
   saveA(a);
 });
 /* Zwischenmeldung im KP (z. B. per Funk) */
@@ -1089,5 +1139,5 @@ async function boot() {
 }
 boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-window.__MF = { S, A, go, put: (c, id, o) => BE.put(S.eid, c, id, o) };
+window.__MF = { S, A, go, put: (c, id, o) => BE.put(S.eid, c, id, o), openPick, renderPick, transportFrei, openAbg, resOf, personal, mittel, freeM, saveA, render, imDepot, pk: () => PK };
 })();

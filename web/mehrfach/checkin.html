@@ -138,6 +138,8 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
       <div class="chips" id="rmNach"><button type="button" data-n="0" class="on">Nein</button><button type="button" data-n="1">Ja</button></div>
       <label id="rmNachL" hidden>Was ist noch zu tun?<input id="rmNachT" placeholder="z. B. Baum zerkleinern, Wurzelstock entfernen"></label>
       <p class="mute" id="rmFolgeHint" hidden style="margin:-4px 0 12px">→ Es entsteht automatisch ein Folgeauftrag im KP.</p>
+      <div id="rmAbhW" hidden><span class="mute">Kein Fahrzeug vor Ort – Abholung nötig?</span>
+      <div class="chips" id="rmAbh"><button type="button" data-h="0">Nein</button><button type="button" data-h="1">Ja, bitte abholen</button></div></div>
     </div>
     <div id="rmConf"><p id="rmConfT" style="margin:0 0 12px"></p></div>
     <div id="rmFotos">
@@ -157,6 +159,6 @@ button.blue{background:#1557c0;border-color:#1557c0;color:#fff}button.reko{backg
 <div id="alFlash" hidden><div id="alT">Neuer Auftrag</div><small id="alS"></small><button type="button" id="bAlOk">Anzeigen</button></div>
 <div id="toast" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16181a;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
 <script src="config.js?v=0.2.0"></script>
-<script type="module" src="checkin.js?v=0.10.0"></script>
+<script type="module" src="checkin.js?v=0.11.0"></script>
 </body>
 </html>

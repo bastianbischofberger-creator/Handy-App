@@ -91,3 +91,4 @@ Alles hier wird beim nächsten Update gemeinsam aufgeschaltet (Zweig `naechstes-
 - [x] ASÜ 3.8.0: Ansicht «Mini» (4–5 Trupps pro Zeile auf dem iPad quer), Schnellumschalter «▦» in der Leiste: Kompakt → Mini → Gross
 - [x] Mehrfachereignisse 0.10.0: AdF-Handy – Ton (dringend: Sirenenton), Vibration, Vollbild-Hinweis und Mitteilung bei neuem Auftrag, Bildschirm bleibt an (solange Seite offen)
 - [ ] Echte Push-Nachricht auch bei gesperrtem Handy / geschlossener Seite → braucht Server (Web Push), mit Schweizer Server umsetzen
+- [x] Mehrfachereignisse 0.11.0: kompakte Ansicht Ereignisbewältigung (Umschalter ▦); Transport: pro Fahrzeug «Bleibt vor Ort» / «Nur Transport» mit Fahrer – nach «Vor Ort» Rückfahrt und sofort neu disponierbar, «Zurück im Depot»; Abholung nach «Erledigt» (Handy + KP) → Transportauftrag in Pendent
