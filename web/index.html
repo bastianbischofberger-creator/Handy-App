@@ -284,11 +284,13 @@
   <script>
   (function () {
     // ---------- Einstellungen ----------
-    // Die gleiche Datei läuft auch als private Zweit-App (web/privat/, erzeugt von tools/build-privat.sh).
+    // Die gleiche Datei läuft auch als «Polizei Lagekarte» (web/privat/, erzeugt von tools/build-privat.sh).
     // Dort setzt window.LAGE_CFG einen eigenen Speicher-Präfix (Zeichnungen nie gemischt) und privat: true
     // (nur eine Skizze, keine Übersicht/Skizzenliste, keine Verbindung zu den Feuerwehr-Apps).
     const CFG = Object.assign({ prefix: 'einsatzkarte.', privat: false }, window.LAGE_CFG || {});
     const PFX = CFG.prefix;
+    const APP_NAME = CFG.name || 'Lagekarte'; // Polizei-Version: «Polizei Lagekarte»
+    const APP_FILE = APP_NAME.replace(/ /g, '-');
     const BASE_MAPS = {
       // SWISSIMAGE gibt es bis Zoomstufe 20 (ca. 15 cm pro Bildpunkt); bisher wurde ab 18 nur vergrössert
       luftbild: { label: 'Luftbild', url: 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg', nativeMax: 20 },
@@ -1692,14 +1694,14 @@
         label.lines.forEach((ln, i) => ctx.fillText(ln, 16, h + 50 + i * 20));
         ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = '#555';
-        ctx.fillText('Lagekarte · ' + stamp + ' · © swisstopo', 16, h + footer - 12);
+        ctx.fillText(APP_NAME + ' · ' + stamp + ' · © swisstopo', 16, h + footer - 12);
         return { canvas, stamp, center: c };
       }
       ctx.fillStyle = '#222';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.font = '600 13px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillText('Lagekarte · ' + stamp, 10, h + 14);
+      ctx.fillText(APP_NAME + ' · ' + stamp, 10, h + 14);
       ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillStyle = '#555';
       ctx.fillText('Kartenmitte ' + c.lat.toFixed(5) + ', ' + c.lng.toFixed(5) + ' · © swisstopo', 10, h + 32);
@@ -1961,9 +1963,9 @@
     }
     function sendLage(editable) {
       const url = encodeLage(editable);
-      const text = editable ? 'Lagekarte: Lage zum Bearbeiten' : 'Lagekarte: Lage zum Ansehen';
+      const text = editable ? APP_NAME + ': Lage zum Bearbeiten' : APP_NAME + ': Lage zum Ansehen';
       if (navigator.share) {
-        navigator.share({ title: 'Lagekarte', text, url }).catch(() => {});
+        navigator.share({ title: APP_NAME, text, url }).catch(() => {});
         return;
       }
       const done = () => dialog('Link kopiert', 'Der Link ist kopiert. Füge ihn in WhatsApp, Mail oder SMS ein.', [{ label: 'OK', primary: true }]);
@@ -2189,7 +2191,7 @@
           const url = sh.canvas.toDataURL('image/png');
           urls.push(url);
           const name = i === 0 ? 'Uebersicht' : titleOf(i).replace(/[^A-Za-z0-9äöüÄÖÜ]+/g, '-');
-          files.push(fileFromDataUrl(url, 'Lagekarte-' + name + '.png'));
+          files.push(fileFromDataUrl(url, APP_FILE + '-' + name + '.png'));
         });
       } catch (e) {
         dialog('Bild geht gerade nicht', 'Die Bilder konnten nicht erstellt werden. Mach stattdessen Bildschirmfotos.', [{ label: 'OK', primary: true }]);
@@ -2198,7 +2200,7 @@
       files = files.filter(Boolean);
       const stamp = shots[0].stamp;
       const link = (c, q) => 'https://maps.apple.com/?ll=' + c.latitude.toFixed(6) + ',' + c.longitude.toFixed(6) + '&q=' + encodeURIComponent(q);
-      const text = 'Lagekarte ' + stamp + '\n' + items.map((it, i) => {
+      const text = APP_NAME + ' ' + stamp + '\n' + items.map((it, i) => {
         const a = addr[i], title = it.title;
         if (it.axis) return title + ': von ' + (a[0] || '?') + ' bis ' + (a[1] || '?') + ' ' + link(it.at, it.t.name);
         return title + ': ' + (a ? a + ' ' : '') + link(it.at, it.t.name);
@@ -2241,10 +2243,10 @@
         return;
       }
       const c = snap.center;
-      const text = 'Lagekarte ' + snap.stamp + '\nKartenmitte: https://maps.apple.com/?ll=' + c.lat.toFixed(6) + ',' + c.lng.toFixed(6) + '&q=Einsatzort';
+      const text = APP_NAME + ' ' + snap.stamp + '\nKartenmitte: https://maps.apple.com/?ll=' + c.lat.toFixed(6) + ',' + c.lng.toFixed(6) + '&q=Einsatzort';
 
       // Datei schon jetzt vorbereiten, damit «Teilen» direkt beim Tippen öffnet
-      const file = fileFromDataUrl(dataUrl, 'Lagekarte-' + snap.stamp.replace(/[ .:]/g, '-') + '.png');
+      const file = fileFromDataUrl(dataUrl, APP_FILE + '-' + snap.stamp.replace(/[ .:]/g, '-') + '.png');
       const canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
 
       document.getElementById('shareImg').src = dataUrl;
@@ -2357,7 +2359,7 @@
     }
     // Neue Lageskizze: gemeinsames Fenster wie auf der Startseite (Bezeichnung, Adresse, Einsatzleiter)
     async function newSketchForm() {
-      const r = await window.FWForm.open({ app: 'Lagekarte', title: 'Neue Lageskizze', ok: 'Skizze starten', adrPflicht: false, elPflicht: false });
+      const r = await window.FWForm.open({ app: APP_NAME, title: 'Neue Lageskizze', ok: 'Skizze starten', adrPflicht: false, elPflicht: false });
       if (!r) return;
       createSketch(r.bez, r.adr, r.fw || undefined);
       setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();

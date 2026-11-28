@@ -1,5 +1,5 @@
 #!/bin/sh
-# Erzeugt web/privat/index.html aus web/index.html (private Zweit-App «Lagekarte» mit Polizei-Symbol).
+# Erzeugt web/privat/index.html aus web/index.html («Polizei Lagekarte»: Zweit-App mit Polizei-Symbol).
 # Gleicher Code wie die Lagekarte, aber eigenes Symbol, nur eine Skizze und eigener Speicher (Präfix «privatkarte.»),
 # damit die privaten Skizzen nie mit den Feuerwehr-Skizzen gemischt werden.
 # Läuft automatisch beim Veröffentlichen (.github/workflows/pages.yml). Zum lokalen Testen von Hand starten.
@@ -12,8 +12,11 @@ def rep(a, b):
     if a not in src:
         raise SystemExit('build-privat: nicht gefunden: ' + a)
     src = src.replace(a, b)
+# Name im Seitentitel und auf dem Home-Bildschirm
+rep('<title>Lagekarte</title>', '<title>Polizei Lagekarte</title>')
+rep('name="apple-mobile-web-app-title" content="Lagekarte"', 'name="apple-mobile-web-app-title" content="Polizei Lagekarte"')
 # Alle relativen Pfade (vendor/, shared/, ...) zeigen weiter auf den Hauptordner
-rep('<head>\n', '<head>\n  <!-- automatisch erzeugt aus web/index.html durch tools/build-privat.sh, nicht von Hand ändern -->\n  <base href="../" />\n  <script>window.LAGE_CFG = { prefix: \'privatkarte.\', privat: true, name: \'Lagekarte\' };</script>\n')
+rep('<head>\n', '<head>\n  <!-- automatisch erzeugt aus web/index.html durch tools/build-privat.sh, nicht von Hand ändern -->\n  <base href="../" />\n  <script>window.LAGE_CFG = { prefix: \'privatkarte.\', privat: true, name: \'Polizei Lagekarte\' };</script>\n')
 # ?v=<Prüfsumme>: neues Bild = neue Adresse, damit Handys kein altes Logo aus dem Zwischenspeicher zeigen
 import hashlib
 v = lambda f: f + '?v=' + hashlib.md5(open(f, 'rb').read()).hexdigest()[:8]
