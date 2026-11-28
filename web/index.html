@@ -1884,7 +1884,10 @@
     // Teilen-Knopf: zuerst Bild oder Lage
     function shareMenu() {
       dialog('Teilen', 'Was möchtest du teilen?', [
-        { label: '📍 Absprachepunkte', primary: true, onClick: sharePoints },
+        { label: '📍 Absprachepunkte', primary: true, onClick: () => shareItems('punkte') },
+        { label: '🚒 Fahrzeuge', primary: true, onClick: () => shareItems('fahrzeuge') },
+        { label: '⚠️ Zonen', primary: true, onClick: () => shareItems('zonen') },
+        { label: '🏢 Fassaden', primary: true, onClick: () => shareItems('fassaden') },
         { label: '📷 Lage als Foto', primary: true, onClick: shareSnapshot },
         { label: '🔗 Lage online', primary: true, onClick: shareLage },
       ], true);
@@ -2089,25 +2092,56 @@
     }
 
     // Übersicht plus ein Nahbild pro gesetztem Absprachepunkt (mit Adresse), alles auf einmal teilen
-    function sharePoints() {
-      // gesetzte Absprachepunkte und Rettungsachsen (Nr. 3, eine Linie), nach Nummer
-      const axisNr = SYMBOL_TYPES.find((t) => t.zone === 'rettungsachse');
-      const items = drawing.symbols
-        .filter((s) => PLACEABLE.some((t) => t.id === s.typeId))
-        .map((s) => ({ t: findSymbol(s.typeId), s, at: s.coordinate }))
-        .concat(drawing.lines.filter((l) => findLine(l.typeId).axis && l.points.length >= 2)
-          .map((l) => ({ t: axisNr, line: l, at: l.points[0], end: l.points[l.points.length - 1] })))
-        .sort((a, b) => a.t.nr - b.t.nr);
+    // Einzelbilder verschicken: Übersicht + je ein Nahbild pro Eintrag, mit Adresse
+    // punkte = Absprachepunkte (+ Rettungsachse), fahrzeuge, zonen, fassaden
+    const SHARE_KINDS = {
+      punkte: { name: 'Absprachepunkte', none: 'Keine Absprachepunkte', add: 'Absprachepunkte' },
+      fahrzeuge: { name: 'Fahrzeuge', none: 'Keine Fahrzeuge', add: 'Fahrzeuge' },
+      zonen: { name: 'Zonen', none: 'Keine Zonen', add: 'Zonen' },
+      fassaden: { name: 'Fassaden', none: 'Keine Fassaden', add: 'Fassaden' },
+    };
+    // Mitte einer Fläche (Durchschnitt der Eckpunkte) für die Adresse
+    const midOf = (pts) => ({ latitude: pts.reduce((a, p) => a + p.latitude, 0) / pts.length, longitude: pts.reduce((a, p) => a + p.longitude, 0) / pts.length });
+    function shareItemsOf(kind) {
+      let items;
+      if (kind === 'punkte') {
+        // gesetzte Absprachepunkte und Rettungsachsen (Nr. 3, eine Linie), nach Nummer
+        const axisNr = SYMBOL_TYPES.find((t) => t.zone === 'rettungsachse');
+        items = drawing.symbols
+          .filter((s) => PLACEABLE.some((t) => t.id === s.typeId))
+          .map((s) => ({ t: findSymbol(s.typeId), s, at: s.coordinate }))
+          .concat(drawing.lines.filter((l) => findLine(l.typeId).axis && l.points.length >= 2)
+            .map((l) => ({ t: axisNr, line: l, axis: true, at: l.points[0], end: l.points[l.points.length - 1] })))
+          .sort((a, b) => a.t.nr - b.t.nr);
+        items.forEach((it) => { it.title = it.t.nr + ' ' + it.t.name; });
+        return items;
+      }
+      if (kind === 'fahrzeuge') {
+        items = drawing.symbols.filter((s) => { const t = findSymbol(s.typeId); return t && t.vehicle && t.id === s.typeId; })
+          .map((s) => ({ t: findSymbol(s.typeId), s, at: s.coordinate }));
+      } else {
+        const want = kind === 'fassaden' ? (t) => t.facade : (t) => ZONE_TYPES.includes(t);
+        items = drawing.lines.filter((l) => want(findLine(l.typeId)) && l.points.length >= 2)
+          .map((l) => ({ t: findLine(l.typeId), line: l, at: midOf(l.points) }));
+      }
+      // gleiche Art mehrmals: durchnummerieren (z. B. «Gefahrenzone 1», «Gefahrenzone 2»)
+      const count = {}, seen = {};
+      items.forEach((it) => { count[it.t.name] = (count[it.t.name] || 0) + 1; });
+      items.forEach((it) => { seen[it.t.name] = (seen[it.t.name] || 0) + 1; it.title = it.t.name + (count[it.t.name] > 1 ? ' ' + seen[it.t.name] : ''); });
+      return items;
+    }
+    function shareItems(kind) {
+      const K = SHARE_KINDS[kind], items = shareItemsOf(kind);
       if (!items.length) {
-        dialog('Keine Absprachepunkte', 'Setze zuerst Absprachepunkte (＋ › Absprachepunkte), dann kannst du sie hier einzeln verschicken.', [{ label: 'OK', primary: true }]);
+        dialog(K.none, 'Setze zuerst ' + K.name + ' (＋ › ' + K.add + '), dann kannst du sie hier einzeln verschicken.', [{ label: 'OK', primary: true }]);
         return;
       }
-      dialog('Bilder werden erstellt …', 'Einen Moment, die Karte springt kurz zu jedem Absprachepunkt.', []);
+      dialog('Bilder werden erstellt …', 'Einen Moment, die Karte springt kurz zu jedem Eintrag.', []);
       const keep = { center: map.getCenter(), zoom: map.getZoom() };
       const shots = [];
       const near = (c) => addressAt(c.latitude, c.longitude);
       // Rettungsachse: Adresse am Anfang und am Ende
-      const addresses = Promise.all(items.map((it) => (it.line ? Promise.all([near(it.at), near(it.end)]) : near(it.at))));
+      const addresses = Promise.all(items.map((it) => (it.axis ? Promise.all([near(it.at), near(it.end)]) : near(it.at))));
       const finish = (addr) => {
         map.setView(keep.center, keep.zoom, { animate: false });
         document.getElementById('dialog').classList.remove('open');
@@ -2121,11 +2155,13 @@
             if (i >= items.length) { finish(addr); return; }
             const it = items[i], a = addr[i];
             i++;
-            const title = it.t.nr + ' ' + it.t.name;
+            const title = it.title;
             if (it.line) {
               const pts = it.line.points.map((p) => [p.latitude, p.longitude]);
               moveAndWait(() => map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 18, animate: false }), () => {
-                shots.push(snapshotCanvas({ title, lines: ['Von: ' + (a[0] || 'keine Adresse gefunden'), 'Bis: ' + (a[1] || 'keine Adresse gefunden')] }));
+                const lines = it.axis ? ['Von: ' + (a[0] || 'keine Adresse gefunden'), 'Bis: ' + (a[1] || 'keine Adresse gefunden')]
+                  : [a || 'Keine Adresse gefunden', it.at.latitude.toFixed(5) + ', ' + it.at.longitude.toFixed(5)];
+                shots.push(snapshotCanvas({ title, lines }));
                 next();
               });
               return;
@@ -2133,7 +2169,7 @@
             const c = it.at;
             moveAndWait(() => map.setView([c.latitude, c.longitude], 18, { animate: false }), () => {
               const lines = [a || 'Keine Adresse gefunden', c.latitude.toFixed(5) + ', ' + c.longitude.toFixed(5)];
-              shots.push(snapshotCanvas({ title, lines, ring: 46 * viewK(it.t, it.s) * 0.72 + 8 }));
+              shots.push(snapshotCanvas({ title, lines, ring: (it.t.sign ? Math.max(it.t.w, it.t.h) * 0.6 : 46 * 0.72) * viewK(it.t, it.s) + 8 }));
               next();
             });
           };
@@ -2143,7 +2179,7 @@
     }
     function showShots(shots, items, addr) {
       let files = [], urls = [];
-      const titleOf = (i) => (i === 0 ? 'Übersicht' : items[i - 1].t.nr + ' ' + items[i - 1].t.name);
+      const titleOf = (i) => (i === 0 ? 'Übersicht' : items[i - 1].title);
       try {
         shots.forEach((sh, i) => {
           const url = sh.canvas.toDataURL('image/png');
@@ -2159,8 +2195,8 @@
       const stamp = shots[0].stamp;
       const link = (c, q) => 'https://maps.apple.com/?ll=' + c.latitude.toFixed(6) + ',' + c.longitude.toFixed(6) + '&q=' + encodeURIComponent(q);
       const text = 'Lagekarte ' + stamp + '\n' + items.map((it, i) => {
-        const a = addr[i], title = it.t.nr + ' ' + it.t.name;
-        if (it.line) return title + ': von ' + (a[0] || '?') + ' bis ' + (a[1] || '?') + ' ' + link(it.at, it.t.name);
+        const a = addr[i], title = it.title;
+        if (it.axis) return title + ': von ' + (a[0] || '?') + ' bis ' + (a[1] || '?') + ' ' + link(it.at, it.t.name);
         return title + ': ' + (a ? a + ' ' : '') + link(it.at, it.t.name);
       }).join('\n');
       const canShare = files.length === shots.length && navigator.canShare && navigator.canShare({ files });
