@@ -1,6 +1,6 @@
 {
-  "name": "Lagekarte Privat",
-  "short_name": "Karte Privat",
+  "name": "Lagekarte",
+  "short_name": "Lagekarte",
   "start_url": "./",
   "scope": "./",
   "id": "./",

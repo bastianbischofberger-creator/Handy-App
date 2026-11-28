@@ -284,8 +284,9 @@
   <script>
   (function () {
     // ---------- Einstellungen ----------
-    // Die gleiche Datei läuft auch als «Lagekarte Privat» (private Zweit-App, web/privat/, erzeugt von tools/build-privat.sh).
-    // Dort setzt window.LAGE_CFG einen eigenen Speicher-Präfix, damit die Zeichnungen nie gemischt werden.
+    // Die gleiche Datei läuft auch als private Zweit-App (web/privat/, erzeugt von tools/build-privat.sh).
+    // Dort setzt window.LAGE_CFG einen eigenen Speicher-Präfix (Zeichnungen nie gemischt) und privat: true
+    // (nur eine Skizze, keine Übersicht/Skizzenliste, keine Verbindung zu den Feuerwehr-Apps).
     const CFG = Object.assign({ prefix: 'einsatzkarte.', privat: false }, window.LAGE_CFG || {});
     const PFX = CFG.prefix;
     const BASE_MAPS = {
@@ -449,7 +450,7 @@
     const findSketch = (id) => sketches.find((x) => x.id === id);
     function saveIndex() { lsSet(IDX_KEY, sketches); lsSet(ACT_KEY, activeId); }
     function saveSketch() {
-      if (viewOnly) return;
+      if (viewOnly || CFG.privat) return; // Privat: nur eine Skizze, keine Skizzenliste
       if (!activeId) {
         // auf der Karte ohne Skizze gezeichnet: automatisch als neue Skizze speichern
         if (!countOf(drawing)) return;
@@ -468,7 +469,8 @@
       return d;
     }
     // Erste Verwendung: bisherige Zeichnung wird zur ersten gespeicherten Skizze
-    if (!Array.isArray(sketches)) {
+    if (CFG.privat) { sketches = []; activeId = null; }
+    else if (!Array.isArray(sketches)) {
       sketches = []; activeId = null;
       if (countOf(drawing)) {
         const id = newId();
@@ -2256,6 +2258,7 @@
     function dClock() { const d = new Date(); document.getElementById('dClock').textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
     setInterval(dClock, 10000); dClock();
     function showDash() {
+      if (CFG.privat) { renderDrawing(); return; } // Privat: keine Übersicht, immer direkt die eine Skizze
       document.getElementById('dialog').classList.remove('open');
       renderDash(); dash.classList.add('open'); dash.scrollTop = 0;
     }
@@ -2314,7 +2317,6 @@
     }
     // Neue Lageskizze: gemeinsames Fenster wie auf der Startseite (Bezeichnung, Adresse, Einsatzleiter)
     async function newSketchForm() {
-      if (CFG.privat) return newPrivatSketch();
       const r = await window.FWForm.open({ app: 'Lagekarte', title: 'Neue Lageskizze', ok: 'Skizze starten', adrPflicht: false, elPflicht: false });
       if (!r) return;
       createSketch(r.bez, r.adr, r.fw || undefined);
@@ -2323,21 +2325,8 @@
       else if (r.adr) searchAddress(r.adr);
       else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
     }
-    // Privat: einfaches Fenster ohne Einsatzleiter und ohne Verbindung zu den Feuerwehr-Apps
-    function newPrivatSketch() {
-      dialog('Neue Skizze', '', [{ label: 'Skizze starten', primary: true, onClick: () => {
-        const adr = inpO.value.trim();
-        createSketch(inp.value.trim() || 'Skizze vom ' + fmtDT(Date.now()), adr);
-        setMode({ kind: 'ansehen' }); renderDrawing(); hideDash();
-        if (adr) searchAddress(adr);
-        else { firstFix = true; if (myPos) { firstFix = false; map.flyTo(myPos, 17, { duration: 0.8 }); } }
-      } }], true);
-      const extra = document.getElementById('dialogExtra');
-      const inp = document.createElement('input'); inp.className = 'searchInput'; inp.placeholder = 'Bezeichnung (z. B. Wanderung)';
-      const inpO = document.createElement('input'); inpO.className = 'searchInput'; inpO.placeholder = 'Adresse / Ort (freiwillig)'; inpO.style.marginTop = '8px';
-      extra.append(inp, inpO); inp.focus();
-    }
     function createSketch(name, ort, fw) {
+      if (CFG.privat) { drawing = { symbols: [], lines: [] }; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(drawing)); } catch (e) {} return; }
       const id = newId(), now = Date.now();
       sketches.push({ id, name, ort, created: now, updated: now, n: 0, ...(fw ? { fw } : {}) });
       activeId = id; drawing = { symbols: [], lines: [] };
@@ -2376,16 +2365,9 @@
         } },
       ]);
     }
-    document.getElementById('logo').onclick = () => { if (viewOnly) return; showDash(); };
+    document.getElementById('logo').onclick = () => { if (viewOnly || CFG.privat) return; showDash(); };
 
     // ---------- Start ----------
-    if (CFG.privat) {
-      // keine Feuerwehr-Startseite, kein «Test»-Schild, eigener Name
-      const dTop = document.querySelector('#dash .dTop');
-      dTop.style.background = '#1565C0'; // blau wie das App-Symbol, damit man die Apps nicht verwechselt
-      dTop.querySelector('a').removeAttribute('href');
-      dTop.querySelector('h1').innerHTML = esc(CFG.name || 'Lagekarte Privat') + '<small>Eigene Skizzen auf der Landeskarte</small>';
-    }
     setBase((() => { try { const k = localStorage.getItem(BASE_KEY); return BASE_MAPS[k] ? k : 'luftbild'; } catch (e) { return 'luftbild'; } })());
     const hadLink = /^#lage=/.test(location.hash);
     openLageLink();
