@@ -1888,6 +1888,7 @@
         { label: '🚒 Fahrzeuge', primary: true, onClick: () => shareItems('fahrzeuge') },
         { label: '⚠️ Zonen', primary: true, onClick: () => shareItems('zonen') },
         { label: '🏢 Fassaden', primary: true, onClick: () => shareItems('fassaden') },
+        { label: '🗂 Alles als Details', primary: true, onClick: () => shareItems('alle') },
         { label: '📷 Lage als Foto', primary: true, onClick: shareSnapshot },
         { label: '🔗 Lage online', primary: true, onClick: shareLage },
       ], true);
@@ -2099,10 +2100,13 @@
       fahrzeuge: { name: 'Fahrzeuge', none: 'Keine Fahrzeuge', add: 'Fahrzeuge' },
       zonen: { name: 'Zonen', none: 'Keine Zonen', add: 'Zonen' },
       fassaden: { name: 'Fassaden', none: 'Keine Fassaden', add: 'Fassaden' },
+      alle: { name: 'Einträge', none: 'Noch nichts eingezeichnet', add: 'Absprachepunkte, Fahrzeuge, Zonen oder Fassaden' },
     };
     // Mitte einer Fläche (Durchschnitt der Eckpunkte) für die Adresse
     const midOf = (pts) => ({ latitude: pts.reduce((a, p) => a + p.latitude, 0) / pts.length, longitude: pts.reduce((a, p) => a + p.longitude, 0) / pts.length });
     function shareItemsOf(kind) {
+      // alles zusammen: Absprachepunkte, Fahrzeuge, Zonen, Fassaden (in dieser Reihenfolge)
+      if (kind === 'alle') return ['punkte', 'fahrzeuge', 'zonen', 'fassaden'].flatMap(shareItemsOf);
       let items;
       if (kind === 'punkte') {
         // gesetzte Absprachepunkte und Rettungsachsen (Nr. 3, eine Linie), nach Nummer
