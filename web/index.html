@@ -1797,7 +1797,7 @@
         // bei «Nur ansehen» gibt es nur das Bild
         { label: '📤  Teilen', primary: true, onClick: viewOnly ? shareSnapshot : shareMenu },
         { label: '🔍  Adresse suchen', primary: true, onClick: searchAddress },
-        ...(viewOnly ? [] : [{ label: '🏠  Dashboard (Skizzen)', primary: true, onClick: showDash }]),
+        ...(viewOnly || CFG.privat ? [] : [{ label: '🏠  Dashboard (Skizzen)', primary: true, onClick: showDash }]),
       ], true);
       const box = document.getElementById('dialogButtons');
       box.classList.add('stack');
