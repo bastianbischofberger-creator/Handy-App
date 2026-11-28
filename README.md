@@ -35,6 +35,17 @@ Kartendaten: © swisstopo (geo.admin.ch).
 - Symbole und Linienarten anpassen: `src/config.ts`.
 - Prüfen: `npx tsc --noEmit`
 
+## Polizei Lagekarte (Web-App)
+
+Eigene Lagekarte mit Polizei-Logo, getrennt von den Feuerwehr-Apps.
+Adresse: https://bastianbischofberger-creator.github.io/Handy-App/privat/
+
+- Gleicher Code wie die Lagekarte (`web/index.html`), aber eigener Name, eigenes Logo, nur eine Skizze und eigener
+  Speicher. Die Skizzen werden nie mit denen der Feuerwehr gemischt, und es gibt keine Verbindung zu den Feuerwehr-Apps.
+- `web/privat/index.html` wird beim Veröffentlichen von `tools/build-privat.sh` erzeugt (nicht von Hand ändern).
+  Änderungen, die nur für die Polizei gelten sollen, im Code hinter `CFG.privat` setzen.
+- Name, Logo und Icons: `tools/build-privat.sh` und `web/privat/` (Manifest, PNGs).
+
 ## Atemschutzüberwachung (Web-App)
 
 Im Ordner `web/asue` liegt eine zweite Web-App: die **Atemschutzüberwachung** der Feuerwehr RTL.
